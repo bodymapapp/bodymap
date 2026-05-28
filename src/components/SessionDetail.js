@@ -666,17 +666,31 @@ export default function SessionDetail({ session, client, onBack, onUpdate }) {
           .bm-session-grid { grid-template-columns: 1fr !important; }
         }
       `}</style>
-      <div style={{ display: "flex", alignItems: "flex-start", gap: "12px", marginBottom: "20px", flexWrap: "wrap" }}>
+      {/* HK May 27 2026: header restructured. DocumentJourney (the
+          horizontal step widget) used to be jammed into this flex row
+          alongside the name and status badge, so on a phone it got
+          squeezed into a sliver and the 'THE JOURNEY' / step labels
+          overlapped and clipped. Now the top row holds only back +
+          name + status, and DocumentJourney sits on its own full-width
+          row below, the same layout the Schedule slide-over uses. */}
+      <div style={{ display: "flex", alignItems: "flex-start", gap: "12px", marginBottom: "14px", flexWrap: "wrap" }}>
         <button onClick={onBack} style={{ background: "transparent", border: "1.5px solid " + C.lightGray, color: C.gray, padding: "8px 16px", borderRadius: "8px", fontSize: "14px", cursor: "pointer" }}>
           ← Sessions
         </button>
-        <div style={{ flex: '0 0 auto' }}>
+        <div style={{ flex: '1 1 auto', minWidth: 0 }}>
           <h2 style={{ fontFamily: "Georgia, serif", fontSize: "26px", fontWeight: "700", color: C.darkGray, margin: "0 0 2px 0", letterSpacing: "-0.5px" }}>{client.name}</h2>
           <p style={{ fontSize: "13px", color: C.gray, margin: 0 }}>
             <span style={{ fontWeight: 600, color: '#2A5741', marginRight: 8 }}>Session Record</span>
             {new Date(session.created_at).toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" })}
           </p>
         </div>
+        <span style={{ background: session.completed ? "#D1FAE5" : "#FEF3C7", color: session.completed ? "#065F46" : "#92400E", padding: "6px 16px", borderRadius: "20px", fontSize: "13px", fontWeight: "600", alignSelf: 'flex-start', whiteSpace: 'nowrap' }}>
+          {session.completed ? "✓ Completed" : "⏳ Pending Review"}
+        </span>
+      </div>
+
+      {/* Journey widget on its own full-width row */}
+      <div style={{ marginBottom: "20px" }}>
         <DocumentJourney
           session={session}
           intakeWaivedAt={intakeWaivedAt}
@@ -684,9 +698,6 @@ export default function SessionDetail({ session, client, onBack, onUpdate }) {
           onSoapClick={!session.completed ? jumpToSoap : null}
           onSelect={(n) => setDrawerDoc(n)}
         />
-        <span style={{ background: session.completed ? "#D1FAE5" : "#FEF3C7", color: session.completed ? "#065F46" : "#92400E", padding: "6px 16px", borderRadius: "20px", fontSize: "13px", fontWeight: "600", alignSelf: 'center' }}>
-          {session.completed ? "✓ Completed" : "⏳ Pending Review"}
-        </span>
       </div>
 
       {medFlagValue && (
