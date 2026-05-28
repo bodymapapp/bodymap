@@ -2478,9 +2478,14 @@ function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled }) {
     ? apptDayMs + (t2m(appt.time) + (appt.duration || 60)) * 60 * 1000
     : null;
   const isPastBooking = apptEndMs != null && apptEndMs < Date.now();
-  // Only offer no-show on past bookings that have not already been
-  // cancelled or completed. External Google events never reach here.
-  const canMarkNoShow = isPastBooking
+  // HK May 28 2026: No-show becomes available once the START time has
+  // passed, not the end time. A no-show is knowable the moment the
+  // client fails to arrive at the start, so gating on end time (the old
+  // behaviour) hid the button for the entire session length. We gate
+  // no-show on start, while other "past" logic still uses end.
+  const apptStartMs = apptDayMs != null ? apptDayMs + t2m(appt.time) * 60 * 1000 : null;
+  const startHasPassed = apptStartMs != null && apptStartMs < Date.now();
+  const canMarkNoShow = startHasPassed
     && !appt.preview
     && appt.status !== 'cancelled'
     && appt.status !== 'complete';
