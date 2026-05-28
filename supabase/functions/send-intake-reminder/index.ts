@@ -54,9 +54,9 @@ async function findIntakePendingBookings(supabase: any): Promise<string[]> {
 
   const { data: candidates } = await supabase
     .from('bookings')
-    .select('id, client_id, start_date, start_time, status, created_at')
+    .select('id, client_id, booking_date, start_time, status, created_at')
     .lte('created_at', cutoffCreated)
-    .gte('start_date', cutoffFuture.toISOString().slice(0, 10))
+    .gte('booking_date', cutoffFuture.toISOString().slice(0, 10))
     .not('status', 'eq', 'cancelled')
     .not('status', 'eq', 'declined')
     .limit(100);
@@ -89,7 +89,8 @@ async function sendForBooking(supabase: any, RESEND_KEY: string, bookingId: stri
   const { data: booking } = await supabase
     .from('bookings')
     .select(`
-      id, client_id, start_date, start_time, service_name, status, created_at,
+      id, client_id, booking_date, start_time, service_id, status, created_at,
+      services(name),
       therapists(id, full_name, business_name, custom_url, email, notification_prefs, intake_reminders_enabled_at),
       clients(id, name, email, phone, sms_opted_in, unsubscribed_at)
     `)
@@ -111,7 +112,7 @@ async function sendForBooking(supabase: any, RESEND_KEY: string, bookingId: stri
   if (!therapist?.intake_reminders_enabled_at) {
     return { status: 'skipped', reason: 'intake_reminders_not_enabled' };
   }
-  const bookingCreatedAt = new Date(booking.created_at || booking.start_date).getTime();
+  const bookingCreatedAt = new Date(booking.created_at || booking.booking_date).getTime();
   const enabledAt = new Date(therapist.intake_reminders_enabled_at).getTime();
   if (bookingCreatedAt < enabledAt) {
     return { status: 'skipped', reason: 'booking_predates_optin' };
@@ -119,7 +120,7 @@ async function sendForBooking(supabase: any, RESEND_KEY: string, bookingId: stri
 
   const therapistName = therapist?.business_name || therapist?.full_name || 'Your therapist';
   const clientFirstName = client.name?.split(' ')[0] || 'there';
-  const apptWhen = formatApptDateTime(booking.start_date, booking.start_time);
+  const apptWhen = formatApptDateTime(booking.booking_date, booking.start_time);
   const intakeUrl = `https://mybodymap.app/intake/${therapist.custom_url}?b=${booking.id}`;
 
   const subject = `A short intake before we meet, ${clientFirstName}`;
@@ -128,7 +129,7 @@ async function sendForBooking(supabase: any, RESEND_KEY: string, bookingId: stri
     ${eyebrow('Before our session', 'sage')}
     <h1>Two minutes makes a real difference</h1>
     <p>Hi ${clientFirstName},</p>
-    <p>I'm looking forward to seeing you for your <strong>${booking.service_name || 'session'}</strong> on <strong>${apptWhen}</strong>. Before then, would you fill out a short intake?</p>
+    <p>I'm looking forward to seeing you for your <strong>${booking.services?.name || 'session'}</strong> on <strong>${apptWhen}</strong>. Before then, would you fill out a short intake?</p>
     <p>It lets me know where you'd like to focus, what to avoid, and anything I should know going in. About two minutes, and it helps your time on the table go further.</p>
     ${ctaButton('Fill out my intake →', intakeUrl)}
     ${tipBox('Why this matters', `I read every intake before our session so I'm already thinking about what you need before you arrive. The more I know going in, the more attuned the session can be.`)}

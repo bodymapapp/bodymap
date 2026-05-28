@@ -46,9 +46,9 @@ async function findBookingsAt48h(supabase: any): Promise<string[]> {
   // Pull a 2-day window so we can date-filter then narrow by start_time
   const { data: candidates } = await supabase
     .from('bookings')
-    .select('id, start_date, start_time, status')
-    .gte('start_date', windowStart.toISOString().slice(0, 10))
-    .lte('start_date', windowEnd.toISOString().slice(0, 10))
+    .select('id, booking_date, start_time, status')
+    .gte('booking_date', windowStart.toISOString().slice(0, 10))
+    .lte('booking_date', windowEnd.toISOString().slice(0, 10))
     .not('status', 'eq', 'cancelled')
     .not('status', 'eq', 'declined')
     .limit(500);
@@ -57,7 +57,7 @@ async function findBookingsAt48h(supabase: any): Promise<string[]> {
 
   const inWindow = candidates.filter((b: any) => {
     try {
-      const t = new Date(`${b.start_date}T${b.start_time}`).getTime();
+      const t = new Date(`${b.booking_date}T${b.start_time}`).getTime();
       return t >= windowStart.getTime() && t <= windowEnd.getTime();
     } catch (_) { return false; }
   });
@@ -81,7 +81,9 @@ async function sendForBooking(supabase: any, RESEND_KEY: string, bookingId: stri
   const { data: booking } = await supabase
     .from('bookings')
     .select(`
-      id, client_id, start_date, start_time, service_name, duration_min, location_address, status,
+      id, client_id, booking_date, start_time, service_id, status,
+      services(name, duration),
+      location:therapist_locations(name, address),
       therapists(id, full_name, business_name, custom_url, email, notification_prefs),
       clients(id, name, email, phone, unsubscribed_at)
     `)
@@ -96,9 +98,12 @@ async function sendForBooking(supabase: any, RESEND_KEY: string, bookingId: stri
   if (!client?.email) return { status: 'skipped', reason: 'no_client_email' };
   if (client.unsubscribed_at) return { status: 'skipped', reason: 'unsubscribed' };
 
+  const serviceName = booking.services?.name || 'Massage session';
+  const serviceDuration = booking.services?.duration || null;
+  const locationAddr = booking.location?.address || null;
   const therapistName = therapist?.business_name || therapist?.full_name || 'Your therapist';
   const clientFirstName = client.name?.split(' ')[0] || 'there';
-  const apptWhen = formatApptDateTime(booking.start_date, booking.start_time);
+  const apptWhen = formatApptDateTime(booking.booking_date, booking.start_time);
   const bookingUrl = `https://mybodymap.app/book/${therapist.custom_url}`;
   const rescheduleUrl = `https://mybodymap.app/book/${therapist.custom_url}?reschedule=${booking.id}`;
 
@@ -106,10 +111,10 @@ async function sendForBooking(supabase: any, RESEND_KEY: string, bookingId: stri
 
   const facts = [
     { label: 'When',     value: apptWhen },
-    { label: 'Session',  value: booking.service_name || 'Massage session' },
+    { label: 'Session',  value: serviceName },
   ];
-  if (booking.duration_min) facts.push({ label: 'Duration', value: `${booking.duration_min} minutes` });
-  if (booking.location_address) facts.push({ label: 'Where', value: booking.location_address });
+  if (serviceDuration) facts.push({ label: 'Duration', value: `${serviceDuration} minutes` });
+  if (locationAddr) facts.push({ label: 'Where', value: locationAddr });
 
   const bodyHtml = `
     ${eyebrow('Two days to go', 'sage')}
@@ -125,7 +130,7 @@ async function sendForBooking(supabase: any, RESEND_KEY: string, bookingId: stri
     <p class="muted" style="font-size:13px;margin-top:18px;">- ${therapist?.full_name || therapistName}</p>
   `;
 
-  const html = emailWrapper({ subject, bodyHtml, preheader: `Your ${booking.service_name || 'session'} is two days away.` });
+  const html = emailWrapper({ subject, bodyHtml, preheader: `Your ${serviceName || 'session'} is two days away.` });
 
   const res = await fetch('https://api.resend.com/emails', {
     method: 'POST',

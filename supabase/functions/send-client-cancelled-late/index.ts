@@ -31,7 +31,7 @@ serve(async (req) => {
   const { data: booking } = await supabase
     .from('bookings')
     .select(`
-      id, client_id, start_date, start_time, service_name,
+      id, client_id, booking_date, start_time, service_id, services(name),
       therapists(id, full_name, business_name, custom_url, email, late_cancel_policy_text),
       clients(id, name, email, unsubscribed_at)
     `)
@@ -47,7 +47,7 @@ serve(async (req) => {
 
   const therapistName = therapist?.business_name || therapist?.full_name || 'Your therapist';
   const clientFirstName = client.name?.split(' ')[0] || 'there';
-  const apptWhen = formatApptDateTime(booking.start_date, booking.start_time);
+  const apptWhen = formatApptDateTime(booking.booking_date, booking.start_time);
   const bookingUrl = `https://mybodymap.app/book/${therapist.custom_url}`;
   const fee = fee_amount_cents ? `$${(fee_amount_cents / 100).toFixed(2)}` : null;
 
@@ -72,7 +72,7 @@ serve(async (req) => {
     ${eyebrow('Cancellation received', 'gold')}
     <h1>I'll see you another time</h1>
     <p>Hi ${clientFirstName},</p>
-    <p>Your <strong>${booking.service_name || 'session'}</strong> on <strong>${apptWhen}</strong> has been cancelled. I hope everything is okay on your end.</p>
+    <p>Your <strong>${booking.services?.name || 'session'}</strong> on <strong>${apptWhen}</strong> has been cancelled. I hope everything is okay on your end.</p>
     ${feeBlock}
     <p>Whenever the timing works again, I'd love to see you. My open times are below.</p>
     ${ctaButton('Find a time that works', bookingUrl)}

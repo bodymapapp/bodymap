@@ -37,7 +37,9 @@ serve(async (req) => {
   const { data: booking } = await supabase
     .from('bookings')
     .select(`
-      id, client_id, start_date, start_time, service_name, duration_min, location_address,
+      id, client_id, booking_date, start_time, service_id,
+      services(name, duration),
+      location:therapist_locations(name, address),
       therapists(id, full_name, business_name, custom_url, email, notification_prefs),
       clients(id, name, email, phone, unsubscribed_at)
     `)
@@ -51,9 +53,12 @@ serve(async (req) => {
   if (!client?.email) return jsonErr('no client email', 200, { skipped: 'no_client_email' });
   if (client.unsubscribed_at) return jsonErr('unsubscribed', 200, { skipped: 'unsubscribed' });
 
+  const serviceName = booking.services?.name || 'Massage session';
+  const serviceDuration = booking.services?.duration || null;
+  const locationAddr = booking.location?.address || null;
   const therapistName = therapist?.business_name || therapist?.full_name || 'Your therapist';
   const clientFirstName = client.name?.split(' ')[0] || 'there';
-  const newWhen = formatApptDateTime(booking.start_date, booking.start_time);
+  const newWhen = formatApptDateTime(booking.booking_date, booking.start_time);
   const prevWhen = (prev_date && prev_time) ? formatApptDateTime(prev_date, prev_time) : null;
   const rescheduleUrl = `https://mybodymap.app/book/${therapist.custom_url}?reschedule=${booking.id}`;
 
@@ -61,10 +66,10 @@ serve(async (req) => {
 
   const facts = [
     { label: 'New time', value: newWhen },
-    { label: 'Session',  value: booking.service_name || 'Massage session' },
+    { label: 'Session',  value: serviceName },
   ];
-  if (booking.duration_min) facts.push({ label: 'Duration', value: `${booking.duration_min} minutes` });
-  if (booking.location_address) facts.push({ label: 'Where', value: booking.location_address });
+  if (serviceDuration) facts.push({ label: 'Duration', value: `${serviceDuration} minutes` });
+  if (locationAddr) facts.push({ label: 'Where', value: locationAddr });
   if (prevWhen) facts.push({ label: 'Previously', value: prevWhen });
 
   const bodyHtml = `

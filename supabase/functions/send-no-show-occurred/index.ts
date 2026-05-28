@@ -28,7 +28,7 @@ serve(async (req) => {
   const { data: booking } = await supabase
     .from('bookings')
     .select(`
-      id, client_id, start_date, start_time, service_name,
+      id, client_id, booking_date, start_time, service_id, services(name),
       therapists(id, full_name, business_name, custom_url, email),
       clients(id, name, email, phone)
     `)
@@ -43,7 +43,7 @@ serve(async (req) => {
 
   const clientName = client?.name || 'A client';
   const clientFirstName = clientName.split(' ')[0];
-  const apptDate = new Date(`${booking.start_date}T${booking.start_time}`);
+  const apptDate = new Date(`${booking.booking_date}T${booking.start_time}`);
   const apptWhen = apptDate.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }) + ' at ' + apptDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
 
   const fee = fee_amount_cents ? `$${(fee_amount_cents / 100).toFixed(2)}` : null;
@@ -84,14 +84,14 @@ serve(async (req) => {
   const bodyHtml = `
     ${eyebrow('No-show', 'rose')}
     <h1>${clientName} did not show up</h1>
-    <p>Their <strong>${booking.service_name || 'session'}</strong> was scheduled for <strong>${apptWhen}</strong>.</p>
+    <p>Their <strong>${booking.services?.name || 'session'}</strong> was scheduled for <strong>${apptWhen}</strong>.</p>
     ${feeStatusHtml}
     <p>If you'd like to reach out personally, here's their profile:</p>
     ${ctaButton(`Open ${clientFirstName}'s profile`, clientLink)}
     <p class="muted" style="font-size:12px;">You can change how the platform handles no-shows in Settings, Cancellation Policy.</p>
   `;
 
-  const html = emailWrapper({ subject, bodyHtml, preheader: `${clientName} did not show up for ${booking.service_name || 'their session'}. Fee status inside.` });
+  const html = emailWrapper({ subject, bodyHtml, preheader: `${clientName} did not show up for ${booking.services?.name || 'their session'}. Fee status inside.` });
 
   const res = await fetch('https://api.resend.com/emails', {
     method: 'POST',

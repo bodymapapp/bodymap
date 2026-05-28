@@ -50,12 +50,12 @@ async function findLapsedClients(supabase: any): Promise<string[]> {
   // booking per client gives us 'last booking date'.
   const { data: recent } = await supabase
     .from('bookings')
-    .select('client_id, start_date')
-    .gte('start_date', windowStart)
-    .lte('start_date', windowEnd)
+    .select('client_id, booking_date')
+    .gte('booking_date', windowStart)
+    .lte('booking_date', windowEnd)
     .not('status', 'eq', 'cancelled')
     .not('status', 'eq', 'declined')
-    .order('start_date', { ascending: false })
+    .order('booking_date', { ascending: false })
     .limit(2000);
 
   if (!recent?.length) return [];
@@ -63,7 +63,7 @@ async function findLapsedClients(supabase: any): Promise<string[]> {
   // Group by client, take most recent
   const lastByClient = new Map<string, string>();
   for (const r of recent) {
-    if (!lastByClient.has(r.client_id)) lastByClient.set(r.client_id, r.start_date);
+    if (!lastByClient.has(r.client_id)) lastByClient.set(r.client_id, r.booking_date);
   }
 
   const candidateIds = Array.from(lastByClient.keys());
@@ -77,7 +77,7 @@ async function findLapsedClients(supabase: any): Promise<string[]> {
     .from('bookings')
     .select('client_id')
     .in('client_id', candidateIds)
-    .gt('start_date', cutoff)
+    .gt('booking_date', cutoff)
     .not('status', 'eq', 'cancelled')
     .not('status', 'eq', 'declined')
     .limit(2000);
@@ -135,15 +135,15 @@ async function sendForClient(supabase: any, RESEND_KEY: string, clientId: string
   // enabled-at gate.
   const { data: lastBooking } = await supabase
     .from('bookings')
-    .select('start_date')
+    .select('booking_date')
     .eq('client_id', clientId)
     .not('status', 'eq', 'cancelled')
     .not('status', 'eq', 'declined')
-    .order('start_date', { ascending: false })
+    .order('booking_date', { ascending: false })
     .limit(1)
     .maybeSingle();
-  if (lastBooking?.start_date) {
-    const lastBookingTs = new Date(`${lastBooking.start_date}T00:00:00Z`).getTime();
+  if (lastBooking?.booking_date) {
+    const lastBookingTs = new Date(`${lastBooking.booking_date}T00:00:00Z`).getTime();
     const enabledTs = new Date(therapist.lapse_checkins_enabled_at).getTime();
     if (lastBookingTs < enabledTs) {
       return { status: 'skipped', reason: 'last_booking_predates_optin' };

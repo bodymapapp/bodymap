@@ -48,19 +48,19 @@ async function findFinalLapseClients(supabase: any): Promise<string[]> {
 
   const { data: recent } = await supabase
     .from('bookings')
-    .select('client_id, start_date')
-    .gte('start_date', windowStart)
-    .lte('start_date', windowEnd)
+    .select('client_id, booking_date')
+    .gte('booking_date', windowStart)
+    .lte('booking_date', windowEnd)
     .not('status', 'eq', 'cancelled')
     .not('status', 'eq', 'declined')
-    .order('start_date', { ascending: false })
+    .order('booking_date', { ascending: false })
     .limit(2000);
 
   if (!recent?.length) return [];
 
   const lastByClient = new Map<string, string>();
   for (const r of recent) {
-    if (!lastByClient.has(r.client_id)) lastByClient.set(r.client_id, r.start_date);
+    if (!lastByClient.has(r.client_id)) lastByClient.set(r.client_id, r.booking_date);
   }
   const candidateIds = Array.from(lastByClient.keys());
   if (!candidateIds.length) return [];
@@ -71,7 +71,7 @@ async function findFinalLapseClients(supabase: any): Promise<string[]> {
     .from('bookings')
     .select('client_id')
     .in('client_id', candidateIds)
-    .gt('start_date', cutoff)
+    .gt('booking_date', cutoff)
     .not('status', 'eq', 'cancelled')
     .not('status', 'eq', 'declined')
     .limit(2000);

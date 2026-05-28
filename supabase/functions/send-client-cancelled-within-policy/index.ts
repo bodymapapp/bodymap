@@ -28,7 +28,7 @@ serve(async (req) => {
   const { data: booking } = await supabase
     .from('bookings')
     .select(`
-      id, client_id, start_date, start_time, service_name,
+      id, client_id, booking_date, start_time, service_id, services(name),
       therapists(id, full_name, business_name, custom_url, email),
       clients(id, name, email, unsubscribed_at)
     `)
@@ -44,7 +44,7 @@ serve(async (req) => {
 
   const therapistName = therapist?.business_name || therapist?.full_name || 'Your therapist';
   const clientFirstName = client.name?.split(' ')[0] || 'there';
-  const apptWhen = formatApptDateTime(booking.start_date, booking.start_time);
+  const apptWhen = formatApptDateTime(booking.booking_date, booking.start_time);
   const bookingUrl = `https://mybodymap.app/book/${therapist.custom_url}`;
 
   const subject = `About your session on ${apptWhen.split(' at ')[0]}`;
@@ -53,7 +53,7 @@ serve(async (req) => {
     ${eyebrow('Cancellation received', 'sage')}
     <h1>I'll see you another time</h1>
     <p>Hi ${clientFirstName},</p>
-    <p>Your <strong>${booking.service_name || 'session'}</strong> on <strong>${apptWhen}</strong> has been cancelled. No charge, no need to explain.</p>
+    <p>Your <strong>${booking.services?.name || 'session'}</strong> on <strong>${apptWhen}</strong> has been cancelled. No charge, no need to explain.</p>
     <p>Life is full and things shift. Whenever the timing works for you again, I'd love to see you. The link below has my open times.</p>
     ${ctaButton('Find a time that works', bookingUrl)}
     <p>Take care of yourself.</p>

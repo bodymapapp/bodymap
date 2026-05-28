@@ -29,7 +29,7 @@ serve(async (req) => {
   const { data: booking } = await supabase
     .from('bookings')
     .select(`
-      id, client_id, start_date, start_time, service_name,
+      id, client_id, booking_date, start_time, service_id, services(name),
       therapists(id, full_name, business_name, custom_url, email),
       clients(id, name, email, unsubscribed_at)
     `)
@@ -45,7 +45,7 @@ serve(async (req) => {
 
   const therapistName = therapist?.business_name || therapist?.full_name || 'Your therapist';
   const clientFirstName = client.name?.split(' ')[0] || 'there';
-  const apptWhen = formatApptDateTime(booking.start_date, booking.start_time);
+  const apptWhen = formatApptDateTime(booking.booking_date, booking.start_time);
   const bookingUrl = `https://mybodymap.app/book/${therapist.custom_url}`;
   const fee = `$${(fee_amount_cents / 100).toFixed(2)}`;
 
@@ -53,7 +53,7 @@ serve(async (req) => {
 
   const facts = [
     { label: 'For',         value: apptWhen },
-    { label: 'Session',     value: booking.service_name || 'Massage session' },
+    { label: 'Session',     value: booking.services?.name || 'Massage session' },
     { label: 'Fee charged', value: fee },
   ];
   if (charge_id) facts.push({ label: 'Reference', value: charge_id });

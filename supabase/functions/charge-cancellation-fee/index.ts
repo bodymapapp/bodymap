@@ -277,10 +277,18 @@ serve(async (req) => {
       const clientName = (client.name || 'Client').toString();
       const firstName = clientName.split(' ')[0];
       const feeUsd = ((chargeResult.amountCents || 0) / 100).toFixed(2);
-      const startDt = booking.start_at ? new Date(booking.start_at) : null;
+      // HK May 28 2026: bookings has no start_at column (it uses
+      // booking_date + start_time). Reading booking.start_at left this
+      // undefined, so the charge email showed a blank date. Build the
+      // display time from the real columns instead.
+      let startDt = null;
+      if (booking.booking_date && booking.start_time) {
+        const d = new Date(`${booking.booking_date}T${booking.start_time}`);
+        startDt = isNaN(d.getTime()) ? null : d;
+      }
       const whenStr = startDt
         ? startDt.toLocaleString('en-US', { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
-        : '';
+        : (booking.booking_date && booking.start_time ? `${booking.booking_date} ${booking.start_time}` : '');
 
       const title = isNoShow
         ? `${firstName} marked no-show, $${feeUsd} charged`

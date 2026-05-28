@@ -34,7 +34,8 @@ serve(async (req) => {
   const { data: booking } = await supabase
     .from('bookings')
     .select(`
-      id, client_id, start_date, start_time, service_name,
+      id, client_id, booking_date, start_time, service_id,
+      services(name),
       therapists(id, full_name, business_name, custom_url, email, phone, notification_prefs),
       clients(id, name, email, phone, unsubscribed_at)
     `)
@@ -48,12 +49,13 @@ serve(async (req) => {
   if (!client?.email) return jsonErr('no client email', 200, { skipped: 'no_client_email' });
   if (client.unsubscribed_at) return jsonErr('unsubscribed', 200, { skipped: 'unsubscribed' });
 
+  const serviceName = booking.services?.name || 'session';
   const therapistName = therapist?.business_name || therapist?.full_name || 'Your therapist';
   const clientFirstName = client.name?.split(' ')[0] || 'there';
-  const apptWhen = formatApptDateTime(booking.start_date, booking.start_time);
+  const apptWhen = formatApptDateTime(booking.booking_date, booking.start_time);
   const bookingUrl = `https://mybodymap.app/book/${therapist.custom_url}`;
 
-  const subject = `An update on your ${booking.service_name || 'session'} from ${therapistName}`;
+  const subject = `An update on your ${serviceName} from ${therapistName}`;
 
   const reasonBlock = reason && reason.trim()
     ? `<p style="font-style:italic;color:#3D4F43;background:#FAFAF7;border-left:3px solid #6B9E80;padding:12px 16px;border-radius:0 8px 8px 0;margin:14px 0;">"${reason.trim()}"</p>`
@@ -63,7 +65,7 @@ serve(async (req) => {
     ${eyebrow('Session cancelled', 'rose')}
     <h1>${therapistName} had to cancel</h1>
     <p>Hi ${clientFirstName},</p>
-    <p>I'm so sorry to send this. Something came up and I won't be able to see you for your <strong>${booking.service_name || 'session'}</strong> on <strong>${apptWhen}</strong>. I know rearranging your day for this is not nothing, and I appreciate your patience with me.</p>
+    <p>I'm so sorry to send this. Something came up and I won't be able to see you for your <strong>${serviceName}</strong> on <strong>${apptWhen}</strong>. I know rearranging your day for this is not nothing, and I appreciate your patience with me.</p>
     ${reasonBlock}
     <p>Whenever you're ready, the link below shows my open times. No rush.</p>
     ${ctaButton('Find a new time →', bookingUrl)}
