@@ -269,6 +269,20 @@ Every table has Row Level Security enabled. Therapist can only access their own 
 
 **Critical lesson, May 21 2026 (Candice blocked-day incident):** Any table the booking page queries needs an explicit public-read RLS policy. Default `FOR ALL USING (therapist_id = auth.uid())` returns empty silently when called by the anon role (since `auth.uid()` is null), which the JS client treats as "no rows" rather than an error. Symptom: customer reports a feature appearing broken on the booking page even though data is correct in the dashboard. Root cause: missing public-read policy. Fix in commit `613de194`, migration `2026-05-20-blocked-days-public-read.sql`. When adding any new table the booking page reads, add a public-read policy in the same migration.
 
+### Supabase MCP connector access control (set May 28, 2026)
+
+Claude is connected to the live Supabase database (project `rmnqfrljoknmellbnpiy`) via the Supabase MCP connector, so it can read the database directly for diagnostics (schema checks, reading notification_log, confirming data) without HK having to run SQL on his phone.
+
+**Hard rule: Claude reads, HK writes.** Until HK decides otherwise, every change that writes or alters data or schema (INSERT, UPDATE, DELETE, ALTER, migrations) goes through HK: Claude drafts the SQL inline in chat, HK runs it himself in the Supabase SQL editor. Claude never writes.
+
+**This is enforced, not just a promise. Two independent layers:**
+- **Layer 1 (active):** In Claude, Customize > Connectors > Supabase > Tool permissions, the **write/delete tool category is set to Blocked**. Claude physically cannot invoke a write tool through the connector. Read-only tools stay allowed. This is the live control as of May 28, 2026 and is sufficient on its own.
+- **Layer 2 (optional, not yet set):** A read-only database credential would enforce read-only at the Postgres level itself, so it holds even if a Claude-side setting changed. Postgres is the actual database engine underneath Supabase; a read-only Postgres role is a login granted only SELECT, never INSERT/UPDATE/DELETE/ALTER. Set this up (Supabase MCP `--read-only --project-ref=` flag, or a SELECT-only role) only if maximum assurance is ever wanted. Not required for safety today.
+
+**To verify Layer 1 is still on:** Customize > Connectors > Supabase > Tool permissions; confirm write/delete is Blocked. To grant Claude write access later (e.g. for a trusted migration), HK flips that category to Always allow or Needs approval, then back to Blocked when done.
+
+**Why this is safe:** with write/delete Blocked, no file instruction, prompt, bug, or mistake can write to production through Claude. HK's deliberate, hand-run SQL in the editor (using his own full-access login) remains the only write path.
+
 ---
 
 ## 9. Build philosophy and operating rhythm
