@@ -193,7 +193,13 @@ const C = {
 
 function ServicesAndAvailability({ therapist }) {
   const C2 = { sage:'#6B9E80', forest:'#2A5741', beige:'#F0EAD9', darkGray:'#1A1A2E', gray:'#6B7280', lightGray:'#E8E4DC', white:'#FFFFFF' };
-  const { updateProfile } = useAuth();
+  // refreshTherapist (HK May 27 2026 round 4): after writing settings
+  // fields like week_starts_on we need to refresh AuthContext so the
+  // updated therapist row flows back through props to every consumer
+  // (Schedule tab, CalendarGrid, etc). Without this, settings save to
+  // the DB but the calendar visually keeps the old value until the
+  // user does a hard reload. Jacquie hit this 3 times on week start.
+  const { updateProfile, refreshTherapist } = useAuth();
   const [depositEnabled, setDepositEnabled] = React.useState(therapist?.deposit_enabled || false);
   const [depositPercent, setDepositPercent] = React.useState(therapist?.deposit_percent || 20);
   const [bufferEnabled, setBufferEnabled] = React.useState(therapist?.buffer_enabled || false);
@@ -287,7 +293,7 @@ function ServicesAndAvailability({ therapist }) {
     setTipPreset1(therapist?.tip_preset_1 ?? 15);
     setTipPreset2(therapist?.tip_preset_2 ?? 18);
     setTipPreset3(therapist?.tip_preset_3 ?? 20);
-  }, [therapist?.deposit_enabled, therapist?.deposit_percent, therapist?.minimum_advance_hours, therapist?.maximum_advance_days, therapist?.scheduling_mode, therapist?.efficient_strictness, therapist?.accept_tips, therapist?.pay_in_full_enabled, therapist?.tip_preset_1, therapist?.tip_preset_2, therapist?.tip_preset_3]);
+  }, [therapist?.deposit_enabled, therapist?.deposit_percent, therapist?.minimum_advance_hours, therapist?.maximum_advance_days, therapist?.max_hands_on_minutes_per_day, therapist?.week_starts_on, therapist?.scheduling_mode, therapist?.efficient_strictness, therapist?.accept_tips, therapist?.pay_in_full_enabled, therapist?.tip_preset_1, therapist?.tip_preset_2, therapist?.tip_preset_3]);
 
   const PRESETS = [
     { name:'Swedish Massage', duration:60, price:85 },
@@ -2304,6 +2310,9 @@ function ServicesAndAvailability({ therapist }) {
               onClick={async () => {
                 setWeekStartsOn(0);
                 await supabase.from('therapists').update({ week_starts_on: 0 }).eq('id', therapist.id);
+                // Critical: refresh AuthContext so the value propagates
+                // to Schedule tab + CalendarGrid via props.
+                try { await refreshTherapist?.(); } catch (_) {}
                 setWeekStartConfirm('Saved. Sunday is your week start now.');
                 setTimeout(() => setWeekStartConfirm(null), 3000);
               }}
@@ -2321,6 +2330,7 @@ function ServicesAndAvailability({ therapist }) {
               onClick={async () => {
                 setWeekStartsOn(1);
                 await supabase.from('therapists').update({ week_starts_on: 1 }).eq('id', therapist.id);
+                try { await refreshTherapist?.(); } catch (_) {}
                 setWeekStartConfirm('Saved. Monday is your week start now.');
                 setTimeout(() => setWeekStartConfirm(null), 3000);
               }}

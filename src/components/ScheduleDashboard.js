@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { supabase, db } from '../lib/supabase';
+import { useAuth } from '../contexts/AuthContext';
 import BookingModal from './BookingModal';
 import CancellationChargeModal from './CancellationChargeModal';
 import SmartBookingRail from './schedule/SmartBookingRail';
@@ -6663,6 +6664,14 @@ function CohortCard({ color, icon, title, subtitle, clients, total, actionLabel,
 }
 
 export default function ScheduleDashboard({ therapist }) {
+  // HK May 27 2026 round 4: refresh AuthContext's therapist after we
+  // write week_starts_on (or any other settings field) so the new
+  // value flows back through props to every consumer (CalendarGrid,
+  // inner components, Weekly/Monthly/Yearly views). Without this, the
+  // toggles flipped local state but global therapist stayed stale =
+  // calendar kept showing the old week start. Jacquie hit this 3
+  // times before we found the actual cause.
+  const { refreshTherapist } = useAuth();
   const [subView,setSubView]=useState('today');
   const [dayOffset,setDayOffset]=useState(0);
   const [realBookings,setRealBookings]=useState(null);
@@ -6736,6 +6745,11 @@ export default function ScheduleDashboard({ therapist }) {
     setWeekStartsOn(next);
     try {
       await supabase.from('therapists').update({ week_starts_on: next }).eq('id', therapist.id);
+      // Critical: refresh AuthContext so the new value propagates to
+      // every component that reads therapist.week_starts_on from the
+      // prop. Without this, CalendarGrid and the inner views see the
+      // OLD value and the week start does not visually change.
+      try { await refreshTherapist?.(); } catch (_) {}
     } catch (e) {
       setWeekStartsOn(weekStartsOn);
     }

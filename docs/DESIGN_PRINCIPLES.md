@@ -925,6 +925,83 @@ in BLOCK_PLAN as fire #18.
 
 ---
 
+## 30. After writing to the therapist row, ALWAYS call refreshTherapist. Local state is not enough.
+
+**Why:** Jacquie reported May 27 2026, for the THIRD time, that
+flipping the week start to Sunday in Settings does not actually
+change her calendar layout. Each prior fix touched display math.
+None worked because the underlying state never refreshed. The
+calendar kept rendering on stale therapist data.
+
+**The failure pattern:**
+
+```js
+// BUG: local state only. Global therapist stays stale.
+async function onSavePreference() {
+  setMyLocalCopy(newValue);
+  await supabase.from('therapists').update({ field: newValue });
+}
+```
+
+The `therapist` object in `AuthContext` only re-fetches when:
+- the user signs in
+- the page does a hard reload
+- something calls `refreshTherapist()` explicitly
+
+Everything else that consumes `therapist` via props (`ScheduleDashboard`,
+`CalendarGrid`, every inner view) sees the OLD value until one of
+those three things happens.
+
+**The correct pattern:**
+
+```js
+async function onSavePreference() {
+  setMyLocalCopy(newValue);
+  await supabase.from('therapists').update({ field: newValue });
+  try { await refreshTherapist?.(); } catch (_) {}
+}
+```
+
+`refreshTherapist` is exposed from `AuthContext`:
+```js
+const { refreshTherapist } = useAuth();
+```
+
+The wrapping `try/catch` is non-blocking: the local write already
+succeeded, and a refresh failure should not roll that back. We log
+and move on.
+
+**Also: useEffect dep arrays.** If a component derives local state
+from a therapist field, that field MUST be in the useEffect dep
+array that re-syncs local state:
+
+```js
+useEffect(() => {
+  setMyLocalCopy(therapist?.field ?? defaultValue);
+}, [therapist?.field]);   // <-- not omitting this
+```
+
+Missing fields from the dep array means even a fresh `therapist`
+prop won't push the new value into local state.
+
+**The two failure modes combine to produce the Jacquie bug:**
+1. Toggle saves to DB and updates LOCAL state.
+2. `refreshTherapist` never called, so global therapist stays stale.
+3. Schedule tab gets the stale prop.
+4. Inner useEffect dep array also missing the field, so even if the
+   prop DID refresh, local Settings state wouldn't.
+
+Both must be fixed together. Both were fixed in the commit shipping
+with this principle.
+
+**Audit checklist for any new therapist setting:**
+- Does the save handler call `refreshTherapist()` after the write?
+- Is the field in the useEffect dep array that re-syncs local state?
+- Does the consumer component read directly from `therapist?.field`
+  (correct) or have its own state copy that could drift (risky)?
+
+---
+
 ## How to use this document
 
 - **Before opening a new file or section:** check rule #1.
