@@ -7,6 +7,7 @@ import { findOrCreateClient } from '../lib/findOrCreateClient';
 import CloseButton from '../components/CloseButton';
 import { PolicyDisplay } from '../components/BookingPolicies';
 import PublicCheckout from '../components/PublicCheckout';
+import BulkSessionScheduler from '../components/BulkSessionScheduler';
 // ClientPushCTA removed May 17 2026: client push tabled until client
 // login exists. The component file stays in tree as dormant code,
 // ready to re-import when BLOCK_PLAN Macro #2 (client portal) ships.
@@ -743,6 +744,9 @@ export default function BookingPage() {
   // post-purchase 'book now' button OR from returning-client
   // auto-detection by email.
   const [redeemContext,setRedeemContext]=useState(null); // { purchaseId, sessionsRemaining, packageName, clientEmail, clientName, clientId }
+  // HK May 27 2026 Ship 3: when the bulk scheduler finishes, show a
+  // confirmation count instead of the picker.
+  const [bulkDone,setBulkDone]=useState(null); // { count } or null
   // Cart for packages. Memberships are NOT cart-eligible because Stripe
   // Checkout does not allow mixing subscription and one-time line items
   // in one session. Cart stores full package row objects (not just ids)
@@ -2433,8 +2437,50 @@ export default function BookingPage() {
 
       <div style={{maxWidth:560,margin:'0 auto',padding:'24px 16px calc(100px + env(safe-area-inset-bottom, 0px))'}}>
 
+        {/* HK May 27 2026 Ship 3: bulk session scheduler. Shows when
+            the client tapped 'Schedule all N sessions' after buying a
+            package. Takes over the content area. On finish, shows a
+            confirmation. Cancel drops back to the normal flow. */}
+        {redeemContext?.scheduleAll && !bulkDone && (
+          <div>
+            <h2 style={{fontFamily:'Georgia,serif',fontSize:22,fontWeight:700,color:C.dark,margin:'0 0 4px'}}>
+              Schedule your sessions
+            </h2>
+            <p style={{fontSize:13,color:C.gray,margin:'0 0 20px',lineHeight:1.5}}>
+              Pick a date and time for each session. They all draw from {redeemContext.packageName ? `your ${redeemContext.packageName}` : 'your package'}: no more payment needed.
+            </p>
+            <BulkSessionScheduler
+              therapist={therapist}
+              services={services}
+              availability={availability}
+              redeemContext={redeemContext}
+              applicableServiceIds={null}
+              onComplete={(count) => { setBulkDone({ count }); window.scrollTo(0, 0); }}
+              onCancel={() => { setRedeemContext(null); }}
+            />
+          </div>
+        )}
+
+        {/* Bulk scheduler confirmation */}
+        {bulkDone && (
+          <div style={{ textAlign: 'center', padding: '40px 8px' }}>
+            <div style={{ fontSize: 48, marginBottom: 12 }}>🎉</div>
+            <h2 style={{ fontFamily: 'Georgia,serif', fontSize: 24, fontWeight: 700, color: C.dark, margin: '0 0 8px' }}>
+              {bulkDone.count} session{bulkDone.count !== 1 ? 's' : ''} booked
+            </h2>
+            <p style={{ fontSize: 14, color: C.gray, margin: '0 0 24px', lineHeight: 1.5, maxWidth: 380, marginLeft: 'auto', marginRight: 'auto' }}>
+              You will get a confirmation for each. Your therapist sees them all on their schedule. See you soon.
+            </p>
+            <button
+              onClick={() => { setBulkDone(null); setRedeemContext(null); setStep(1); }}
+              style={{ background: C.forest, color: '#fff', border: 'none', borderRadius: 12, padding: '14px 28px', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>
+              Done
+            </button>
+          </div>
+        )}
+
         {/* STEP 1 */}
-        {step===1&&(
+        {step===1&&!redeemContext?.scheduleAll&&!bulkDone&&(
           <div>
             {/* WELCOME hero: surfaces therapist photo bigger and frames the
                 booking experience as personal, not transactional. Below the
