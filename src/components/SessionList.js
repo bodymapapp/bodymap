@@ -194,6 +194,17 @@ export default function SessionList({ client, therapistId, therapist, onBack, on
     }
   }, [showArchiveMenu]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // HK May 27 2026 Ship 1: if the client is already archived and the
+  // ProfileHeader 'Restore' button is tapped, skip the reason picker
+  // and un-archive immediately. The picker only makes sense when
+  // archiving, not restoring.
+  useEffect(() => {
+    if (showArchiveMenu && isArchived) {
+      toggleArchive(null);
+      setShowArchiveMenu(false);
+    }
+  }, [showArchiveMenu, isArchived]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // HK May 27 2026 Ship 1: rebook bridge. ProfileHeader now hosts
   // the four primary action buttons; this lets it trigger the
   // existing modals SessionList already owns. (Merge bridge moved
@@ -600,6 +611,103 @@ export default function SessionList({ client, therapistId, therapist, onBack, on
         />
       )}
 
+      {/* Archive reason picker modal. HK May 27 2026 Ship 1: when the
+          old bottom-row Archive button was removed, the inline reason
+          dropdown that lived under it went with it. ProfileHeader's
+          Archive button still triggers setShowArchiveMenu(true) via
+          externalShowArchive. We now render the reason list as a
+          standalone modal so the flow still works. If client is
+          already archived, ProfileHeader shows 'Restore' and we just
+          un-archive immediately on tap (handled below). */}
+      {showArchiveMenu && !isArchived && (
+        <div
+          onClick={e => { if (e.target === e.currentTarget) setShowArchiveMenu(false); }}
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(15,23,30,0.55)",
+            backdropFilter: "blur(2px)",
+            WebkitBackdropFilter: "blur(2px)",
+            display: "flex",
+            alignItems: "flex-start",
+            justifyContent: "center",
+            zIndex: 3000,
+            padding: "max(20px, env(safe-area-inset-top, 20px)) 16px calc(20px + env(safe-area-inset-bottom, 0px))",
+            overflowY: "auto",
+            WebkitOverflowScrolling: "touch",
+          }}
+        >
+          <div style={{
+            background: "#fff",
+            borderRadius: 16,
+            width: "100%",
+            maxWidth: 360,
+            maxHeight: "calc(100dvh - max(40px, env(safe-area-inset-top, 40px)) - env(safe-area-inset-bottom, 20px))",
+            boxShadow: "0 24px 64px rgba(0,0,0,0.28)",
+            display: "flex",
+            flexDirection: "column",
+            overflow: "hidden",
+          }}>
+            <div style={{ padding: "18px 20px 12px", borderBottom: "1px solid #F3F4F6" }}>
+              <h3 style={{ fontFamily: "Georgia, serif", fontSize: 18, fontWeight: 700, color: "#1F4030", margin: "0 0 4px" }}>
+                Archive {client?.name?.split(' ')[0] || 'client'}?
+              </h3>
+              <p style={{ fontSize: 12.5, color: "#6B7280", margin: 0, lineHeight: 1.5 }}>
+                Pick a reason. They will be hidden from your active client list. You can restore them anytime.
+              </p>
+            </div>
+            <div style={{ padding: "12px 12px 8px", overflowY: "auto", flex: 1, minHeight: 0 }}>
+              {DNR_REASONS.map(r => (
+                <button key={r} onClick={() => toggleArchive(r)} disabled={archiveSaving}
+                  style={{
+                    display: "block",
+                    width: "100%",
+                    textAlign: "left",
+                    background: "#FAFAF7",
+                    border: "1px solid #E5E7EB",
+                    padding: "12px 14px",
+                    borderRadius: 10,
+                    fontSize: 14,
+                    color: "#1F4030",
+                    cursor: archiveSaving ? "wait" : "pointer",
+                    fontWeight: 600,
+                    fontFamily: "inherit",
+                    marginBottom: 6,
+                  }}>
+                  {r}
+                </button>
+              ))}
+            </div>
+            <div style={{
+              padding: "12px 16px",
+              paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 12px)",
+              borderTop: "1px solid #F3F4F6",
+              flexShrink: 0,
+            }}>
+              <button onClick={() => setShowArchiveMenu(false)} disabled={archiveSaving}
+                style={{
+                  width: "100%",
+                  background: "#fff",
+                  color: "#6B7280",
+                  border: "1.5px solid #E5E7EB",
+                  borderRadius: 10,
+                  padding: "10px",
+                  fontSize: 13,
+                  fontWeight: 600,
+                  cursor: "pointer",
+                  fontFamily: "inherit",
+                }}>
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Restore path: handled by a useEffect at the top of the file
+          that watches showArchiveMenu + isArchived. Setting the menu
+          true on an already-archived client immediately calls
+          toggleArchive(null) and resets. */}
       {/* Merge Modal */}
       {showMerge && (
         <div
@@ -783,64 +891,16 @@ export default function SessionList({ client, therapistId, therapist, onBack, on
           wrong section visually, and (2) it didn't refresh when the
           therapist cancelled a package or membership in the new
           section, leaving stale 'active' rows on screen. */}
+      {/* HK May 27 2026 Ship 1: the four action buttons that used to
+          live here (Edit details / Book next / Merge / Archive) moved
+          UP to ProfileHeader so the 70yo persona can reach them
+          without scrolling past 4-5 cards. Removing the duplicate
+          row here per HK: 'we need to remove the buttons from Session
+          and SOAP notes. They should not be duplicated.'
+          The Archive inline sub-menu logic still lives below, gated
+          by setShowArchiveMenu which the ProfileHeader Archive button
+          now triggers via externalShowArchive. */}
       <div style={{ marginBottom: "20px" }}>
-        <div className="bm-client-actions" style={{
-          display: "flex", alignItems: "center", gap: 8,
-          flexWrap: "wrap",
-          paddingBottom: 4,
-        }}>
-          <style>{`
-            .bm-client-actions > button { flex-shrink: 0; }
-          `}</style>
-
-          <button
-            onClick={() => {
-              if (onEditClient) { onEditClient(); return; }
-              setShowEdit(true);
-            }}
-            style={{ background:"#FFFFFF", border:"1px solid #E5E7EB", color:"#374151", padding:"8px 14px", borderRadius:"8px", fontSize:"12.5px", fontWeight:600, cursor:"pointer", whiteSpace: "nowrap" }}>
-            Edit details
-          </button>
-
-          {!isArchived && (
-            <button onClick={() => setShowRebook(true)}
-              style={{ background: "#1C2B22", border: "1px solid #1C2B22", color: "#FFFFFF", padding: "8px 14px", borderRadius: "8px", fontSize: "12.5px", fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" }}>
-              Book next
-            </button>
-          )}
-
-          <button onClick={() => setShowMerge(true)}
-            style={{ background: "#FFFFFF", border: "1px solid #E5E7EB", color: "#374151", padding: "8px 14px", borderRadius: "8px", fontSize: "12.5px", fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" }}>
-            Merge
-          </button>
-
-          <div style={{ position: "relative", flexShrink: 0 }}>
-            {isArchived ? (
-              <button onClick={() => toggleArchive(null)} disabled={archiveSaving}
-                style={{ background: "#FFFFFF", border: "1px solid #E5E7EB", color: "#374151", padding: "8px 14px", borderRadius: "8px", fontSize: "12.5px", fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" }}>
-                {archiveSaving ? "Restoring…" : "Restore"}
-              </button>
-            ) : (
-              <button onClick={() => setShowArchiveMenu(v => !v)}
-                style={{ background: "#FFFFFF", border: "1px solid #E5E7EB", color: "#6B7280", padding: "8px 14px", borderRadius: "8px", fontSize: "12.5px", fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" }}>
-                Archive
-              </button>
-            )}
-            {showArchiveMenu && (
-              <div style={{ position: "absolute", right: 0, top: "calc(100% + 6px)", background: "#fff", border: "1.5px solid #FECACA", borderRadius: 10, padding: "8px", zIndex: 100, boxShadow: "0 8px 24px rgba(0,0,0,0.12)", minWidth: 190 }}>
-                <p style={{ fontSize: 11, fontWeight: 700, color: "#991B1B", textTransform: "uppercase", letterSpacing: "0.06em", margin: "0 0 8px 6px" }}>Reason</p>
-                {DNR_REASONS.map(r => (
-                  <button key={r} onClick={() => toggleArchive(r)} disabled={archiveSaving}
-                    style={{ display: "block", width: "100%", textAlign: "left", background: "transparent", border: "none", padding: "8px 10px", borderRadius: 7, fontSize: 13, color: "#374151", cursor: "pointer", fontWeight: 500 }}
-                    onMouseEnter={e => e.target.style.background = "#FEF2F2"}
-                    onMouseLeave={e => e.target.style.background = "transparent"}>
-                    {r}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
       </div>
 
       {!compact && (
