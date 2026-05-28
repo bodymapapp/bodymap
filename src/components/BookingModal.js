@@ -421,19 +421,51 @@ export default function BookingModal({ therapist, mode = 'create', existingBooki
   }
 
   return (
-    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 3000, padding: 20 }}
+    <div style={{
+      position: 'fixed',
+      inset: 0,
+      background: 'rgba(0,0,0,0.5)',
+      display: 'flex',
+      alignItems: 'flex-start',
+      justifyContent: 'center',
+      zIndex: 3000,
+      padding: 20,
+      paddingTop: 'max(20px, env(safe-area-inset-top, 0px))',
+      paddingBottom: 'max(20px, env(safe-area-inset-bottom, 0px))',
+      overflowY: 'auto',
+      WebkitOverflowScrolling: 'touch',
+    }}
       onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
-      <div style={{ background: '#fff', borderRadius: 20, width: '100%', maxWidth: 480, maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 24px 64px rgba(0,0,0,0.25)' }}>
+      <div style={{
+        background: '#fff',
+        borderRadius: 20,
+        width: '100%',
+        maxWidth: 480,
+        maxHeight: 'calc(100dvh - 40px)',
+        display: 'flex',
+        flexDirection: 'column',
+        boxShadow: '0 24px 64px rgba(0,0,0,0.25)',
+      }}>
 
         {/* Header */}
-        <div style={{ padding: '24px 24px 16px', borderBottom: `1px solid ${C.border}`, position: 'sticky', top: 0, background: '#fff', zIndex: 1 }}>
+        <div style={{ padding: '24px 24px 16px', borderBottom: `1px solid ${C.border}`, background: '#fff', flexShrink: 0 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <h3 style={{ fontFamily: 'Georgia, serif', fontSize: 20, fontWeight: 700, color: C.dark, margin: 0 }}>{title}</h3>
             <CloseButton onClick={onClose} label="Cancel" />
           </div>
         </div>
 
-        <div style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 18 }}>
+        <div style={{
+          padding: 24,
+          paddingBottom: 16,
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 18,
+          flex: 1,
+          minHeight: 0,
+          overflowY: 'auto',
+          WebkitOverflowScrolling: 'touch',
+        }}>
 
           {/* Client info, readonly for reschedule */}
           {!isReschedule && (
@@ -739,11 +771,37 @@ export default function BookingModal({ therapist, mode = 'create', existingBooki
               style={{ width: '100%', padding: '10px 12px', border: `1.5px solid ${C.border}`, borderRadius: 10, fontSize: 14, outline: 'none', resize: 'vertical', boxSizing: 'border-box', fontFamily: 'system-ui' }} />
           </div>
 
+        </div>
+
+        {/* Sticky footer. HK May 27 2026 round 6: Jacquie reported
+            on iPhone she could not scroll far enough to reach the
+            Confirm Booking button. Root cause: outer container used
+            alignItems:'center' + maxHeight:'90vh' which on iOS Safari
+            with the dynamic toolbar showing put the bottom of the
+            modal under the system UI. Two-part fix:
+              1. Outer container is now top-anchored, uses 100dvh
+                 (dynamic viewport height) for sizing, and inherits
+                 safe-area-inset on top + bottom padding.
+              2. Confirm button + summary now live in a sticky footer
+                 that ALWAYS shows, regardless of how far the body
+                 has scrolled. The therapist sees the action target
+                 the entire time. */}
+        <div style={{
+          padding: '14px 24px',
+          paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 14px)',
+          borderTop: `1px solid ${C.border}`,
+          background: '#fff',
+          flexShrink: 0,
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 10,
+          borderBottomLeftRadius: 20,
+          borderBottomRightRadius: 20,
+        }}>
           {error && <div style={{ fontSize: 13, color: '#DC2626', fontWeight: 600 }}>⚠ {error}</div>}
 
-          {/* Summary + confirm */}
           {date && slot && (
-            <div style={{ background: '#F0FDF4', border: '1.5px solid #86EFAC', borderRadius: 12, padding: '12px 16px' }}>
+            <div style={{ background: '#F0FDF4', border: '1.5px solid #86EFAC', borderRadius: 12, padding: '10px 14px' }}>
               <div style={{ fontSize: 13, fontWeight: 700, color: C.forest }}>
                 {isReschedule ? 'Moving to:' : 'Booking:'} {fmtDate(date)} at {fmt12(slot.start)}
               </div>
@@ -753,11 +811,11 @@ export default function BookingModal({ therapist, mode = 'create', existingBooki
 
           <button onClick={save} disabled={saving || !date || !slot}
             style={{ padding: '14px', borderRadius: 12, border: 'none', background: (date && slot) ? C.forest : '#D1D5DB',
-              color: '#fff', fontSize: 15, fontWeight: 700, cursor: (date && slot) ? 'pointer' : 'not-allowed', opacity: saving ? 0.7 : 1, marginTop: 8 }}>
-            {saving ? 'Saving…' : !date ? 'Select a date above' : !slot ? 'Select a time above' : isReschedule ? 'Confirm Reschedule' : 'Confirm Booking'}
+              color: '#fff', fontSize: 15, fontWeight: 700, cursor: (date && slot) ? 'pointer' : 'not-allowed', opacity: saving ? 0.7 : 1, fontFamily: 'inherit' }}>
+            {saving ? 'Saving...' : !date ? 'Select a date above' : !slot ? 'Select a time above' : isReschedule ? 'Confirm Reschedule' : 'Confirm Booking'}
           </button>
-
         </div>
+
       </div>
     </div>
   );

@@ -856,6 +856,75 @@ or email template. If it's there and it's user-visible, replace it.
 
 ---
 
+## 29. Modals must reach their confirm button on every device. Sticky footers and dynamic viewport units, never fixed-percentage heights.
+
+**Why:** Jacquie reported May 27 2026 she could not reach the Confirm
+Booking button on her iPhone. The modal cut off below "Notes
+(optional)" and the confirm button sat under the Safari toolbar +
+iOS home indicator. She used the reschedule path as a workaround.
+This was a duplicate of the DetailPanel slide-over bug from May 25.
+The pattern keeps recurring across files, so it goes here.
+
+**The failure mode:** outer container uses `alignItems: 'center'` +
+inner panel uses `maxHeight: '90vh'`. On iOS Safari, when the
+dynamic toolbar (URL bar + share button row) shows, the visible
+viewport is smaller than 90vh because `vh` units don't account for
+the toolbar. The vertically-centered modal pushes its bottom edge
+under the toolbar, which overlays the bottom 40-80 pixels. The
+confirm button sits exactly there. Untappable.
+
+**The fix is three things together. All three or none:**
+
+1. **Outer container anchors to the top, not center.**
+   `alignItems: 'flex-start'` on the outer flex. If the modal is
+   short, this looks fine (still appears near the top of the screen).
+   If the modal is tall, the top is always accessible and the user
+   can scroll the outer container itself to reveal the bottom.
+
+2. **Inner panel sizes against `dvh`, not `vh`.**
+   `maxHeight: 'calc(100dvh - 40px)'` (where 40 is the outer
+   padding total, 20 top + 20 bottom). The `dvh` unit (dynamic
+   viewport height) shrinks when the iOS toolbar appears, so the
+   modal sizes correctly to the actually-visible viewport. `vh`
+   does not, which is why fixed-percentage heights fail.
+
+3. **Confirm button lives in a sticky footer, not at the bottom
+   of the scroll body.** The inner panel becomes a flex column
+   with three children: header (sticky-ish, flexShrink 0),
+   scrollable body (flex: 1, overflowY: auto, minHeight: 0),
+   sticky footer (flexShrink 0). The footer holds the action
+   button + any summary/error states. It is ALWAYS visible.
+
+4. **Both edges respect safe area.**
+   Outer container: `paddingTop: 'max(20px, env(safe-area-inset-top, 0px))'`
+   and the same for `paddingBottom`. Footer:
+   `paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 14px)'`.
+   This protects against both the iOS notch at the top and the home
+   indicator at the bottom.
+
+**The anti-pattern checklist (any of these is a bug):**
+
+- `alignItems: 'center'` + `maxHeight: '90vh'` (or any %vh)
+- Confirm button at the bottom of an `overflowY: auto` div with no
+  sticky footer
+- No `safe-area-inset` anywhere in the modal chain
+- A `display: flex` ancestor that doesn't have `minHeight: 0` on
+  the scrollable child (this collapses the scroll container)
+
+**Reference implementation:** see `BookingModal.js` after May 27
+2026 (commit shipping with this principle). The DetailPanel
+slide-over (`ScheduleDashboard.js`) is also correct after May 25
+2026. New modals should be copy-pasted from one of these two
+templates, not built from scratch.
+
+**Files known to have this anti-pattern as of May 27 2026:**
+Outreach.js, CustomQuickSendModal.jsx, QuickSendModal.jsx,
+IntakeEditor.jsx, Demo.jsx, BookingPage.js. Each should be fixed
+on its own commit so a regression doesn't bury the diff. Queued
+in BLOCK_PLAN as fire #18.
+
+---
+
 ## How to use this document
 
 - **Before opening a new file or section:** check rule #1.
