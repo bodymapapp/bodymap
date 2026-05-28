@@ -1113,7 +1113,7 @@ function SimpleNotificationMatrix({ logsByKey, loading }) {
     if (!log) return { state: 'untested', tone: PALETTE.untested, hint: 'No log row yet' };
     const tone = PALETTE[log.status] || PALETTE.untested;
     const when = log.sent_at ? new Date(log.sent_at).toLocaleString() : '';
-    const hint = `${log.status}${log.error_message ? ' — ' + log.error_message : ''}${when ? '\nLast: ' + when : ''}`;
+    const hint = `${log.status}${log.error_message ? ': ' + log.error_message : ''}${when ? '\nLast: ' + when : ''}`;
     return { state: log.status, tone, hint };
   }
 
