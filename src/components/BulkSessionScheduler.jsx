@@ -229,6 +229,7 @@ export default function BulkSessionScheduler({
       let remaining = pkg?.sessions_remaining ?? redeemContext.sessionsRemaining ?? filledRows.length;
 
       let created = 0;
+      const createdBookingIds = [];
       for (const row of filledRows) {
         if (remaining <= 0) break;
         const rowSvc = svcById[row.serviceId];
@@ -274,6 +275,7 @@ export default function BulkSessionScheduler({
         });
         remaining -= 1;
         created += 1;
+        createdBookingIds.push(bid);
         setDoneCount(created);
       }
 
@@ -286,6 +288,24 @@ export default function BulkSessionScheduler({
       // Scheduling succeeded: clear the saved draft so a future visit
       // starts fresh.
       try { window.sessionStorage.removeItem(draftKey); } catch (e) { /* ignore */ }
+
+      // HK May 27 2026: fire ONE summary email (therapist + client)
+      // listing all the sessions just booked, instead of N separate
+      // confirmation emails. The per-session 48h and 2h reminders stay
+      // separate and are handled by the reminder crons. Fire-and-forget
+      // so a slow email never blocks the confirmation UI.
+      if (createdBookingIds.length > 0) {
+        try {
+          fetch(`${process.env.REACT_APP_SUPABASE_URL}/functions/v1/send-bulk-booking-summary`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${process.env.REACT_APP_SUPABASE_ANON_KEY}`,
+            },
+            body: JSON.stringify({ booking_ids: createdBookingIds, therapist_id: therapist.id }),
+          }).catch(() => {});
+        } catch (e) { /* never block on summary email */ }
+      }
 
       onComplete?.(created);
     } catch (e) {

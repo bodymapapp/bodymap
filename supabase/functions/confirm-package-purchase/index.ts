@@ -8,6 +8,11 @@ import {
   corsHeaders, respond, getSupabaseClient, loadTherapist,
   getProvider, ProviderError,
 } from '../_shared/payment-provider.ts';
+import { notifyTherapist } from '../_shared/notifications.ts';
+
+function escapeHtmlLocal(s) {
+  return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
@@ -101,6 +106,40 @@ serve(async (req) => {
     if (insErr) {
       console.error('[confirm-package-purchase] insert failed', insErr);
       return respond({ error: 'insert_failed: ' + insErr.message }, 500);
+    }
+
+    // HK May 27 2026: notify the therapist that a package was bought.
+    // Previously package purchases fired no therapist notification at
+    // all, so the therapist had no idea a client prepaid. Uses the
+    // shared notifyTherapist helper (email + in-app + log, prefs-gated).
+    // Fire-and-forget; never block the purchase confirmation on it.
+    try {
+      const dollars = (amountCents / 100).toFixed(0);
+      const who = client_name || verifiedEmail || 'A client';
+      const tSubject = `${who} bought your ${pkg.name} package`;
+      const tHtml = `<!DOCTYPE html><html><body style="margin:0;background:#FAFAF7;font-family:-apple-system,Segoe UI,Roboto,sans-serif;">
+  <div style="max-width:520px;margin:0 auto;padding:28px 22px;">
+    <div style="background:#fff;border:1px solid #ECE7DC;border-radius:16px;padding:24px;">
+      <h2 style="font-family:Georgia,serif;color:#1A2E22;margin:0 0 6px;font-size:21px;">New package purchase</h2>
+      <p style="font-size:14px;color:#6B7280;margin:0 0 16px;line-height:1.6;">${escapeHtmlLocal(who)} just bought your <strong>${escapeHtmlLocal(pkg.name)}</strong> package (${pkg.session_count} session${pkg.session_count !== 1 ? 's' : ''}) for $${dollars}. They can now book those sessions against the package, and each booking will draw from the prepaid balance.</p>
+      <a href="https://mybodymap.app/dashboard/clients" style="display:inline-block;background:#2A5741;color:#fff;text-decoration:none;padding:11px 20px;border-radius:8px;font-size:13px;font-weight:700;">Open clients</a>
+      <div style="font-size:11px;color:#6B7280;margin-top:22px;line-height:1.6;">You are getting this because package and payment notifications are on in your settings.</div>
+    </div>
+  </div>
+</body></html>`;
+      await notifyTherapist({
+        supabase,
+        therapist,
+        eventType: 'package_purchased',
+        title: tSubject,
+        body: `${who} bought ${pkg.name} ($${dollars}).`,
+        linkUrl: '/dashboard/clients',
+        emailSubject: tSubject,
+        emailHtml: tHtml,
+        smsText: null,
+      });
+    } catch (notifyErr) {
+      console.error('[confirm-package-purchase] notify failed (non-blocking)', notifyErr);
     }
 
     // HK May 27 2026 Ship 3: return enough context for the booking
