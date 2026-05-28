@@ -48,11 +48,21 @@ serve(async (req) => {
     // Idempotency by paymentRefId
     const { data: existing } = await supabase
       .from('package_purchases')
-      .select('id')
+      .select('id, sessions_remaining, sessions_purchased, client_email, client_name, client_id')
       .eq('stripe_payment_id', verified.paymentRefId)
       .maybeSingle();
     if (existing) {
-      return respond({ ok: true, idempotent: true, purchase_id: existing.id });
+      return respond({
+        ok: true,
+        idempotent: true,
+        purchase_id: existing.id,
+        sessions_remaining: existing.sessions_remaining,
+        sessions_purchased: existing.sessions_purchased,
+        package_name: pkg.name,
+        client_email: existing.client_email,
+        client_name: existing.client_name,
+        client_id: existing.client_id,
+      });
     }
 
     // Find client by email
@@ -93,7 +103,21 @@ serve(async (req) => {
       return respond({ error: 'insert_failed: ' + insErr.message }, 500);
     }
 
-    return respond({ ok: true, purchase_id: inserted.id });
+    // HK May 27 2026 Ship 3: return enough context for the booking
+    // page to render the 'schedule your sessions now' bulk picker
+    // immediately, without a separate refetch. The picker needs the
+    // purchase id, how many sessions, and the client email so the
+    // bookings it creates can be linked to this package.
+    return respond({
+      ok: true,
+      purchase_id: inserted.id,
+      sessions_remaining: pkg.session_count,
+      sessions_purchased: pkg.session_count,
+      package_name: pkg.name,
+      client_email: verifiedEmail,
+      client_name: client_name || null,
+      client_id: clientId,
+    });
 
   } catch (e) {
     if (e instanceof ProviderError) {

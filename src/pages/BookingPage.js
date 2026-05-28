@@ -736,7 +736,13 @@ export default function BookingPage() {
   const [offerForm,setOfferForm]=useState({ name: '', email: '', phone: '' });
   const [offerLoading,setOfferLoading]=useState(false);
   const [offerError,setOfferError]=useState(null);
-  const [purchaseSuccess,setPurchaseSuccess]=useState(null); // { kind: 'package'|'membership'|'cart', count? }
+  const [purchaseSuccess,setPurchaseSuccess]=useState(null); // { kind, purchaseId, sessionsRemaining, packageName, clientEmail, clientName, clientId }
+  // HK May 27 2026 Ship 3: when set, the normal booking flow attaches
+  // this package to the booking it creates and charges $0 (redeems a
+  // session) instead of taking payment. Set either from the
+  // post-purchase 'book now' button OR from returning-client
+  // auto-detection by email.
+  const [redeemContext,setRedeemContext]=useState(null); // { purchaseId, sessionsRemaining, packageName, clientEmail, clientName, clientId }
   // Cart for packages. Memberships are NOT cart-eligible because Stripe
   // Checkout does not allow mixing subscription and one-time line items
   // in one session. Cart stores full package row objects (not just ids)
@@ -1012,7 +1018,19 @@ export default function BookingPage() {
         );
         const data = res.ok ? await res.json() : await res.json().catch(() => ({}));
         if (data.ok) {
-          setPurchaseSuccess({ kind: 'package' });
+          // HK May 27 2026 Ship 3: capture full purchase context so we
+          // can render the 'schedule your sessions now' picker instead
+          // of dumping the client back on the services list (which then
+          // bounced them to the intake form, the scary bug HK flagged).
+          setPurchaseSuccess({
+            kind: 'package',
+            purchaseId: data.purchase_id,
+            sessionsRemaining: data.sessions_remaining || 1,
+            packageName: data.package_name,
+            clientEmail: data.client_email,
+            clientName: data.client_name,
+            clientId: data.client_id,
+          });
         }
         window.history.replaceState({}, '', window.location.pathname);
       })();
@@ -1867,8 +1885,12 @@ export default function BookingPage() {
       addon_total_price: addonTotalPrice,
       addon_extra_minutes: addonExtraMinutes,
       notes: giftCert ? `🎁 Gift certificate applied: ${giftCert.code} ($${giftCert.remaining?.toFixed(0)} credit)` : '',
-      status: requiresApproval ? 'pending-approval' : ((depositRequired || paymentMode === 'full') ? 'pending-deposit' : 'confirmed'),
-      deposit_required: requiresApproval ? false : depositRequired,
+      status: redeemContext ? 'confirmed' : (requiresApproval ? 'pending-approval' : ((depositRequired || paymentMode === 'full') ? 'pending-deposit' : 'confirmed')),
+      deposit_required: redeemContext ? false : (requiresApproval ? false : depositRequired),
+      // HK May 27 2026 Ship 3: link this booking to the package being
+      // redeemed. When set, no payment is taken: the session is drawn
+      // from the prepaid package balance after insert (see below).
+      package_purchase_id: redeemContext?.purchaseId || null,
       // Phase 25b: when approval+deposit are both on AND card-on-file was
       // captured at booking time, persist the deposit amount on the row so
       // booking-approval edge function knows exactly what to charge. Locks
@@ -1911,6 +1933,45 @@ export default function BookingPage() {
     if(error){alert('Something went wrong. Please try again.');return;}
     const bid=newBooking?.id||null;
     setBookingId(bid);
+
+    // HK May 27 2026 Ship 3: when redeeming from a package, write the
+    // $0 payment + redemption audit + decrement the remaining counter.
+    // Mirrors CheckoutModal.chargeFromPackage so therapist-side and
+    // client-side redemption produce identical data.
+    if (redeemContext?.purchaseId && bid) {
+      try {
+        await supabase.from('session_payments').insert({
+          booking_id: bid,
+          package_purchase_id: redeemContext.purchaseId,
+          therapist_id: therapist.id,
+          client_id: redeemContext.clientId || null,
+          amount_cents: 0,
+          tip_cents: 0,
+          payment_method: 'package_redemption',
+          payment_method_detail: redeemContext.packageName || 'Package',
+          status: 'succeeded',
+          paid_at: new Date().toISOString(),
+        });
+        await supabase.from('package_redemptions').insert({
+          package_purchase_id: redeemContext.purchaseId,
+          booking_id: bid,
+          notes: `Session redeemed: ${svc?.name || 'Session'}`,
+        });
+        // Decrement remaining. Re-read first so concurrent redemptions
+        // (e.g. scheduling all sessions) do not stomp each other badly.
+        const { data: freshPkg } = await supabase
+          .from('package_purchases')
+          .select('sessions_remaining')
+          .eq('id', redeemContext.purchaseId)
+          .single();
+        const newRemaining = Math.max(0, (freshPkg?.sessions_remaining ?? redeemContext.sessionsRemaining ?? 1) - 1);
+        const pkgUpdate = { sessions_remaining: newRemaining };
+        if (newRemaining === 0) pkgUpdate.status = 'exhausted';
+        await supabase.from('package_purchases').update(pkgUpdate).eq('id', redeemContext.purchaseId);
+      } catch (e) {
+        console.error('[Booking] package redemption write failed:', e);
+      }
+    }
 
     // Forward sync to Google Calendar (Lindsey #10). Fire and forget.
     // Only confirmed bookings sync immediately. Pending-approval and
@@ -3321,7 +3382,12 @@ export default function BookingPage() {
               // so the therapist can walk the full booking flow
               // without being yanked into the intake form.
               const isPreview = new URLSearchParams(window.location.search).get('preview') === '1';
-              if (therapist.require_intake_before_booking && !therapist.require_approval && !isRepeat && !urlIntakeDone && !isPreview) {
+              // HK May 27 2026 Ship 3: do NOT bounce to intake when the
+              // client is redeeming a prepaid package. They just bought
+              // it (or are a known returning client with a balance), so
+              // they already exist. This was the scary bug: post-package
+              // -purchase clients got yanked to the intake form.
+              if (!redeemContext && therapist.require_intake_before_booking && !therapist.require_approval && !isRepeat && !urlIntakeDone && !isPreview) {
                 const params = new URLSearchParams({
                   return_to_book: slug,
                   name: form.name,
@@ -3464,7 +3530,7 @@ export default function BookingPage() {
               {[
                 ['Service',svc.name],['Duration',`${svc.duration} min`],['Date',fmtDate(date)],
                 ['Time',slot.display],['Therapist',therapist.business_name||therapist.full_name],
-                ['Price',`$${svc.price}, pay at session`],['Name',form.name],['Email',form.email],
+                ['Price', redeemContext ? 'Redeemed from your package ($0)' : `$${svc.price}, pay at session`],['Name',form.name],['Email',form.email],
                 ...(form.phone?[['Phone',form.phone]]:[]),
               ].map(([l,v],i,arr)=>(
                 <div key={l} style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',gap:16,padding:'10px 0',borderBottom:i<arr.length-1?`1px solid ${C.light}`:'none'}}>
@@ -3473,7 +3539,21 @@ export default function BookingPage() {
                 </div>
               ))}
             </div>
-            {requiresApproval&&(
+            {/* HK May 27 2026 Ship 3: redeeming from a prepaid package.
+                No payment UI, no deposit. Just a clear confirmation
+                that this draws from their balance. */}
+            {redeemContext && (
+              <div style={{marginBottom:14,background:'#F0FDF4',border:'1.5px solid #86EFAC',borderRadius:12,padding:'16px',display:'flex',gap:12,alignItems:'flex-start'}}>
+                <span style={{fontSize:22,flexShrink:0}}>✅</span>
+                <div>
+                  <div style={{fontSize:14,fontWeight:700,color:'#14532D',marginBottom:4}}>No payment needed</div>
+                  <div style={{fontSize:12,color:'#166534',lineHeight:1.5}}>
+                    This session is drawn from {redeemContext.packageName ? `your ${redeemContext.packageName}` : 'your package'}. You have {redeemContext.sessionsRemaining} session{redeemContext.sessionsRemaining !== 1 ? 's' : ''} left before this booking.
+                  </div>
+                </div>
+              </div>
+            )}
+            {!redeemContext&&requiresApproval&&(
               <div style={{marginBottom:14,background:'#FFFBEB',border:'1.5px solid #FDE68A',borderRadius:12,padding:'14px 16px',display:'flex',gap:10,alignItems:'flex-start'}}>
                 <span style={{fontSize:18,flexShrink:0}}>🌿</span>
                 <div>
@@ -3482,7 +3562,7 @@ export default function BookingPage() {
                 </div>
               </div>
             )}
-            {!requiresApproval&&depositRequired&&!giftCert&&(
+            {!redeemContext&&!requiresApproval&&depositRequired&&!giftCert&&(
               <div style={{marginBottom:14,background:'#FEF3C7',border:'1.5px solid #FCD34D',borderRadius:12,padding:'16px',display:'flex',gap:12,alignItems:'flex-start'}}>
                 <span style={{fontSize:22,flexShrink:0}}>💳</span>
                 <div>
@@ -3502,7 +3582,7 @@ export default function BookingPage() {
                   - has a connected payment processor
                 Default selection is 'deposit' (or no charge if deposit
                 also disabled). Selecting 'full' reveals tip chips. */}
-            {!requiresApproval && !giftCert && therapist.pay_in_full_enabled &&
+            {!redeemContext && !requiresApproval && !giftCert && therapist.pay_in_full_enabled &&
              (therapist.stripe_account_id || therapist.square_access_token) && (
               <div style={{
                 marginBottom: 14, background: '#FFFFFF', border: '1.5px solid #DDD4C2',
@@ -4567,7 +4647,131 @@ export default function BookingPage() {
           Shown briefly after the redirect handler creates the
           package_purchases or member_subscriptions row. Floats at the
           top of the page, auto-clears on next interaction. */}
-      {purchaseSuccess && (
+      {/* HK May 27 2026 Ship 3: package purchase success now lands on
+          a real 'schedule your sessions' view, NOT a dismissable toast
+          that dumped the client back on the services list (which then
+          bounced them to the intake form, the scary bug). Membership
+          and cart still use the lightweight toast since their session
+          scheduling model differs. */}
+      {purchaseSuccess && purchaseSuccess.kind === 'package' && (
+        <div style={{
+          position: 'fixed', inset: 0,
+          background: C.beige,
+          zIndex: 9998,
+          overflowY: 'auto',
+          WebkitOverflowScrolling: 'touch',
+          padding: '24px 16px',
+          paddingTop: 'calc(env(safe-area-inset-top, 0px) + 24px)',
+          paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 24px)',
+        }}>
+          <div style={{ maxWidth: 560, margin: '0 auto' }}>
+            <div style={{
+              background: '#F0FDF4', border: '1.5px solid #86EFAC',
+              borderRadius: 16, padding: '20px 22px', marginBottom: 16,
+              display: 'flex', gap: 12, alignItems: 'flex-start',
+            }}>
+              <span style={{ fontSize: 26, flexShrink: 0 }}>🎉</span>
+              <div>
+                <div style={{ fontFamily: 'Georgia,serif', fontSize: 20, fontWeight: 700, color: '#14532D', marginBottom: 4 }}>
+                  Package activated
+                </div>
+                <div style={{ fontSize: 13.5, color: '#166534', lineHeight: 1.5 }}>
+                  {purchaseSuccess.packageName ? `${purchaseSuccess.packageName}: ` : ''}
+                  {purchaseSuccess.sessionsRemaining} session{purchaseSuccess.sessionsRemaining !== 1 ? 's' : ''} ready to book. No more payment needed: each booking draws from your package.
+                </div>
+              </div>
+            </div>
+
+            <div style={{
+              background: '#fff', borderRadius: 16, padding: 22,
+              boxShadow: '0 4px 20px rgba(0,0,0,0.06)',
+            }}>
+              <h2 style={{ fontFamily: 'Georgia,serif', fontSize: 22, fontWeight: 700, color: C.dark, margin: '0 0 6px' }}>
+                Schedule your sessions
+              </h2>
+              <p style={{ fontSize: 13.5, color: C.gray, margin: '0 0 18px', lineHeight: 1.5 }}>
+                Book them now while you are here, or come back later. Your sessions stay in your package until you use them.
+              </p>
+
+              <button
+                onClick={() => {
+                  // Attach the package to the booking flow, prefill the
+                  // client, jump to service selection. The flow will
+                  // charge $0 and decrement the package.
+                  setRedeemContext({
+                    purchaseId: purchaseSuccess.purchaseId,
+                    sessionsRemaining: purchaseSuccess.sessionsRemaining,
+                    packageName: purchaseSuccess.packageName,
+                    clientEmail: purchaseSuccess.clientEmail,
+                    clientName: purchaseSuccess.clientName,
+                    clientId: purchaseSuccess.clientId,
+                  });
+                  setForm(f => ({
+                    ...f,
+                    name: purchaseSuccess.clientName || f.name,
+                    email: purchaseSuccess.clientEmail || f.email,
+                  }));
+                  setPurchaseSuccess(null);
+                  setStep(1);
+                  window.scrollTo(0, 0);
+                }}
+                style={{
+                  width: '100%', background: C.forest, color: '#fff',
+                  border: 'none', borderRadius: 14, padding: '16px',
+                  fontSize: 15, fontWeight: 700, cursor: 'pointer',
+                  boxShadow: '0 4px 16px rgba(42,87,65,0.25)', marginBottom: 10,
+                }}>
+                Book your first session now
+              </button>
+
+              {purchaseSuccess.sessionsRemaining > 1 && (
+                <button
+                  onClick={() => {
+                    // Same as above but signals intent to schedule all.
+                    // The bulk picker reads redeemContext.sessionsRemaining.
+                    setRedeemContext({
+                      purchaseId: purchaseSuccess.purchaseId,
+                      sessionsRemaining: purchaseSuccess.sessionsRemaining,
+                      packageName: purchaseSuccess.packageName,
+                      clientEmail: purchaseSuccess.clientEmail,
+                      clientName: purchaseSuccess.clientName,
+                      clientId: purchaseSuccess.clientId,
+                      scheduleAll: true,
+                    });
+                    setForm(f => ({
+                      ...f,
+                      name: purchaseSuccess.clientName || f.name,
+                      email: purchaseSuccess.clientEmail || f.email,
+                    }));
+                    setPurchaseSuccess(null);
+                    setStep(1);
+                    window.scrollTo(0, 0);
+                  }}
+                  style={{
+                    width: '100%', background: '#fff', color: C.forest,
+                    border: `1.5px solid ${C.forest}`, borderRadius: 14, padding: '15px',
+                    fontSize: 14, fontWeight: 700, cursor: 'pointer', marginBottom: 10,
+                  }}>
+                  Schedule all {purchaseSuccess.sessionsRemaining} sessions
+                </button>
+              )}
+
+              <button
+                onClick={() => setPurchaseSuccess(null)}
+                style={{
+                  width: '100%', background: 'transparent', color: C.gray,
+                  border: 'none', borderRadius: 12, padding: '12px',
+                  fontSize: 13, fontWeight: 600, cursor: 'pointer',
+                }}>
+                I will book later
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Membership + cart success keep the lightweight toast. */}
+      {purchaseSuccess && purchaseSuccess.kind !== 'package' && (
         <div
           onClick={() => setPurchaseSuccess(null)}
           style={{
@@ -4583,12 +4787,12 @@ export default function BookingPage() {
           <span style={{ fontSize: 20 }}>🎉</span>
           <div style={{ flex: 1 }}>
             <div style={{ fontWeight: 700 }}>
-              {purchaseSuccess.kind === 'package' ? 'Package activated' : 'Membership active'}
+              {purchaseSuccess.kind === 'membership' ? 'Membership active' : 'Purchase complete'}
             </div>
             <div style={{ fontSize: 12, marginTop: 2 }}>
-              {purchaseSuccess.kind === 'package'
-                ? 'Your sessions are ready to book. Pick a service below.'
-                : 'Your monthly credits are loaded. Pick a service below.'}
+              {purchaseSuccess.kind === 'membership'
+                ? 'Your monthly credits are loaded. Pick a service below.'
+                : 'Your packages are ready to book. Pick a service below.'}
             </div>
           </div>
           <span style={{ fontSize: 12, fontWeight: 700, color: '#14532D', letterSpacing: '0.04em' }}>Dismiss</span>
