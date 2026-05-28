@@ -16,7 +16,7 @@
 // border, cream-soft body when open).
 
 import React, { useEffect, useState } from 'react';
-import { db } from '../../lib/supabase';
+import { db, supabase } from '../../lib/supabase';
 import { buildSampleProfile } from '../../data/sampleClients';
 import ProfileHeader from './ProfileHeader';
 import AboutCard from './AboutCard';
@@ -64,14 +64,59 @@ export default function ClientProfile({ client, therapistId, therapist, onBack, 
   // 'edit your client right here, inline'. No modal. Archive still
   // uses the legacy SessionList modal flow (separate UI cleanup).
   const [aboutPulse, setAboutPulse] = useState(0);
-  const [archiveTrigger, setArchiveTrigger] = useState(false);
   // HK May 27 2026 Ship 1: triggers for hoisted action buttons in
   // ProfileHeader (Edit, Book, Merge). Each flips a boolean that
   // SessionList watches via its external-show prop pair, so the
   // existing modal code stays the single source of truth.
+  // Archive is NO LONGER a SessionList trigger; it is an inline
+  // confirmation row owned by ProfileHeader (see archiveClient below).
   const [editTrigger, setEditTrigger] = useState(false);
   const [rebookTrigger, setRebookTrigger] = useState(false);
   const [mergeTrigger, setMergeTrigger] = useState(false);
+  const [archiveSaving, setArchiveSaving] = useState(false);
+
+  // HK May 27 2026: archive / restore handlers. ProfileHeader hosts
+  // the inline confirmation UI; this does the actual write. Reason
+  // is one of the ARCHIVE_REASONS in ProfileHeader (including the
+  // new 'Unprofessional' flag).
+  const archiveClient = async (reason) => {
+    const c = profile?.client || client;
+    if (!c?.id || c.__sample) {
+      // Sample clients: nothing to persist, just reflect locally.
+      setProfile(p => p ? { ...p, client: { ...p.client, do_not_rebook: true, dnr_reason: reason } } : p);
+      return;
+    }
+    setArchiveSaving(true);
+    try {
+      await supabase.from('clients')
+        .update({ do_not_rebook: true, dnr_reason: reason })
+        .eq('id', c.id);
+      setProfile(p => p ? { ...p, client: { ...p.client, do_not_rebook: true, dnr_reason: reason } } : p);
+    } catch (e) {
+      console.error('archiveClient failed:', e);
+    } finally {
+      setArchiveSaving(false);
+    }
+  };
+
+  const restoreClient = async () => {
+    const c = profile?.client || client;
+    if (!c?.id || c.__sample) {
+      setProfile(p => p ? { ...p, client: { ...p.client, do_not_rebook: false, dnr_reason: null } } : p);
+      return;
+    }
+    setArchiveSaving(true);
+    try {
+      await supabase.from('clients')
+        .update({ do_not_rebook: false, dnr_reason: null })
+        .eq('id', c.id);
+      setProfile(p => p ? { ...p, client: { ...p.client, do_not_rebook: false, dnr_reason: null } } : p);
+    } catch (e) {
+      console.error('restoreClient failed:', e);
+    } finally {
+      setArchiveSaving(false);
+    }
+  };
 
   // When the hero pencil fires (aboutPulse increments), force the
   // Client info section open so the inline editor is reachable
@@ -169,11 +214,12 @@ export default function ClientProfile({ client, therapistId, therapist, onBack, 
         profile={profile}
         onBack={onBack}
         onEdit={() => setAboutPulse(n => n + 1)}
-        onArchive={() => setArchiveTrigger(true)}
         onEditClick={() => setEditTrigger(true)}
         onBookClick={() => setRebookTrigger(true)}
         onMergeClick={() => setMergeTrigger(true)}
-        onArchiveClick={() => setArchiveTrigger(true)}
+        onArchiveConfirm={archiveClient}
+        onRestoreConfirm={restoreClient}
+        archiveSaving={archiveSaving}
       />
 
       {loading && (
@@ -235,35 +281,6 @@ export default function ClientProfile({ client, therapistId, therapist, onBack, 
                 setProfile(p => p ? ({ ...p, client: { ...p.client, ...payload } }) : p);
               }}
             />
-            {/* Quiet Archive affordance: lives at the bottom of the
-                Client Info section so destructive actions sit next to
-                the editing surface, not in the busy hero. */}
-            <div style={{
-              marginTop: 8,
-              paddingTop: 12,
-              borderTop: '1px solid #EEF2F7',
-              display: 'flex',
-              justifyContent: 'flex-end',
-            }}>
-              <button
-                onClick={() => setArchiveTrigger(true)}
-                style={{
-                  background: 'transparent',
-                  border: 'none',
-                  color: '#94A3B8',
-                  fontSize: 12,
-                  fontWeight: 600,
-                  fontFamily: '-apple-system, BlinkMacSystemFont, "Inter", system-ui, sans-serif',
-                  cursor: 'pointer',
-                  padding: '4px 8px',
-                  borderRadius: 6,
-                }}
-                onMouseEnter={(e) => { e.currentTarget.style.color = '#DC2626'; e.currentTarget.style.background = '#FEF2F2'; }}
-                onMouseLeave={(e) => { e.currentTarget.style.color = '#94A3B8'; e.currentTarget.style.background = 'transparent'; }}
-              >
-                Archive this client
-              </button>
-            </div>
           </ProfileSection>
 
           {/* Sessions and SOAP notes: moved to the top per HK request.
@@ -289,8 +306,6 @@ export default function ClientProfile({ client, therapistId, therapist, onBack, 
               previewSessions={previewProfile ? profile.sessions : null}
               externalShowEdit={editTrigger}
               onExternalEditClose={() => setEditTrigger(false)}
-              externalShowArchive={archiveTrigger}
-              onExternalArchiveClose={() => setArchiveTrigger(false)}
               externalShowRebook={rebookTrigger}
               onExternalRebookClose={() => setRebookTrigger(false)}
               externalShowMerge={mergeTrigger}

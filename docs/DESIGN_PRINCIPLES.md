@@ -1002,6 +1002,66 @@ with this principle.
 
 ---
 
+## 31. Prefer side panels and full pages over modals. Modals are for confirm/cancel only.
+
+**Why:** HK May 27 2026: 'We are really bad at modals. They always
+have a scroll problem and are confusing to our 70yo persona. Why
+cant we have this as a side panel or something different. It does
+not look good and is not world class or modern for 2026.'
+
+Modals stack badly on mobile (modal-in-modal), have a recurring
+scroll-to-submit problem (Design Principle 29 is a whole rule just
+about that), and force the user to lose their place on the page.
+For a 70-year-old solo practitioner on a phone, a modal that traps
+focus and might cut off the submit button is the worst pattern.
+
+**The hierarchy, best to worst, for any surface with form fields
+or a multi-step flow:**
+
+1. **Inline expansion** (best for short confirmations).
+   The action expands a row right where the button is. No overlay,
+   no new surface. The user never loses context. Example: the
+   Archive confirmation row in ProfileHeader (reason chips +
+   Confirm, expands below the action buttons).
+
+2. **Side panel / slide-over** (best for medium forms).
+   Slides in from the right on desktop, full bottom-sheet on mobile.
+   Has its own sticky header and footer. Example: the DetailPanel
+   on the Schedule tab. Edit details and Merge should use this.
+
+3. **Full page with a back button** (best for heavy multi-step
+   flows with lots of new content).
+   A real route the user navigates to, with a clear back button to
+   return. Example: the booking flow itself, package purchase
+   checkout. Book next and package/membership purchase should use
+   this.
+
+4. **Modal** (LAST resort, ONLY for true confirm/cancel dialogs).
+   'Are you sure you want to delete this?' with two buttons and no
+   form fields. Nothing that scrolls. Nothing multi-step. If a
+   modal has more than two buttons or any text input, it is the
+   wrong pattern.
+
+**The test before reaching for a modal:** does this surface have a
+form field, a list to scroll, or more than one step? If yes, it is
+NOT a modal. Pick inline / side panel / page from the hierarchy
+above.
+
+**Existing modals to migrate (as of May 27 2026):**
+- Client actions (Edit / Book / Merge) - migrate Edit + Merge to
+  side panels, Book to a page route. Archive already migrated to
+  inline (this commit).
+- Public package / membership purchase - migrate to a page route.
+- CheckoutModal (therapist-side payment) - evaluate; it is a
+  multi-step payment flow so a side panel or page is the target,
+  but it is heavily used and stable, so migrate carefully.
+
+This is a direction, not a same-day rewrite. New surfaces follow
+the hierarchy from day one. Existing modals migrate as they get
+touched for other reasons, or in dedicated cleanup passes.
+
+---
+
 ## How to use this document
 
 - **Before opening a new file or section:** check rule #1.

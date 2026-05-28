@@ -13,7 +13,7 @@
 // subline, then a row of icon-buttons for phone/email and a menu.
 // Mobile-adapts: avatar stays large, action buttons wrap below.
 
-import React from 'react';
+import React, { useState } from 'react';
 import { C, F, S, initials, avatarColor, formatMonthYear } from './tokens';
 import { parseDateOnly, todayLocalIso, tomorrowLocalIso } from '../../lib/dateHelpers';
 
@@ -145,8 +145,34 @@ export default function ProfileHeader({
   onEditClick,
   onBookClick,
   onMergeClick,
-  onArchiveClick,
+  // HK May 27 2026: Archive is now an inline confirmation row owned
+  // by ProfileHeader, not a modal in SessionList. onArchiveConfirm
+  // receives the picked reason; onRestoreConfirm un-archives. The
+  // parent (ClientProfile/index) does the Supabase write.
+  onArchiveConfirm,
+  onRestoreConfirm,
+  archiveSaving,
 }) {
+  // HK May 27 2026: inline archive confirmation. No modal, no
+  // overlay. Tapping Archive expands a reason picker right below the
+  // button row. 70yo persona never loses context. The Unprofessional
+  // reason is intentionally included: there is an industry need to
+  // flag clients who mistreat solo practitioners. A future feature
+  // (not built yet) may cross-reference: if two separate therapists
+  // independently flag the same client unprofessional, that client
+  // could be blocked from booking through the portal.
+  // Hooks must run before any early return (rules-of-hooks).
+  const [archiveOpen, setArchiveOpen] = useState(false);
+  const [pickedReason, setPickedReason] = useState(null);
+  const ARCHIVE_REASONS = [
+    'Do not rebook',
+    'Deceased',
+    'Moved away',
+    'Requested removal',
+    'Unprofessional',
+    'Other',
+  ];
+
   if (!client) return null;
 
   const state = computeState({ client, stats, profile });
@@ -425,25 +451,127 @@ export default function ProfileHeader({
               Merge
             </button>
           )}
-          {onArchiveClick && (
+          {(onArchiveConfirm || onRestoreConfirm) && (
             <button
-              onClick={onArchiveClick}
+              onClick={() => {
+                if (archived) {
+                  onRestoreConfirm?.();
+                } else {
+                  setArchiveOpen(v => !v);
+                  setPickedReason(null);
+                }
+              }}
+              disabled={archiveSaving}
               style={{
-                background: 'rgba(255,255,255,0.7)',
-                color: '#6B7280',
-                border: '1.5px solid rgba(28,43,34,0.14)',
+                background: archiveOpen ? '#FEF2F2' : 'rgba(255,255,255,0.7)',
+                color: archiveOpen ? '#991B1B' : '#6B7280',
+                border: `1.5px solid ${archiveOpen ? '#FCA5A5' : 'rgba(28,43,34,0.14)'}`,
                 borderRadius: 999,
                 padding: '8px 16px',
                 fontSize: 13,
                 fontWeight: 700,
-                cursor: 'pointer',
+                cursor: archiveSaving ? 'wait' : 'pointer',
                 fontFamily: F.sans,
                 whiteSpace: 'nowrap',
               }}>
-              {archived ? 'Restore' : 'Archive'}
+              {archived ? (archiveSaving ? 'Restoring...' : 'Restore') : (archiveOpen ? 'Cancel' : 'Archive')}
             </button>
           )}
         </div>
+
+        {/* Inline archive confirmation row. HK May 27 2026: replaces
+            the modal. Expands in place below the action buttons.
+            No overlay. Reason chips + Confirm. 70yo persona never
+            loses their place. */}
+        {archiveOpen && !archived && (
+          <div style={{
+            marginTop: 12,
+            padding: '14px 16px',
+            background: '#FEF2F2',
+            border: '1.5px solid #FCA5A5',
+            borderRadius: 14,
+          }}>
+            <div style={{
+              fontSize: 13,
+              fontWeight: 700,
+              color: '#991B1B',
+              marginBottom: 4,
+            }}>
+              Archive {client.name?.split(' ')[0] || 'this client'}?
+            </div>
+            <div style={{
+              fontSize: 12,
+              color: '#7A3A2E',
+              lineHeight: 1.5,
+              marginBottom: 12,
+            }}>
+              They will be hidden from your active client list. Pick a reason. You can restore them anytime.
+            </div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 12 }}>
+              {ARCHIVE_REASONS.map(r => {
+                const sel = pickedReason === r;
+                return (
+                  <button
+                    key={r}
+                    onClick={() => setPickedReason(r)}
+                    style={{
+                      background: sel ? '#991B1B' : '#fff',
+                      color: sel ? '#fff' : '#7A3A2E',
+                      border: `1.5px solid ${sel ? '#991B1B' : '#FCA5A5'}`,
+                      borderRadius: 999,
+                      padding: '6px 13px',
+                      fontSize: 12.5,
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      fontFamily: F.sans,
+                    }}>
+                    {r}
+                  </button>
+                );
+              })}
+            </div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button
+                onClick={() => { setArchiveOpen(false); setPickedReason(null); }}
+                disabled={archiveSaving}
+                style={{
+                  flex: 1,
+                  background: '#fff',
+                  color: '#6B7280',
+                  border: '1.5px solid #E5E7EB',
+                  borderRadius: 10,
+                  padding: '11px',
+                  fontSize: 13,
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  fontFamily: F.sans,
+                }}>
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  if (!pickedReason) return;
+                  onArchiveConfirm?.(pickedReason);
+                  setArchiveOpen(false);
+                }}
+                disabled={!pickedReason || archiveSaving}
+                style={{
+                  flex: 2,
+                  background: (!pickedReason || archiveSaving) ? '#D1A8A2' : '#991B1B',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: 10,
+                  padding: '11px',
+                  fontSize: 13,
+                  fontWeight: 700,
+                  cursor: (!pickedReason || archiveSaving) ? 'not-allowed' : 'pointer',
+                  fontFamily: F.sans,
+                }}>
+                {archiveSaving ? 'Archiving...' : pickedReason ? `Archive (${pickedReason})` : 'Pick a reason first'}
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
