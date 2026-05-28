@@ -26,6 +26,8 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { supabase } from '../../lib/supabase';
 import CheckoutModal from '../CheckoutModal';
+import SidePanel from '../SidePanel';
+import BulkSessionScheduler from '../BulkSessionScheduler';
 
 const C = {
   forest:    '#2A5741',
@@ -201,6 +203,30 @@ export default function PackageSection({ client, therapist, hasMembership, secti
   // an inline banner instead of using window.alert. Design principle:
   // never use browser dialogs.
   const [cancelErrors, setCancelErrors] = useState({});
+
+  // HK May 27 2026 Ship 3: therapist-side 'book against package'.
+  // bookPanel holds the package + scheduleAll flag when the therapist
+  // taps Book session / Schedule all. The panel renders a
+  // BulkSessionScheduler (1 row for single, N rows for all).
+  const [bookPanel, setBookPanel] = useState(null); // { pkg, scheduleAll } or null
+  const [bookServices, setBookServices] = useState([]);
+  const [bookAvailability, setBookAvailability] = useState([]);
+  const [bookDone, setBookDone] = useState(null); // { count } or null
+  useEffect(() => {
+    if (!bookPanel || !therapist?.id) return;
+    let alive = true;
+    (async () => {
+      const [svcRes, availRes] = await Promise.all([
+        supabase.from('services').select('*').eq('therapist_id', therapist.id).eq('active', true),
+        supabase.from('availability').select('*').eq('therapist_id', therapist.id).eq('active', true),
+      ]);
+      if (!alive) return;
+      setBookServices(svcRes.data || []);
+      setBookAvailability(availRes.data || []);
+    })();
+    return () => { alive = false; };
+  }, [bookPanel, therapist?.id]);
+
   // Whether the add form is expanded. Default expanded when nothing
   // exists yet (no memberships, no packages) so the therapist sees
   // the form immediately. Collapsed otherwise.
@@ -664,6 +690,32 @@ export default function PackageSection({ client, therapist, hasMembership, secti
             </div>
 
             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+              {/* HK May 27 2026 Ship 3: therapist books sessions
+                  against this package. Only when sessions remain. */}
+              {counts.available > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setBookPanel({ pkg, scheduleAll: false })}
+                  style={{
+                    background: C.forest, color: '#fff', border: `1px solid ${C.forest}`,
+                    borderRadius: 8, padding: '7px 13px', fontSize: 12, fontWeight: 700,
+                    cursor: 'pointer', fontFamily: 'inherit',
+                  }}>
+                  Book a session
+                </button>
+              )}
+              {counts.available > 1 && (
+                <button
+                  type="button"
+                  onClick={() => setBookPanel({ pkg, scheduleAll: true })}
+                  style={{
+                    background: '#fff', color: C.forest, border: `1px solid ${C.forest}`,
+                    borderRadius: 8, padding: '7px 13px', fontSize: 12, fontWeight: 700,
+                    cursor: 'pointer', fontFamily: 'inherit',
+                  }}>
+                  Schedule all {counts.available}
+                </button>
+              )}
               {/* Charge button: only shown when this package has no
                   succeeded session_payments row yet. HK May 24 2026:
                   splits the add-vs-charge flow to mirror memberships.
@@ -1105,6 +1157,54 @@ export default function PackageSection({ client, therapist, hasMembership, secti
           }}
         />
       )}
+
+      {/* HK May 27 2026 Ship 3: therapist-side book-against-package
+          panel. Side panel (Design Principle 31) hosting the bulk
+          scheduler. Single 'Book a session' shows 1 row; 'Schedule
+          all' shows N rows. */}
+      <SidePanel
+        open={!!bookPanel}
+        onClose={() => { setBookPanel(null); setBookDone(null); }}
+        title={bookDone ? 'Sessions booked' : (bookPanel?.scheduleAll ? 'Schedule all sessions' : 'Book a session')}
+        subtitle={bookDone ? null : `Draws from ${bookPanel?.pkg?.package?.name || 'this package'}: no charge.`}
+        width={460}
+      >
+        {bookDone ? (
+          <div style={{ textAlign: 'center', padding: '24px 8px' }}>
+            <div style={{ fontSize: 44, marginBottom: 12 }}>🎉</div>
+            <div style={{ fontFamily: 'Georgia, serif', fontSize: 20, fontWeight: 700, color: C.ink, marginBottom: 8 }}>
+              {bookDone.count} session{bookDone.count !== 1 ? 's' : ''} booked
+            </div>
+            <p style={{ fontSize: 13.5, color: C.gray, lineHeight: 1.5, marginBottom: 20 }}>
+              They are on your schedule and drawn from the package balance.
+            </p>
+            <button
+              onClick={() => { setBookPanel(null); setBookDone(null); if (refetch) refetch(); }}
+              style={{ background: C.forest, color: '#fff', border: 'none', borderRadius: 10, padding: '12px 24px', fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
+              Done
+            </button>
+          </div>
+        ) : bookPanel ? (
+          <BulkSessionScheduler
+            therapist={therapist}
+            services={bookServices}
+            availability={bookAvailability}
+            redeemContext={{
+              purchaseId: bookPanel.pkg.id,
+              sessionsRemaining: bookPanel.scheduleAll
+                ? computeCounts(bookPanel.pkg).available
+                : 1,
+              packageName: bookPanel.pkg.package?.name || 'Package',
+              clientEmail: client?.email || '',
+              clientName: client?.name || '',
+              clientId: client?.id || null,
+            }}
+            applicableServiceIds={null}
+            onComplete={(count) => { setBookDone({ count }); }}
+            onCancel={() => setBookPanel(null)}
+          />
+        ) : null}
+      </SidePanel>
     </div>
   );
 }
