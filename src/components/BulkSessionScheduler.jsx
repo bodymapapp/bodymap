@@ -72,16 +72,32 @@ export default function BulkSessionScheduler({
     return services.filter(s => apply.includes(s.id));
   }, [services, applicableServiceIds]);
 
-  const [serviceId, setServiceId] = useState(eligibleServices[0]?.id || null);
-  const svc = eligibleServices.find(s => s.id === serviceId) || eligibleServices[0];
+  // Default service: first eligible. Each row carries its OWN
+  // serviceId so the client can pick a different service per session
+  // (HK May 27 2026: 'doesn't allow different service by session').
+  const defaultServiceId = eligibleServices[0]?.id || null;
 
-  // One row per session: { date, time }
-  const [rows, setRows] = useState(() => Array.from({ length: maxRows }, () => ({ date: '', time: '' })));
-  const [slotsByDate, setSlotsByDate] = useState({}); // iso -> [{start,end,display}]
-  const [loadingDate, setLoadingDate] = useState(null);
+  // One row per session: { serviceId, date, time, pickerOpen }.
+  // serviceId defaults to the first eligible service; the row's
+  // compact service picker (no dropdown, per house rules) lets the
+  // client change it per session.
+  const [rows, setRows] = useState(() =>
+    Array.from({ length: maxRows }, () => ({ serviceId: defaultServiceId, date: '', time: '', pickerOpen: false }))
+  );
+  // Slots keyed by `${iso}|${duration}` since different services have
+  // different durations and therefore different open slots.
+  const [slotsByKey, setSlotsByKey] = useState({});
+  const [loadingKey, setLoadingKey] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
   const [doneCount, setDoneCount] = useState(0);
+
+  const svcById = useMemo(() => {
+    const m = {};
+    eligibleServices.forEach(s => { m[s.id] = s; });
+    return m;
+  }, [eligibleServices]);
+  const slotKey = (iso, dur) => `${iso}|${dur}`;
 
   // Build the list of pickable dates: next 60 days that fall on an
   // available weekday.
@@ -97,11 +113,12 @@ export default function BulkSessionScheduler({
   }, [availableDows]);
 
   // Fetch availability + existing bookings for a date, compute open
-  // slots. Also subtract slots already picked in OTHER rows for the
-  // same date so the client cannot double-book themselves.
-  async function loadSlotsForDate(iso, exceptRowIdx) {
-    if (!svc) return;
-    setLoadingDate(iso);
+  // slots for a given duration. Keyed by date+duration. Also subtract
+  // slots already picked in OTHER rows for the same date so the client
+  // cannot double-book themselves.
+  async function loadSlotsForDate(iso, dur, exceptRowIdx) {
+    const key = slotKey(iso, dur);
+    setLoadingKey(key);
     try {
       const d = new Date(iso + 'T12:00:00');
       const dow = d.getDay();
@@ -112,7 +129,6 @@ export default function BulkSessionScheduler({
         .eq('therapist_id', therapist.id)
         .eq('booking_date', iso)
         .neq('status', 'cancelled');
-      const dur = svc.duration || 60;
       const buffer = therapist?.buffer_enabled ? (therapist?.buffer_minutes || 0) : 0;
       let all = [];
       dayAvail.forEach(a => {
@@ -123,28 +139,38 @@ export default function BulkSessionScheduler({
         .filter((r, idx) => idx !== exceptRowIdx && r.date === iso && r.time)
         .map(r => r.time);
       all = all.filter(s => !takenSameDate.includes(s.start));
-      // Dedup by start.
       const seen = new Set();
       const dedup = all.filter(s => { if (seen.has(s.start)) return false; seen.add(s.start); return true; })
         .sort((a, b) => a.start.localeCompare(b.start));
-      setSlotsByDate(prev => ({ ...prev, [iso]: dedup }));
+      setSlotsByKey(prev => ({ ...prev, [key]: dedup }));
     } catch (e) {
       console.error('[bulk] loadSlotsForDate failed:', e);
     } finally {
-      setLoadingDate(null);
+      setLoadingKey(null);
     }
   }
 
+  function setRowService(idx, sid) {
+    setRows(prev => prev.map((r, i) => i === idx ? { ...r, serviceId: sid, time: '', pickerOpen: false } : r));
+    // Reload slots for the new duration if a date is already chosen.
+    const row = rows[idx];
+    const dur = svcById[sid]?.duration || 60;
+    if (row?.date && !slotsByKey[slotKey(row.date, dur)]) loadSlotsForDate(row.date, dur, idx);
+  }
+  function toggleRowPicker(idx) {
+    setRows(prev => prev.map((r, i) => i === idx ? { ...r, pickerOpen: !r.pickerOpen } : r));
+  }
   function setRowDate(idx, iso) {
+    const dur = svcById[rows[idx]?.serviceId]?.duration || 60;
     setRows(prev => prev.map((r, i) => i === idx ? { ...r, date: iso, time: '' } : r));
-    if (iso && !slotsByDate[iso]) loadSlotsForDate(iso, idx);
+    if (iso && !slotsByKey[slotKey(iso, dur)]) loadSlotsForDate(iso, dur, idx);
   }
   function setRowTime(idx, time) {
     setRows(prev => prev.map((r, i) => i === idx ? { ...r, time } : r));
   }
 
-  const filledRows = rows.filter(r => r.date && r.time);
-  const canSubmit = filledRows.length > 0 && !submitting && svc;
+  const filledRows = rows.filter(r => r.serviceId && r.date && r.time);
+  const canSubmit = filledRows.length > 0 && !submitting;
 
   async function submitAll() {
     if (!canSubmit) return;
@@ -177,14 +203,16 @@ export default function BulkSessionScheduler({
       let created = 0;
       for (const row of filledRows) {
         if (remaining <= 0) break;
-        const dur = svc.duration || 60;
+        const rowSvc = svcById[row.serviceId];
+        if (!rowSvc) { console.error('[bulk] row has no service, skipping'); continue; }
+        const dur = rowSvc.duration || 60;
         const [sh, sm] = row.time.split(':').map(Number);
         const endMins = sh * 60 + sm + dur;
         const endTime = `${String(Math.floor(endMins / 60)).padStart(2, '0')}:${String(endMins % 60).padStart(2, '0')}`;
 
         const { data: nb, error: insErr } = await supabase.from('bookings').insert({
           therapist_id: therapist.id,
-          service_id: svc.id,
+          service_id: rowSvc.id,
           client_id: clientId,
           client_name: redeemContext.clientName || '',
           client_email: (redeemContext.clientEmail || '').toLowerCase(),
@@ -214,7 +242,7 @@ export default function BulkSessionScheduler({
         await supabase.from('package_redemptions').insert({
           package_purchase_id: redeemContext.purchaseId,
           booking_id: bid,
-          notes: `Session redeemed: ${svc.name || 'Session'}`,
+          notes: `Session redeemed: ${rowSvc.name || 'Session'}`,
         });
         remaining -= 1;
         created += 1;
@@ -236,7 +264,7 @@ export default function BulkSessionScheduler({
     }
   }
 
-  if (!svc) {
+  if (eligibleServices.length === 0) {
     return (
       <div style={{ padding: 20, textAlign: 'center', color: C.gray, fontSize: 14 }}>
         No services available to schedule against this package.
@@ -246,42 +274,77 @@ export default function BulkSessionScheduler({
 
   return (
     <div>
-      {/* Service picker (only if more than one eligible) */}
-      {eligibleServices.length > 1 && (
-        <div style={{ marginBottom: 18 }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: C.gray, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>
-            Service for all sessions
-          </div>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-            {eligibleServices.map(s => (
-              <button key={s.id}
-                onClick={() => { setServiceId(s.id); setSlotsByDate({}); setRows(rows.map(r => ({ ...r, time: '' }))); }}
-                style={{
-                  padding: '8px 14px',
-                  border: `1.5px solid ${serviceId === s.id ? C.forest : C.light}`,
-                  background: serviceId === s.id ? '#F0FDF4' : '#fff',
-                  color: serviceId === s.id ? C.forest : C.dark,
-                  borderRadius: 999, fontSize: 13, fontWeight: 600, cursor: 'pointer',
-                }}>
-                {s.name} ({s.duration} min)
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
+      {/* HK May 27 2026: service is now picked PER session, not once for
+          all. Each row shows the chosen service as a compact pill with
+          a 'Change' affordance that expands an inline chip list for
+          that row only. No dropdown (house rule), no giant always-on
+          chip wall. Different sessions can use different services. */}
 
       {/* Session rows */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-        {rows.map((row, idx) => (
+        {rows.map((row, idx) => {
+          const rowSvc = svcById[row.serviceId];
+          const dur = rowSvc?.duration || 60;
+          const key = slotKey(row.date, dur);
+          const slots = slotsByKey[key] || [];
+          const complete = row.serviceId && row.date && row.time;
+          return (
           <div key={idx} style={{
             background: '#fff',
-            border: `1.5px solid ${row.date && row.time ? '#86EFAC' : C.light}`,
+            border: `1.5px solid ${complete ? '#86EFAC' : C.light}`,
             borderRadius: 14, padding: 16,
           }}>
             <div style={{ fontSize: 13, fontWeight: 700, color: C.dark, marginBottom: 10 }}>
               Session {idx + 1}
-              {row.date && row.time && <span style={{ color: '#16A34A', marginLeft: 8 }}>✓ {fmtDateLabel(row.date)} at {fmt12(row.time)}</span>}
+              {complete && <span style={{ color: '#16A34A', marginLeft: 8, fontWeight: 600 }}>✓ {fmtDateLabel(row.date)} at {fmt12(row.time)}</span>}
             </div>
+
+            {/* Per-session service picker */}
+            <div style={{ fontSize: 11, fontWeight: 700, color: C.gray, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>Service</div>
+            {eligibleServices.length === 1 ? (
+              <div style={{ fontSize: 13.5, fontWeight: 600, color: C.dark, marginBottom: 12 }}>
+                {rowSvc?.name} ({dur} min)
+              </div>
+            ) : (
+              <div style={{ marginBottom: 12 }}>
+                {/* Compact current-selection row + Change toggle */}
+                <button
+                  onClick={() => toggleRowPicker(idx)}
+                  style={{
+                    width: '100%',
+                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                    gap: 10,
+                    padding: '11px 14px',
+                    border: `1.5px solid ${C.light}`,
+                    background: '#FAFAF7',
+                    borderRadius: 10,
+                    fontSize: 14, fontWeight: 600, color: C.dark,
+                    cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left',
+                  }}>
+                  <span>{rowSvc ? `${rowSvc.name} (${dur} min)` : 'Pick a service'}</span>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: C.forest, whiteSpace: 'nowrap' }}>
+                    {row.pickerOpen ? 'Close' : 'Change'}
+                  </span>
+                </button>
+                {row.pickerOpen && (
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 8 }}>
+                    {eligibleServices.map(s => (
+                      <button key={s.id}
+                        onClick={() => setRowService(idx, s.id)}
+                        style={{
+                          padding: '8px 12px',
+                          border: `1.5px solid ${row.serviceId === s.id ? C.forest : C.light}`,
+                          background: row.serviceId === s.id ? '#F0FDF4' : '#fff',
+                          color: row.serviceId === s.id ? C.forest : C.dark,
+                          borderRadius: 999, fontSize: 12.5, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
+                        }}>
+                        {s.name} ({s.duration} min)
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Date chips */}
             <div style={{ fontSize: 11, fontWeight: 700, color: C.gray, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>Date</div>
@@ -295,7 +358,7 @@ export default function BulkSessionScheduler({
                     border: `1.5px solid ${row.date === iso ? C.forest : C.light}`,
                     background: row.date === iso ? '#F0FDF4' : '#fff',
                     color: row.date === iso ? C.forest : C.dark,
-                    borderRadius: 10, fontSize: 12.5, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap',
+                    borderRadius: 10, fontSize: 12.5, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap', fontFamily: 'inherit',
                   }}>
                   {fmtDateLabel(iso)}
                 </button>
@@ -306,13 +369,13 @@ export default function BulkSessionScheduler({
             {row.date && (
               <>
                 <div style={{ fontSize: 11, fontWeight: 700, color: C.gray, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>Time</div>
-                {loadingDate === row.date && !slotsByDate[row.date] ? (
+                {loadingKey === key && !slotsByKey[key] ? (
                   <div style={{ fontSize: 13, color: C.gray, padding: '8px 0' }}>Loading times...</div>
-                ) : (slotsByDate[row.date]?.length || 0) === 0 ? (
+                ) : slots.length === 0 ? (
                   <div style={{ fontSize: 13, color: C.gray, padding: '8px 0' }}>No open times that day. Pick another date.</div>
                 ) : (
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                    {slotsByDate[row.date].map(s => (
+                    {slots.map(s => (
                       <button key={s.start}
                         onClick={() => setRowTime(idx, s.start)}
                         style={{
@@ -320,7 +383,7 @@ export default function BulkSessionScheduler({
                           border: `1.5px solid ${row.time === s.start ? C.forest : C.light}`,
                           background: row.time === s.start ? '#F0FDF4' : '#fff',
                           color: row.time === s.start ? C.forest : C.dark,
-                          borderRadius: 10, fontSize: 12.5, fontWeight: 600, cursor: 'pointer',
+                          borderRadius: 10, fontSize: 12.5, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
                         }}>
                         {s.display}
                       </button>
@@ -330,7 +393,8 @@ export default function BulkSessionScheduler({
               </>
             )}
           </div>
-        ))}
+          );
+        })}
       </div>
 
       {(redeemContext?.sessionsRemaining || 0) > maxRows && (
