@@ -1117,27 +1117,40 @@ function SimpleNotificationMatrix({ logsByKey, loading }) {
     return { state: log.status, tone, hint };
   }
 
-  function Cell({ spec, channel }) {
-    const c = cellFor(spec, channel);
-    return (
-      <td title={c.hint} style={{
-        padding: '6px 8px',
-        textAlign: 'center',
-        borderBottom: `1px solid ${COLORS.border}`,
-      }}>
-        <span style={{
-          display: 'inline-block',
-          minWidth: 30,
-          padding: '4px 8px',
-          background: c.tone.bg,
-          border: `1px solid ${c.tone.border}`,
-          color: c.tone.fg,
-          borderRadius: 6,
-          fontSize: 13,
-          fontWeight: 700,
-        }}>{c.tone.label}</span>
-      </td>
-    );
+  // Aggregate the "Fired" cell across the three channels for this spec:
+  // sent if any sent, failed if any failed, skipped if any skipped, else untested.
+  function firedStateFor(spec) {
+    let any = null;
+    for (const ch of CHANNELS) {
+      if (!spec.channels.includes(ch)) continue;
+      const key = `${spec.eventType}__${spec.audience}__${ch}`;
+      const log = logsByKey?.[key];
+      if (!log) continue;
+      // priority: failed > sent > skipped
+      if (log.status === 'failed') return { tone: PALETTE.failed, log, channel: ch };
+      if (log.status === 'sent') any = any || { tone: PALETTE.sent, log, channel: ch };
+      if (log.status === 'skipped') any = any || { tone: PALETTE.skipped, log, channel: ch };
+    }
+    if (!any) return { tone: PALETTE.untested, log: null, channel: null };
+    return any;
+  }
+
+  // localStorage-backed PASS/FAIL + notes per touchpoint. Keyed by spec.id so
+  // it survives refresh while HK works through 30 bookings.
+  const STORAGE_KEY = 'mbm.notif_verify.v1';
+  const [verify, setVerify] = React.useState(() => {
+    try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}'); } catch (_) { return {}; }
+  });
+  function setRow(id, patch) {
+    setVerify(prev => {
+      const next = { ...prev, [id]: { ...(prev[id] || {}), ...patch } };
+      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(next)); } catch (_) {}
+      return next;
+    });
+  }
+  function clearAll() {
+    setVerify({});
+    try { localStorage.removeItem(STORAGE_KEY); } catch (_) {}
   }
 
   return (
@@ -1145,20 +1158,32 @@ function SimpleNotificationMatrix({ logsByKey, loading }) {
       background: '#fff',
       border: `1px solid ${COLORS.border}`,
       borderRadius: 14,
-      padding: '0',
+      padding: 0,
       marginBottom: 14,
       overflowX: 'auto',
     }}>
       <div style={{
         padding: '14px 18px 10px',
         borderBottom: `1px solid ${COLORS.border}`,
+        display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12,
       }}>
-        <div style={{ fontSize: 15, fontWeight: 700, color: COLORS.ink, marginBottom: 4 }}>
-          Quick status (last 7 days)
+        <div>
+          <div style={{ fontSize: 15, fontWeight: 700, color: COLORS.ink, marginBottom: 4 }}>
+            Notification check
+          </div>
+          <div style={{ fontSize: 12.5, color: COLORS.inkSoft, lineHeight: 1.5 }}>
+            One row per touchpoint. "Fired" is auto from notification_log (just so we know it tried). "Landed" is you ticking after you actually saw the email or text. "Notes" is for copy issues or anything off. Your ticks and notes save locally.
+          </div>
         </div>
-        <div style={{ fontSize: 12.5, color: COLORS.inkSoft, lineHeight: 1.5 }}>
-          One row per touchpoint. ✓ fired at least once, – skipped (pref off / quiet hours / no subscription), ✕ failed, · never fired. Confirm in the actual inbox.
-        </div>
+        <button
+          onClick={clearAll}
+          style={{
+            background: '#fff', border: `1px solid ${COLORS.border}`,
+            borderRadius: 8, padding: '7px 12px', fontSize: 12, fontWeight: 600,
+            color: COLORS.inkSoft, cursor: 'pointer', whiteSpace: 'nowrap',
+          }}>
+          Clear ticks
+        </button>
       </div>
       <table style={{ borderCollapse: 'collapse', width: '100%', fontSize: 13 }}>
         <thead>
@@ -1166,34 +1191,98 @@ function SimpleNotificationMatrix({ logsByKey, loading }) {
             <th style={{ textAlign: 'left', padding: '10px 16px', borderBottom: `2px solid ${COLORS.border}`, background: COLORS.cream, fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: COLORS.inkSoft }}>
               Touchpoint
             </th>
-            <th style={{ textAlign: 'left', padding: '10px 12px', borderBottom: `2px solid ${COLORS.border}`, background: COLORS.cream, fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: COLORS.inkSoft }}>
-              For
+            <th style={{ textAlign: 'center', padding: '10px 8px', borderBottom: `2px solid ${COLORS.border}`, background: COLORS.cream, fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: COLORS.inkSoft, width: 90 }}>
+              Fired
             </th>
-            {CHANNELS.map(ch => (
-              <th key={ch} style={{ textAlign: 'center', padding: '10px 8px', borderBottom: `2px solid ${COLORS.border}`, background: COLORS.cream, fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: COLORS.inkSoft, width: 70 }}>
-                {ch}
-              </th>
-            ))}
+            <th style={{ textAlign: 'center', padding: '10px 8px', borderBottom: `2px solid ${COLORS.border}`, background: COLORS.cream, fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: COLORS.inkSoft, width: 110 }}>
+              Landed
+            </th>
+            <th style={{ textAlign: 'left', padding: '10px 12px', borderBottom: `2px solid ${COLORS.border}`, background: COLORS.cream, fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: COLORS.inkSoft }}>
+              Notes
+            </th>
           </tr>
         </thead>
         <tbody>
-          {NOTIFICATION_SPEC.map(spec => (
-            <tr key={spec.id}>
-              <td style={{ padding: '8px 16px', borderBottom: `1px solid ${COLORS.border}`, fontSize: 13 }}>
-                <div style={{ fontWeight: 600, color: COLORS.ink }}>
-                  <span style={{ color: COLORS.inkSoft, fontWeight: 500, marginRight: 6 }}>{spec.id}</span>
-                  {spec.title}
-                </div>
-                <div style={{ fontSize: 11.5, color: COLORS.inkSoft, marginTop: 2 }}>{spec.when}</div>
-              </td>
-              <td style={{ padding: '8px 12px', borderBottom: `1px solid ${COLORS.border}`, fontSize: 11.5, color: COLORS.inkSoft, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                {spec.audience}
-              </td>
-              {CHANNELS.map(ch => (
-                <Cell key={ch} spec={spec} channel={ch} />
-              ))}
-            </tr>
-          ))}
+          {NOTIFICATION_SPEC.map(spec => {
+            const fired = firedStateFor(spec);
+            const row = verify[spec.id] || {};
+            const landed = row.landed || null; // 'yes' | 'no' | null
+            const when = fired.log?.sent_at ? new Date(fired.log.sent_at).toLocaleString() : '';
+            const firedHint = fired.log
+              ? `${fired.log.status}${fired.log.error_message ? ': ' + fired.log.error_message : ''}\nChannel: ${fired.channel}\nLast: ${when}`
+              : 'No log row yet';
+            return (
+              <tr key={spec.id}>
+                <td style={{ padding: '8px 16px', borderBottom: `1px solid ${COLORS.border}`, fontSize: 13, verticalAlign: 'top' }}>
+                  <div style={{ fontWeight: 600, color: COLORS.ink }}>
+                    <span style={{ color: COLORS.inkSoft, fontWeight: 500, marginRight: 6 }}>{spec.id}</span>
+                    {spec.title}
+                  </div>
+                  <div style={{ fontSize: 11.5, color: COLORS.inkSoft, marginTop: 2 }}>
+                    <span style={{ textTransform: 'uppercase', letterSpacing: '0.04em', marginRight: 8 }}>{spec.audience}</span>
+                    {spec.when}
+                  </div>
+                </td>
+                <td title={firedHint} style={{
+                  padding: '8px 8px',
+                  textAlign: 'center',
+                  borderBottom: `1px solid ${COLORS.border}`,
+                  verticalAlign: 'top',
+                }}>
+                  <span style={{
+                    display: 'inline-block', minWidth: 30, padding: '4px 8px',
+                    background: fired.tone.bg, border: `1px solid ${fired.tone.border}`,
+                    color: fired.tone.fg, borderRadius: 6, fontSize: 13, fontWeight: 700,
+                  }}>{fired.tone.label}</span>
+                </td>
+                <td style={{
+                  padding: '8px 8px',
+                  textAlign: 'center',
+                  borderBottom: `1px solid ${COLORS.border}`,
+                  verticalAlign: 'top',
+                }}>
+                  <div style={{ display: 'inline-flex', gap: 4 }}>
+                    <button
+                      onClick={() => setRow(spec.id, { landed: landed === 'yes' ? null : 'yes' })}
+                      title="Yes, email/SMS landed"
+                      style={{
+                        background: landed === 'yes' ? '#DCFCE7' : '#fff',
+                        border: `1.5px solid ${landed === 'yes' ? '#16A34A' : COLORS.border}`,
+                        color: landed === 'yes' ? '#14532D' : COLORS.inkSoft,
+                        borderRadius: 6, padding: '4px 9px', fontSize: 13, fontWeight: 700, cursor: 'pointer',
+                      }}>✓</button>
+                    <button
+                      onClick={() => setRow(spec.id, { landed: landed === 'no' ? null : 'no' })}
+                      title="No, did not land"
+                      style={{
+                        background: landed === 'no' ? '#FEE2E2' : '#fff',
+                        border: `1.5px solid ${landed === 'no' ? '#DC2626' : COLORS.border}`,
+                        color: landed === 'no' ? '#7F1D1D' : COLORS.inkSoft,
+                        borderRadius: 6, padding: '4px 9px', fontSize: 13, fontWeight: 700, cursor: 'pointer',
+                      }}>✕</button>
+                  </div>
+                </td>
+                <td style={{
+                  padding: '8px 12px',
+                  borderBottom: `1px solid ${COLORS.border}`,
+                  verticalAlign: 'top',
+                }}>
+                  <input
+                    type="text"
+                    value={row.notes || ''}
+                    onChange={e => setRow(spec.id, { notes: e.target.value })}
+                    placeholder="copy issue, missing info, anything off"
+                    style={{
+                      width: '100%', boxSizing: 'border-box',
+                      border: `1px solid ${COLORS.border}`, borderRadius: 6,
+                      padding: '6px 9px', fontSize: 12.5, color: COLORS.ink,
+                      fontFamily: 'inherit', outline: 'none', background: '#FAFAF7',
+                    }}
+                  />
+                </td>
+              </tr>
+            );
+          })}
         </tbody>
       </table>
       {loading && (
