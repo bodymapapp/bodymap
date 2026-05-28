@@ -1674,7 +1674,13 @@ export default function BookingPage() {
 
     const isPackage = offerModal.type === 'package';
     const fnName = isPackage ? 'purchase-package' : 'purchase-membership';
-    const redirectBase = `${window.location.origin}/${therapist.custom_url}?_=${Date.now()}`;
+    // HK May 27 2026: MUST redirect to /book/<slug>, NOT /<slug>.
+    // /<slug> routes to ClientIntake (the intake form), which does not
+    // handle purchase_complete and just renders the intake form. That
+    // was the scary 'lands on intake after Stripe payment' bug: the
+    // post-purchase handler lives in BookingPage (/book/<slug>), so the
+    // redirect has to land there for any of it to run.
+    const redirectBase = `${window.location.origin}/book/${therapist.custom_url}?_=${Date.now()}`;
     const idKey = isPackage ? 'package_id' : 'membership_id';
     // Embed the purchase-kind trigger in the redirect_url so both
     // Stripe and Square preserve it through their respective checkout
@@ -1769,7 +1775,8 @@ export default function BookingPage() {
     // trip through either Stripe or Square checkout (each processor
     // appends their own checkout_complete or session_id; our trigger
     // is preserved either way).
-    const redirectBase = `${window.location.origin}/${therapist.custom_url}?_=${Date.now()}&cart_complete=1`;
+    // HK May 27 2026: /book/<slug> not /<slug> (see buyOffer comment).
+    const redirectBase = `${window.location.origin}/book/${therapist.custom_url}?_=${Date.now()}&cart_complete=1`;
     try {
       const res = await fetch(
         `${process.env.REACT_APP_SUPABASE_URL}/functions/v1/purchase-cart`,
@@ -2217,7 +2224,8 @@ export default function BookingPage() {
       // deposit-paid mark-as-confirmed flow. Webhook is the durable
       // source of truth (TODO Phase 2) but for now the redirect is
       // good enough for Ashley's use case.
-      const redirectUrl = `${window.location.origin}/${therapist.custom_url}?deposit_complete=1&booking_id=${bid}`;
+      // HK May 27 2026: /book/<slug> not /<slug> (see buyOffer comment).
+      const redirectUrl = `${window.location.origin}/book/${therapist.custom_url}?deposit_complete=1&booking_id=${bid}`;
       const fnRes = await fetch(
         `${process.env.REACT_APP_SUPABASE_URL}/functions/v1/square-create-deposit`,
         {
