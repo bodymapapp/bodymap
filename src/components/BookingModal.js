@@ -6,7 +6,7 @@ import { createPortal } from 'react-dom';
 import { supabase } from '../lib/supabase';
 import { findOrCreateClient } from '../lib/findOrCreateClient';
 import CloseButton from './CloseButton';
-import SelectableMonthView from './SelectableMonthView';
+import MonthCalendar from './MonthCalendar';
 
 const C = {
   forest: '#2A5741', sage: '#6B9E80', beige: '#F5F0E8',
@@ -94,6 +94,9 @@ export default function BookingModal({ therapist, mode = 'create', existingBooki
   const [blockedDates, setBlockedDates] = useState(new Set());
   // Phase 9.1: partial-day blocks keyed by date string.
   const [partialBlocksByDate, setPartialBlocksByDate] = useState({});
+  // HK May 29 2026: existing-bookings count per date for the sage-dots
+  // context on the MonthCalendar. Filled in from the same load effect.
+  const [bookingsByDate, setBookingsByDate] = useState(new Map());
   // Multi-location (HK May 18 2026): list of therapist's active
   // locations. Dropdown only renders when length >= 2. Default
   // selection is the primary location. On reschedule, preserves the
@@ -164,7 +167,16 @@ export default function BookingModal({ therapist, mode = 'create', existingBooki
   // Load services + availability + blocked days
   useEffect(() => {
     async function load() {
-      const [{ data: svcs }, { data: avail }, { data: blocked }, { data: locs }, { data: addons }] = await Promise.all([
+      // HK May 29 2026: also pull bookings for the next ~6 months so the
+      // MonthCalendar can show sage dots on days with existing
+      // appointments. Therapist-only context; clients on BookingPage
+      // don't see this.
+      const horizonDate = new Date();
+      horizonDate.setMonth(horizonDate.getMonth() + 6);
+      const horizonIso = horizonDate.toISOString().slice(0, 10);
+      const todayIso = new Date().toISOString().slice(0, 10);
+
+      const [{ data: svcs }, { data: avail }, { data: blocked }, { data: locs }, { data: addons }, { data: futureBookings }] = await Promise.all([
         supabase.from('services').select('*').eq('therapist_id', therapist.id).eq('active', true).is('archived_at', null).order('sort_order', { ascending: true }).order('price', { ascending: true }),
         supabase.from('availability').select('*').eq('therapist_id', therapist.id).eq('active', true),
         // Phase 9.1: fetch start_time/end_time so partial-day blocks
@@ -173,9 +185,10 @@ export default function BookingModal({ therapist, mode = 'create', existingBooki
         // Multi-location: same fetch as the public booking page.
         supabase.from('therapist_locations').select('*').eq('therapist_id', therapist.id).eq('active', true).order('sort_order', { ascending: true }),
         // Phase 23 (HK May 25 2026): add-ons for therapist-initiated
-        // bookings. Mirrors the public booking page fetch so the same
-        // set of add-ons is available everywhere.
+        // bookings.
         supabase.from('service_addons').select('*').eq('therapist_id', therapist.id).eq('active', true).order('display_order').order('created_at'),
+        // HK May 29 2026: bookings count per date for sage dots.
+        supabase.from('bookings').select('booking_date').eq('therapist_id', therapist.id).gte('booking_date', todayIso).lte('booking_date', horizonIso).neq('status', 'cancelled'),
       ]);
       setServices(svcs || []);
       setAvail(avail || []);
@@ -195,6 +208,14 @@ export default function BookingModal({ therapist, mode = 'create', existingBooki
       }
       setBlockedDates(new Set(fullDay));
       setPartialBlocksByDate(partial);
+      // HK May 29 2026: bucket bookings by date for the MonthCalendar
+      // sage-dots context.
+      const bMap = new Map();
+      for (const b of (futureBookings || [])) {
+        if (!b.booking_date) continue;
+        bMap.set(b.booking_date, (bMap.get(b.booking_date) || 0) + 1);
+      }
+      setBookingsByDate(bMap);
       // Locations: default to primary (or whatever location the
       // existing reschedule booking already had, preserved at state
       // init).
@@ -941,11 +962,10 @@ export default function BookingModal({ therapist, mode = 'create', existingBooki
           )}
 
           <div style={{ marginBottom: 12 }}>
-            <SelectableMonthView
-              therapist={therapist}
-              mode={seriesMode ? 'series' : 'single'}
-              selectedDates={seriesMode ? seriesDates : (date ? [date] : [])}
-              onSelectDate={(iso) => {
+            <MonthCalendar
+              availability={availability}
+              selected={seriesMode ? seriesDates : (date || '')}
+              onSelect={(iso) => {
                 if (seriesMode) {
                   // First tap with no anchor: set the anchor (which seeds the rule).
                   if (!date) { setDate(iso); return; }
@@ -954,8 +974,12 @@ export default function BookingModal({ therapist, mode = 'create', existingBooki
                   setDate(iso);
                 }
               }}
+              blockedDates={blockedDates}
+              partialBlockedDates={new Set(Object.keys(partialBlocksByDate))}
+              bookingsByDate={bookingsByDate}
+              mode={seriesMode ? 'multi' : 'single'}
               seriesIndexFor={seriesMode ? seriesIndexFor : null}
-              monthsToShow={seriesMode ? 4 : 2}
+              allowOverrideOffDay={true}
             />
           </div>
 
