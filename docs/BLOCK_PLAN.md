@@ -1426,29 +1426,40 @@ Deferred behind notification testing + package error fix + PWA refresh. Not bloc
 
 ---
 
-## Therapist-calendar-view date picker (queued May 29 2026)
+## Therapist-calendar-view date picker (queued May 29 2026, persona-corrected)
 
-HK clarified the recurring UX vision: every place in the app where the therapist picks a date or time should show the therapist's actual calendar (month grid with colors, blocked time, existing bookings, free slots) rather than a stock date picker or a long list of dates. Outlook and airline interfaces were used as visual references for the calendar-as-picker pattern, not as integration targets.
+HK clarified the recurring UX vision: every place in the app where the therapist picks a date or time should show the therapist's actual calendar (month grid with colors, blocked time, existing bookings, free slots) rather than a stock date picker or a long list of dates. Outlook was a visual reference for the calendar-as-picker pattern, not an integration target.
 
-The result is one reusable component, used everywhere:
-- BookingModal single-date pick: opens the month grid; tap a free cell to choose.
-- BookingModal multi-date pick (recurring/series): same grid, tap N free cells, each turns sage; submit creates N bookings with shared series_id.
-- Any future date input in the therapist UI where availability context matters (rescheduling, block-time, etc).
+**Persona constraint (70-year-old solo LMT):** tapping N individual cells across 8 weeks is tedious and error-prone. The PRIMARY interaction for a series is a plain-English rule shortcut at the top, not multi-tap. Multi-tap is the secondary tweak path for the rare ad-hoc case.
 
-Design notes:
-- Reuse the Schedule MonthlyView visual language: same color palette, same blocked-time shading, same "now" indicator, same per-day stack.
-- Cells show small chips for existing bookings (client name first letter or initials).
-- Blocked time renders amber-striped as it does today.
-- Free cells are pure cream/white; selected cells turn sage with a checkmark.
-- Long-press a cell to peek at what's there without selecting.
-- Multi-select mode shows a running tally: "4 dates selected, next: schedule them all".
+Design:
+
+1. **Single-date pick (default):** opens the therapist's month-view calendar. Tap any free cell. Cell turns sage with a check. Done.
+
+2. **Series pick (toggle 'Book a series'):** a rule strip appears above the calendar in plain English with InlineSaveNumberInput controls:
+
+   > Every **2** weeks for **6** sessions starting **Sat May 31**
+
+   Tap the bold numbers/dates to edit (no dropdowns, no advanced panel). Below, the calendar auto-selects the resulting 6 dates in sage with their series index (1, 2, 3, ...). Therapist can:
+   - Adjust the rule -> selection updates live
+   - Tap a sage date to drop it (manual override on top of the rule)
+   - Tap a free date to add one outside the rule (mixed ad-hoc + rule)
+
+3. **Conflict surfacing:** if any rule-generated date hits a blocked day or an existing booking, that cell renders amber-with-warning and the rule strip shows "1 conflict, tap to resolve." Therapist taps the conflict, chooses Skip or Move to next free.
+
+4. **Submit:** creates a booking_series row + N bookings, all sharing series_id with series_index 1..N. Conflict check across all dates upfront so no booking ever lands on top of another.
+
+Reuse: extracted from existing MonthlyView in ScheduleDashboard.js as a `SelectableMonthView` component. Same colors, same blocked-time render, same booking chips, plus `onSelectDate`, `selectedDates[]`, `mode='single'|'multi'`, `seriesPreview` props.
 
 Implementation order:
-1. Extract a SelectableMonthView component from the existing MonthlyView. Same props plus onSelectDate, selectedDates[], mode='single'|'multi'.
-2. Wire into BookingModal as the date-pick step. Single mode replaces the existing date input.
-3. Add multi-select toggle for series creation, plus the "Repeat every N weeks" rule shortcut at the top.
-4. Series submit creates the booking_series row + N bookings.
+1. Extract SelectableMonthView (~60 min).
+2. Wire into BookingModal as the date step, single mode (~45 min).
+3. Series toggle + rule strip + auto-population (~60 min).
+4. Conflict resolution UI (~30 min).
+5. Submit handler creates booking_series + N bookings (~30 min).
+6. Schedule render: small "Session N of M" pill on series-linked bookings (already partly there via package badge code, reuse pattern) (~20 min).
+7. Cancel/reschedule: when acting on a series booking, prompt "Just this session" vs "All future in series" (~40 min).
 
-Scope estimate: ~4 hours (was 3 for recurring alone; extraction + reuse adds an hour but pays back across every future date-picker need).
+Scope estimate: ~4.5 hours. Pays back across every future date-picker need in the app since SelectableMonthView is now a reusable primitive.
 
 Replaces the prior "Recurring appointments" and "Outlook integration" entries. We are NOT building Outlook calendar sync today, period.
