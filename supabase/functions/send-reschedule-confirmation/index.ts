@@ -36,31 +36,6 @@ serve(async (req) => {
     });
   }
 
-  // HK May 29 2026: every early-exit path now logs to notification_log
-  // with an explanatory skip reason. Previously a missing email, an
-  // unsubscribe flag, or a thrown exception inside renderClientEmail
-  // would leave NO trace in the database, making reschedule-email
-  // regressions impossible to diagnose without invoking the function
-  // by hand. The function logged for 12 days between May 17 and May 29
-  // because of exactly this pattern.
-  const logSkip = async (reason: string, errorDetail: string | null = null) => {
-    try {
-      await logNotification(supabase, {
-        therapist_id: null,
-        client_id: null,
-        booking_id,
-        notification_type: 'reschedule_confirmation',
-        audience: 'client',
-        channel: 'email',
-        recipient: null,
-        status: 'skipped',
-        provider_id: null,
-        error_message: errorDetail ? `${reason}: ${errorDetail}` : reason,
-        subject: null,
-      });
-    } catch (_e) { /* logging itself failed; nothing more we can do */ }
-  };
-
   try {
     const { data: booking, error: bErr } = await supabase
       .from('bookings')
@@ -75,12 +50,40 @@ serve(async (req) => {
       .single();
 
     if (bErr || !booking) {
-      await logSkip('booking_query_failed', bErr?.message || 'no rows');
+      // Cannot insert into notification_log without a therapist_id
+      // (NOT NULL constraint). console.log so it surfaces in the edge
+      // function log even if not in notification_log.
+      console.warn('[send-reschedule-confirmation] booking_query_failed',
+        bErr?.message || 'no rows', 'booking_id:', booking_id);
       return jsonErr('booking not found', 404);
     }
 
     const therapist = booking.therapists;
     const client = booking.clients;
+
+    // HK May 29 2026: logSkip helper now scoped INSIDE the try after
+    // we have therapist context. notification_log.therapist_id is
+    // NOT NULL, so the previous "log before booking lookup" approach
+    // silently failed every insert. This is why client reschedule
+    // emails appeared to never run between May 17 and May 29.
+    const logSkip = async (reason: string, errorDetail: string | null = null) => {
+      try {
+        await logNotification(supabase, {
+          therapist_id: therapist?.id || null,
+          client_id: client?.id || null,
+          booking_id,
+          notification_type: 'reschedule_confirmation',
+          audience: 'client',
+          channel: 'email',
+          recipient: client?.email || null,
+          status: 'skipped',
+          provider_id: null,
+          error_message: errorDetail ? `${reason}: ${errorDetail}` : reason,
+          subject: null,
+        });
+      } catch (_e) { /* logging failure must not break the function */ }
+    };
+
     if (!client?.email) {
       await logSkip('no_client_email');
       return jsonErr('no client email', 200, { skipped: 'no_client_email' });
@@ -153,15 +156,12 @@ serve(async (req) => {
     return new Response(JSON.stringify({ status, email_id: data.id }), {
       headers: { ...cors, 'Content-Type': 'application/json' },
     });
-  } catch (e) {
-    // Last-resort catch. If anything thrown above (renderClientEmail
-    // crash, Resend network failure, etc) bubbles past every other
-    // handler, we still log a skipped row so the regression is
-    // visible in notification_log. Returns 500 so the caller in
-    // notify-booking-event sees a failed allSettled result in its
-    // logs.
+  } catch (e: any) {
+    // Last-resort catch. logSkip is no longer in scope here because
+    // it lives inside the try (where therapist_id is known). console
+    // warn instead so the exception surfaces in the edge function log.
     const msg = String(e?.message || e);
-    await logSkip('uncaught_exception', msg);
+    console.error('[send-reschedule-confirmation] uncaught_exception', msg, 'booking_id:', booking_id);
     return jsonErr('uncaught exception', 500, { detail: msg });
   }
 });

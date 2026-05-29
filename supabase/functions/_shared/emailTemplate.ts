@@ -59,16 +59,24 @@ export function eyebrow(text: string, tone: 'sage' | 'gold' | 'rose' = 'sage') {
 
 // Boxed fact rows (date, location, amount). Used in confirmations.
 export function factBox(rows: Array<{ label: string, value: string }>) {
-  const rowHtml = rows.map(r => `
-    <div style="display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid ${EMAIL_COLORS.lineFaint};">
-      <span style="font-size:13px;color:${EMAIL_COLORS.inkSoft};font-weight:500;">${r.label}</span>
-      <span style="font-size:14px;color:${EMAIL_COLORS.forestDark};font-weight:600;">${r.value}</span>
-    </div>
+  // HK May 29 2026: rewrote from flex divs to a table. Gmail iOS and
+  // many other mail clients strip flexbox at delivery time, which
+  // collapsed every label+value pair to inline-no-space ("ServiceDeep
+  // Tissue", "Duration60 min", "Price$100"). Table layout is the
+  // bullet-proof email standard for two-column rows. Also added
+  // explicit border-bottom on each row except the last for a clean
+  // hairline divider that works everywhere.
+  const lastIdx = rows.length - 1;
+  const rowHtml = rows.map((r, i) => `
+    <tr>
+      <td style="font-size:13px;color:${EMAIL_COLORS.inkSoft};font-weight:500;padding:9px 0;text-align:left;border-bottom:${i === lastIdx ? 'none' : `1px solid ${EMAIL_COLORS.lineFaint}`};width:35%;vertical-align:top;">${r.label}</td>
+      <td style="font-size:14px;color:${EMAIL_COLORS.forestDark};font-weight:600;padding:9px 0;text-align:right;border-bottom:${i === lastIdx ? 'none' : `1px solid ${EMAIL_COLORS.lineFaint}`};vertical-align:top;">${r.value}</td>
+    </tr>
   `).join('');
   return `
-    <div style="background:${EMAIL_COLORS.creamCard};border-radius:12px;padding:6px 18px;margin:16px 0;">
+    <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background:${EMAIL_COLORS.creamCard};border-radius:12px;padding:6px 18px;margin:16px 0;border-collapse:collapse;">
       ${rowHtml}
-    </div>
+    </table>
   `;
 }
 

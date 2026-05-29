@@ -299,6 +299,7 @@ serve(async (req) => {
         SUPABASE_SERVICE_KEY,
         event_type,
         booking_id,
+        therapist.id,
         {
           initiatedBy: initiated_by,
           feeAmountCents: fee_amount_cents,
@@ -341,6 +342,7 @@ async function fireDownstreamForBookingEvent(
   serviceKey: string,
   eventType: string,
   bookingId: string,
+  therapistId: string,
   options: {
     initiatedBy?: 'therapist' | 'client',
     feeAmountCents?: number,
@@ -423,11 +425,50 @@ async function fireDownstreamForBookingEvent(
     });
   }
 
-  await Promise.allSettled(targets.map(t =>
-    fetch(`${supabaseUrl}/functions/v1/${t.fn}`, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify(t.payload),
-    })
-  ));
+  // HK May 29 2026: each fan-out fetch is observed via console.log AND
+  // via a notification_log row for visibility into silent failures.
+  // The previous Promise.allSettled approach swallowed every error
+  // including 503s, timeouts, and JSON parse failures from the target
+  // function. send-reschedule-confirmation went 12 days without
+  // logging a single client row and we had zero diagnostic. Now each
+  // call records its own outcome in notification_log under a
+  // 'fan_out_' notification_type, with the HTTP status code, so
+  // future regressions become a SQL query away from root cause.
+  const supabase = createClient(supabaseUrl, serviceKey);
+  await Promise.allSettled(targets.map(async (t) => {
+    const startedAt = Date.now();
+    let status = -1;
+    let errorMsg: string | null = null;
+    let bodyPreview: string | null = null;
+    try {
+      const res = await fetch(`${supabaseUrl}/functions/v1/${t.fn}`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(t.payload),
+      });
+      status = res.status;
+      const text = await res.text().catch(() => '');
+      bodyPreview = text ? text.slice(0, 300) : null;
+      if (!res.ok) errorMsg = `${t.fn} returned ${res.status}: ${bodyPreview}`;
+    } catch (e: any) {
+      errorMsg = `${t.fn} fetch threw: ${e?.message || String(e)}`;
+    }
+    const ms = Date.now() - startedAt;
+    console.log(`[notify-booking-event fan-out] ${t.fn} ${status} (${ms}ms)`, errorMsg || 'ok');
+    // Log the fan-out attempt itself so we can audit silent failures.
+    try {
+      await supabase.from('notification_log').insert({
+        therapist_id: therapistId,
+        client_id: null,
+        booking_id: t.payload?.booking_id || bookingId,
+        notification_type: `fan_out_${t.fn}`,
+        audience: 'system',
+        channel: 'http',
+        recipient: t.fn,
+        status: status === 200 ? 'sent' : status === -1 ? 'failed' : `http_${status}`,
+        error_message: errorMsg,
+        subject: null,
+      });
+    } catch (_e) { /* logging failure must not break the parent function */ }
+  }));
 }

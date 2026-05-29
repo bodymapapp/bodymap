@@ -208,12 +208,14 @@ serve(async (req) => {
     ${todaySessions && todaySessions.length > 0 ? `
     <div style="padding:20px 24px;border-bottom:1px solid #F3F4F6;">
       <div style="font-size:11px;font-weight:700;color:#6B7280;text-transform:uppercase;letter-spacing:0.07em;margin-bottom:12px;">Today's Sessions (${todaySessions.length})</div>
+      <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="border-collapse:collapse;">
       ${todaySessions.map((s: any) => `
-        <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid #F9F9F9;">
-          <div style="font-size:14px;font-weight:600;color:#1A1A2E;">${s.clients?.name || 'Client'}</div>
-          <div style="font-size:12px;color:${s.completed?'#16A34A':'#D97706'};font-weight:600;">${s.completed ? '✓ Complete' : '⏳ Needs notes'}</div>
-        </div>
+        <tr>
+          <td style="font-size:14px;font-weight:600;color:#1A1A2E;padding:8px 0;border-bottom:1px solid #F9F9F9;text-align:left;">${s.clients?.name || 'Client'}</td>
+          <td style="font-size:12px;color:${s.completed?'#16A34A':'#D97706'};font-weight:600;padding:8px 0;border-bottom:1px solid #F9F9F9;text-align:right;">${s.completed ? '✓ Complete' : '⏳ Needs notes'}</td>
+        </tr>
       `).join('')}
+      </table>
     </div>` : ''}
 
     ${tomorrowBookings && tomorrowBookings.length > 0 ? `
