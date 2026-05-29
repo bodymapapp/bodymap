@@ -1296,3 +1296,90 @@ Audit found three real gaps that mean memberships and packages are largely invis
 3. No dedicated event for "package redeemed" (a session booked against a prepaid package). $0 redemptions intentionally do not fire payment_received (no money moved), but the THERAPIST gets the normal T1 new_booking when a session is scheduled against the package, which is fine. No new event needed; verify the booking confirmation reflects "from package, prepaid" so the therapist sees context.
 
 Net: there is no dedicated membership_purchased or package_purchased event type in the spec; both purchases fold into T4 payment_received. That's a deliberate choice that keeps the matrix clean. The fix is just to actually fire T4 from the membership purchase confirm function too.
+
+---
+
+## Notification testing findings — May 28 2026 (HK live test results)
+
+HK ran Tests 1-13 end to end. Results captured here so tomorrow's session opens with the full picture instead of re-deriving from chat. Tonight we strategize, tomorrow we ship.
+
+### Three systemic issues that cut across many tests
+
+1. NO TRACE IN THE SCHEDULE AFTER AN ACTION. When a session is cancelled, rescheduled, no-showed, or refunded, the Schedule does not visibly mark the session as such. HK sees no badge / strikethrough / status pill / "Refunded $120" line / "Cancelled by you on May 28" annotation. The data is in the DB but the UI never reads it back into the day/week/month timeline. Compounding: a cancelled slot should remain visible as "this is when the cancelled session WAS" while also showing as available for rebooking; today it just disappears. Cancel/no-show/refund all show this pattern.
+
+2. NO SOFT CONFIRMATION AFTER AN ACTION. Toast was added (commit 795f1ca2) but did not consistently appear during HK's tests, or fired only on some paths. HK explicitly: "What is toast? There is no documentation in the Schedule that this happened. It is only in emails. This is systemic." Need: every state-change action in Schedule (cancel, no-show, reschedule, charge, refund, package redeem, mark paid) shows a fade-in/fade-out confirmation toast. Audit every action site, not just cancel/no-show.
+
+3. EMAILS ARE TERSE AND UNDETAILED. Client cancellation email had no detail. Client no-show email had no detail. Payment receipt (therapist + client) had no service description, no session date/time, no who. T03 intake-filled email is fine. The therapist no-show email was DOUBLE-FIRED with contradictory content (one said "no fee" while another said "$1 charged"). Need a copy + content pass across every client-facing email, prioritizing the ones HK tested. Standard: client email always shows when the session was, what service, who it was with, what changed, what next.
+
+### Test-by-test bugs to fix tomorrow (consolidated)
+
+T1+T2 (C16 refund):
+- Therapist and client emails NEITHER fired. notification_log will tell us if they fired-and-failed or never fired. Diagnose first.
+- Schedule does not show the session as refunded after the action. Need a "Refunded $X on <date>" badge on the booking detail panel and a visual marker on the timeline.
+
+T3-T5 (C07 therapist cancel):
+- Therapist email lands correctly with the detail box (Test 4 with reason worked as designed).
+- Client email NEVER fired despite my a9052ac7 fix (unsubscribed_at). The fix shipped but client side still dead. Needs notification_log inspection: look for send-therapist-cancelled rows in last hour. If absent, the fan-out from notify-booking-event is not invoking the client function at all.
+- After cancel: Schedule should mark the slot as Cancelled but still show the time as available for rebooking. Today the slot disappears entirely.
+
+T6 (C10 reschedule):
+- Critical: therapist got a CANCELLATION email, not a reschedule email. This means notify-booking-event is being called with event_type='booking_cancelled' from the reschedule path, OR the reschedule path is firing cancel before firing reschedule. Trace BookingModal reschedule submit to find where event_type is wrong.
+- Client email did NOT fire. send-reschedule-confirmation not invoked or failing silently.
+- Need to investigate WHY the reschedule path is calling notify-booking-event with the wrong event_type. The bdec4ef4 fix was supposed to be the duplicate-send fix, but a deeper bug is emitting a cancel event from reschedule.
+
+T8 (C11 no-show no fee):
+- Therapist email lands. Client email lands but is terse.
+- Schedule does not visibly mark the session as no-show.
+
+T9 (C12 no-show charged):
+- Therapist DOUBLE-fired:
+  (a) "Joy marked no-show" with "Fee: No fee charged" (wrong)
+  (b) "Joy marked no-show, $1 charged" (correct)
+- Cause hypothesis: notify-booking-event fires the no-show event first with fee_charged=false (before the charge succeeds), then the charge-cancellation-fee function fires its own follow-on, producing two emails with contradictory content. Should be one email, fired after the charge resolves, with the correct fee outcome.
+- Client email lands but lacks detail.
+- Schedule shows no marker.
+
+T10 (T08 agreement signed):
+- "Send practice agreement" is NOT in the session/booking detail panel where HK expects it. It's only reachable from the client profile view. HK's ask: surface it on the booking detail panel above the session journey, alongside Send intake.
+- Test could not be performed because the agreement was already signed on the test client. Need a way to re-trigger or a test booking where it isn't.
+
+T11 (T03 intake submitted) - THE GOOD ONE:
+- Therapist email fired correctly with the new detail box. The 5774da45 fix works.
+- BUT: the session detail panel does not auto-refresh after intake submission. The "No intake" pill stays even though intake is now in the DB. HK: "We must have a refresh mechanism without logging out in the PWA."
+- The four-circle journey UI shows step 1 complete, but the separate "No intake" pill (top right under client name) does not. Inconsistent state between two UI components reading the same data.
+- Also: "Send intake" link is buried at the bottom of the client documents area. Surface it at the top alongside Send agreement.
+
+T12 (T04 payment received):
+- Both emails fire. Both are very terse. No service description, no session date/time, no totals breakdown.
+
+T13 (package redeem) - CRITICAL DATA BUG:
+- The UI shows "Session 18 of 6 in 5-Session Bundle" which is nonsense. Likely caused by mis-counting redemptions or by my SQL data writing sessions_purchased=6 / sessions_remaining=5 against an existing template where session_count=6 but real redemptions exist.
+- "Manage package" link → lands back on Schedule, doesn't actually let HK assign this session to the package slot.
+- CheckoutModal shows "Use existing package, 3 left" (which is correct visibly, but the 18 of 6 elsewhere is wrong).
+- Clicking "Use existing package" errors: `session_payments violates check constraint session_payments_charge_context_exactly_one`. The check constraint enforces exactly one of (booking_id, member_subscription_id, package_purchase_id) is set. Likely the redemption code is setting two of them. Read the constraint and the code path that fires on "use existing package" in CheckoutModal to diagnose.
+
+### Strategic priorities for tomorrow (HK to confirm before coding)
+
+Priority 1: Diagnose the silent client-email failures (C16, C7, C10). All three of these client functions were "verified correct against live schema" but real testing shows they don't fire. Read notification_log for tonight's tests, find which functions exited where. Stop trusting "code looks correct" as a proxy for "it works."
+
+Priority 2: Systemic Schedule trace. Design a single status-marker pattern (badge + strikethrough + annotation line) that gets applied wherever the timeline renders a booking, then update Timeline/Weekly/Monthly views consistently. This unblocks HK's confidence-after-action.
+
+Priority 3: Systemic toast confirmation. Audit every state-change action site in Schedule (cancel, no-show, reschedule, refund, charge, mark paid, package redeem, send intake, send agreement) and ensure each calls showToast on success. Currently only cancel/no-show flow through it.
+
+Priority 4: Reschedule emitting cancel event. Trace BookingModal reschedule path. Determine why notify-booking-event is being called with event_type='booking_cancelled' from a reschedule action.
+
+Priority 5: Email content depth. Standard template for client-side emails: who, what service, when, where, what changed, what next. Build a shared helper so every client email pulls the same canonical block. Therapist emails: similar but tighter, with the fee/action outcome prominent.
+
+Priority 6: Package redeem 18-of-6 + check constraint error. Read constraint, trace CheckoutModal "use existing package" payload, fix the duplicate context field.
+
+Priority 7: Surface Send Intake and Send Agreement at the top of the booking detail panel, not buried in documents.
+
+Priority 8: PWA refresh after data change (intake submitted, etc). React state should reflect the new DB row without requiring re-login. Subscribe to the relevant tables via Supabase realtime, or refetch on focus, or both.
+
+DEFERRED until above ships:
+- C08/C09 client-cancel public page
+- C12-link payment-link variant (HK to supply third email)
+- Membership renewal_due rewrite
+- Confirm-membership-purchase fire payment_received
+- Daily evening digest copy
+- Lapse nudges (cron, naturally tested over 45+ days)
