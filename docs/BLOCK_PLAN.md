@@ -1423,3 +1423,38 @@ Build plan (~3 hrs):
 Acceptance criteria: a therapist can book 4 future sessions for a client in one flow, see them tied together in Schedule, cancel one without affecting the others, or cancel "all future" in one action.
 
 Deferred behind notification testing + package error fix + PWA refresh. Not blocking real-customer use today; competitors all offer this but it's not a differentiator. Position: after notifications verify green, before SMS work.
+
+---
+
+## Outlook Calendar integration (queued May 29 2026)
+
+HK asked: "Can we look into outlook and provide that?" alongside the recurring bookings discussion. Today MyBodyMap integrates with Google Calendar (two-way sync, busy-time blocking on public booking page). Outlook calendar (and via that, Microsoft 365 / Exchange) is the symmetric integration for therapists who use Microsoft instead of Google.
+
+Architecture (mirror Google Calendar):
+1. Microsoft Graph OAuth: client_id/secret/redirect_uri, scopes calendars.readwrite + offline_access. Registered as an Azure AD app. Same consent flow as Google.
+2. Token storage: extend the existing google_calendar_tokens table to a generic external_calendar_tokens table with a 'provider' enum (google | outlook), OR keep them separate (cleaner FK story). Decide at build time.
+3. Sync edge function `sync-outlook-calendar` (mirrors `sync-google-calendar`). Pulls events from now() through +90 days, persists into external_calendar_events with provider='outlook'. Cron every 15 minutes.
+4. BookingPage availability check: extend the existing "is this slot blocked by external calendar" query to OR across providers.
+5. Settings UI: a "Connect Outlook" button next to "Connect Google" with same OAuth-completion banner.
+
+Scope estimate: 6-8 hours. Most expensive step is Azure app registration + scopes approval, which is similar in friction to the Google OAuth verification we're still navigating. Outlook scopes for calendar read/write are not sensitive, so no separate verification round is needed unlike Google.
+
+Demand signal: zero requests today. Queue behind notification verification, recurring appointments, and SMS production. Move up if any of Jacquie, Candice, Terra, or Kathy mention they're on Outlook.
+
+---
+
+## Multi-date picker placement (May 29 2026)
+
+HK: "Also therapist's calendar view in all dates? Same for recurring bookings? Where would you place that? Probably in Book Appointment in schedule."
+
+Confirmed: the recurring/series booking UI is a multi-date calendar picker that lives inside BookingModal, accessed from the Book Appointment button on Schedule. Single button, single entry point.
+
+Flow:
+1. Therapist taps Book Appointment as today
+2. Picks client + service + duration + start time (existing single-date flow)
+3. New "Add another date" link below the date picker reveals a multi-date grid (next 8-12 weeks visible at once)
+4. Tap N dates, each turns sage; tap again to deselect
+5. Optional "Repeat every N weeks" shortcut at top of grid pre-fills dates, then therapist can edit
+6. Submit creates N bookings with shared series_id, runs conflict check across all proposed dates upfront
+
+This collapses "recurring" and "multi-date picker" into one capability since they solve the same problem from two angles. Build in the recurring-appointments work block (~3 hrs as already scoped).
