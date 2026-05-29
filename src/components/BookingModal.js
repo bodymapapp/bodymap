@@ -153,6 +153,32 @@ export default function BookingModal({ therapist, mode = 'create', existingBooki
     return i >= 0 ? i + 1 : null;
   }
 
+  // HK May 29 2026: when the anchor date changes, ensure the recurring
+  // rule's endDate is still valid (i.e. strictly after the new anchor).
+  // Without this, picking a new anchor that lands on or after the
+  // previously-set endDate silently collapses the series to a single
+  // session, which is the "I picked weekly but only 1 session shows"
+  // bug HK caught.
+  useEffect(() => {
+    if (!recurringRule.on) return;
+    if (recurringRule.endMode !== 'date') return;
+    if (!date) return;
+    if (recurringRule.endDate && recurringRule.endDate > date) return;
+    // Bump forward to a sensible default based on unit.
+    const [y, m, d] = date.split('-').map(Number);
+    const def = new Date(y, m - 1, d);
+    if (recurringRule.unit === 'month') {
+      def.setMonth(def.getMonth() + 6);
+    } else if (recurringRule.unit === 'day') {
+      def.setDate(def.getDate() + 30);
+    } else {
+      def.setDate(def.getDate() + 84); // 12 weeks for week unit
+    }
+    const newEnd = `${def.getFullYear()}-${String(def.getMonth() + 1).padStart(2, '0')}-${String(def.getDate()).padStart(2, '0')}`;
+    setRecurringRule(rule => ({ ...rule, endDate: newEnd }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [date, recurringRule.on, recurringRule.endMode, recurringRule.unit]);
+
   // Load services + availability + blocked days
   useEffect(() => {
     async function load() {

@@ -156,10 +156,19 @@ export function generateSeriesDates(anchorIso, rule) {
 
 // ─── humanRuleSummary ──────────────────────────────────────────────
 // Plain English description of the rule given the generated dates.
-// Designed to read naturally for the 70yo LMT: "12 sessions through
-// Aug 14, 2026" not "12 occurrences every 1 week".
-export function humanRuleSummary(rule, dates) {
-  if (!rule?.on || dates.length === 0) return '';
+// Returns:
+//   { line1, line2, sample, warning? }
+// warning is set when the rule appears misconfigured (e.g. endDate
+// before/equal to anchor produced only 1 session in date mode).
+export function humanRuleSummary(rule, dates, anchorIso) {
+  if (!rule?.on) return null;
+  if (dates.length === 0) {
+    return {
+      line1: 'No sessions yet',
+      line2: 'Pick a start date on the calendar below.',
+      sample: '',
+    };
+  }
   const count = dates.length;
   const last = dates[dates.length - 1];
   const [ly, lm, ld] = last.split('-').map(Number);
@@ -171,9 +180,29 @@ export function humanRuleSummary(rule, dates) {
     month: 'short', day: 'numeric', year: 'numeric',
   });
   const sessionWord = count === 1 ? 'session' : 'sessions';
+
+  // Warning: date mode, single session, endDate <= anchor. Reads as
+  // "you said weekly but only 1 session will be made because your
+  // end date is on or before the start".
+  let warning = null;
+  if (rule.endMode === 'date' && rule.endDate && anchorIso && count === 1 && rule.endDate <= anchorIso) {
+    warning = 'End date is on or before the start date. Only one session will be created. Pick an end date in the future to repeat.';
+  }
+
+  // Inline sample: first 5 dates as short labels, plus "and N more".
+  const sampleDates = dates.slice(0, 5).map(iso => {
+    const [y, m, d] = iso.split('-').map(Number);
+    return new Date(y, m - 1, d).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  });
+  const sample = dates.length <= 5
+    ? sampleDates.join(', ')
+    : `${sampleDates.join(', ')}, and ${dates.length - 5} more`;
+
   return {
     line1: `${count} ${sessionWord} through ${lastShort}`,
     line2: `Last: ${lastFmt}`,
+    sample,
+    warning,
   };
 }
 
@@ -181,7 +210,7 @@ export function humanRuleSummary(rule, dates) {
 export default function RecurringRulePanel({ rule, anchorIso, onChange }) {
   const setRule = (patch) => onChange({ ...rule, ...patch });
   const dates = React.useMemo(() => generateSeriesDates(anchorIso, rule), [anchorIso, rule]);
-  const summary = humanRuleSummary(rule, dates);
+  const summary = humanRuleSummary(rule, dates, anchorIso);
 
   // Anchor's DOW (used as the auto-selected DOW when none picked yet)
   const anchorDow = anchorIso
@@ -373,6 +402,7 @@ export default function RecurringRulePanel({ rule, anchorIso, onChange }) {
             <input
               type="date"
               value={rule.endDate || ''}
+              min={anchorIso || undefined}
               onChange={(e) => setRule({ endDate: e.target.value, endMode: 'date' })}
               style={{
                 padding: '6px 8px', borderRadius: 6,
@@ -385,8 +415,23 @@ export default function RecurringRulePanel({ rule, anchorIso, onChange }) {
         </div>
       </div>
 
-      {/* Live preview line */}
-      {summary && (
+      {/* Live preview / warning footer */}
+      {summary && summary.warning && (
+        <div style={{
+          marginTop: 10, padding: '10px 12px',
+          background: '#FEF3C7',
+          border: '1px solid #F59E0B',
+          borderRadius: 8,
+        }}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: '#92400E', marginBottom: 2 }}>
+            ⚠ Check the end date
+          </div>
+          <div style={{ fontSize: 12, color: '#92400E', lineHeight: 1.5 }}>
+            {summary.warning}
+          </div>
+        </div>
+      )}
+      {summary && !summary.warning && (
         <div style={{
           marginTop: 10, padding: '10px 12px',
           background: C.sageBg,
@@ -396,9 +441,23 @@ export default function RecurringRulePanel({ rule, anchorIso, onChange }) {
           <div style={{ fontSize: 13, fontWeight: 700, color: C.forest, marginBottom: 2 }}>
             ✨ {summary.line1}
           </div>
-          <div style={{ fontSize: 11, color: C.forest, opacity: 0.85 }}>
+          <div style={{ fontSize: 11, color: C.forest, opacity: 0.85, marginBottom: summary.sample ? 6 : 0 }}>
             {summary.line2}
           </div>
+          {summary.sample && (
+            <div style={{
+              fontSize: 11, color: C.forest,
+              padding: '6px 8px',
+              background: C.white,
+              border: `1px solid ${C.sage}`,
+              borderRadius: 6,
+              lineHeight: 1.5,
+              marginTop: 4,
+            }}>
+              <span style={{ fontWeight: 700, marginRight: 4 }}>Dates:</span>
+              {summary.sample}
+            </div>
+          )}
         </div>
       )}
 
