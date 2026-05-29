@@ -1443,6 +1443,9 @@ function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled, show
   const [copied,setCopied] = useState(false);
   const [confirmCancel, setConfirmCancel] = useState(false);
   const [cancelling, setCancelling] = useState(false);
+  // HK May 29 2026: when the booking belongs to a series, the inline-
+  // cancel confirm panel offers to also cancel all future in the series.
+  const [cancelAllInSeries, setCancelAllInSeries] = useState(false);
   const [editTime, setEditTime] = useState(false);
   const [newStartTime, setNewStartTime] = useState(appt.startTime || '');
   const [newEndTime, setNewEndTime] = useState(appt.endTime || '');
@@ -2488,24 +2491,51 @@ function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled, show
 
   async function cancelAppointment() {
     setCancelling(true);
-    await supabase.from('bookings').update({ status: 'cancelled' }).eq('id', appt.id);
 
-    // Notify the therapist (non-blocking). This is the legacy
-    // inline confirm path that only fires when the full booking
-    // row could not be loaded for the policy-aware modal.
+    // HK May 29 2026: build the list of booking ids to cancel. By
+    // default it's just this booking. If the booking belongs to a
+    // series AND the therapist checked "Also cancel all future in
+    // series", expand to every booking in the series with a date
+    // >= today (don't retroactively cancel past sessions).
+    let idsToCancel = [appt.id];
+    if (cancelAllInSeries && appt.seriesId) {
+      const todayIso = new Date().toISOString().slice(0, 10);
+      const { data: future } = await supabase
+        .from('bookings')
+        .select('id')
+        .eq('series_id', appt.seriesId)
+        .gte('booking_date', todayIso)
+        .neq('status', 'cancelled');
+      if (future && future.length) idsToCancel = future.map(r => r.id);
+    }
+
+    await supabase.from('bookings')
+      .update({ status: 'cancelled' })
+      .in('id', idsToCancel);
+
+    // Notify per booking. Non-blocking, paced so we don't bury Resend.
     try {
       const supabaseUrl = process.env.REACT_APP_SUPABASE_URL;
       const anonKey = process.env.REACT_APP_SUPABASE_ANON_KEY;
-      fetch(`${supabaseUrl}/functions/v1/notify-booking-event`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${anonKey}`,
-          'apikey': anonKey,
-        },
-        body: JSON.stringify({ booking_id: appt.id, event_type: 'booking_cancelled', initiated_by: 'therapist' }),
-      }).catch(() => { /* non-blocking */ });
+      for (const id of idsToCancel) {
+        fetch(`${supabaseUrl}/functions/v1/notify-booking-event`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${anonKey}`,
+            'apikey': anonKey,
+          },
+          body: JSON.stringify({ booking_id: id, event_type: 'booking_cancelled', initiated_by: 'therapist' }),
+        }).catch(() => { /* non-blocking */ });
+        if (idsToCancel.length > 1) await new Promise(r => setTimeout(r, 220));
+      }
     } catch (_notifyErr) { /* non-blocking */ }
+
+    notify(
+      idsToCancel.length > 1
+        ? `Cancelled ${idsToCancel.length} sessions in series`
+        : 'Appointment cancelled'
+    );
 
     setCancelling(false);
     onCancelled?.();
@@ -2904,6 +2934,33 @@ function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled, show
               </div>
             );
           })()}
+
+          {/* HK May 29 2026: series pill on bookings that belong to a
+              recurring set. Sits above the package badge if both apply.
+              Shows the position in the series and the rule label when
+              available. Helps the therapist know "this is the 3rd of 6
+              I set up for Sandra" at a glance. */}
+          {!appt.preview && appt.seriesId && appt.seriesIndex && appt.seriesTotal && (
+            <div style={{
+              marginTop: 10,
+              padding: '10px 14px',
+              borderRadius: 10,
+              background: '#F4F6F2',
+              border: '1.5px solid #D6E0D4',
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <span style={{ fontSize: 16, lineHeight: 1 }}>↻</span>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: '#1F4030', lineHeight: 1.3 }}>
+                    Session {appt.seriesIndex} of {appt.seriesTotal} in a series
+                  </div>
+                  <div style={{ fontSize: 11, color: '#4B6353', marginTop: 2, lineHeight: 1.4 }}>
+                    Cancel offers to cancel all future in the series.
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* HK May 27 2026 Phase Pkg-C: prominent package badge.
               70yo persona = big text, sage palette, plain English.
@@ -4391,14 +4448,31 @@ function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled, show
                 <div style={{fontSize:12,color:'#DC2626',marginBottom:14,lineHeight:1.5}}>
                   {appt.client} · {appt.time} on {appt.date?.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'})}
                 </div>
+                {appt.seriesId && appt.seriesTotal > 1 && (
+                  <label style={{
+                    display:'flex',alignItems:'flex-start',gap:8,
+                    background:'#fff',border:'1.5px solid #FECACA',borderRadius:8,
+                    padding:'10px 12px',marginBottom:12,cursor:'pointer',
+                  }}>
+                    <input
+                      type="checkbox"
+                      checked={cancelAllInSeries}
+                      onChange={e => setCancelAllInSeries(e.target.checked)}
+                      style={{marginTop:2,cursor:'pointer'}}
+                    />
+                    <span style={{fontSize:12,color:'#7F1D1D',lineHeight:1.5}}>
+                      Also cancel all future sessions in this series (this is session {appt.seriesIndex} of {appt.seriesTotal}).
+                    </span>
+                  </label>
+                )}
                 <div style={{display:'flex',gap:8}}>
-                  <button onClick={() => setConfirmCancel(false)}
+                  <button onClick={() => { setConfirmCancel(false); setCancelAllInSeries(false); }}
                     style={{flex:1,padding:'9px 0',borderRadius:8,border:'1.5px solid #D1D5DB',background:'#fff',color:'#6B7280',fontSize:13,fontWeight:600,cursor:'pointer'}}>
                     Keep it
                   </button>
                   <button onClick={cancelAppointment} disabled={cancelling}
                     style={{flex:1,padding:'9px 0',borderRadius:8,border:'none',background:'#DC2626',color:'#fff',fontSize:13,fontWeight:700,cursor:'pointer',opacity:cancelling?0.6:1}}>
-                    {cancelling ? 'Cancelling…' : 'Yes, cancel'}
+                    {cancelling ? 'Cancelling…' : (cancelAllInSeries ? 'Cancel series' : 'Yes, cancel')}
                   </button>
                 </div>
               </div>

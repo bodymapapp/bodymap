@@ -342,6 +342,51 @@ export default function BookingModal({ therapist, mode = 'create', existingBooki
           supabase, therapist_id: therapist.id, name, email, phone,
         });
 
+        // HK May 29 2026: conflict check across all proposed series
+        // dates before any insert. We compare to any booking on the
+        // same date with overlapping start_time/end_time, and to any
+        // full-day blocked_day. If any conflicts are found, abort and
+        // surface them to the therapist so she can edit the rule or
+        // drop the conflicting dates.
+        const sortedDatesForCheck = [...seriesDates].sort();
+        const [conflictBookingsResult, conflictBlocksResult] = await Promise.all([
+          supabase
+            .from('bookings')
+            .select('id, booking_date, start_time, end_time, client_name')
+            .eq('therapist_id', therapist.id)
+            .in('booking_date', sortedDatesForCheck)
+            .neq('status', 'cancelled'),
+          supabase
+            .from('blocked_days')
+            .select('date, start_time, end_time')
+            .eq('therapist_id', therapist.id)
+            .in('date', sortedDatesForCheck),
+        ]);
+        const slotStart = slot.start;
+        const slotEnd = slot.end;
+        const overlaps = (aStart, aEnd, bStart, bEnd) => aStart < bEnd && bStart < aEnd;
+        const conflicts = [];
+        for (const r of (conflictBookingsResult.data || [])) {
+          if (overlaps(slotStart, slotEnd, (r.start_time || '').slice(0,5), (r.end_time || '').slice(0,5))) {
+            conflicts.push({ date: r.booking_date, reason: `already booked: ${r.client_name || 'another client'}` });
+          }
+        }
+        for (const b of (conflictBlocksResult.data || [])) {
+          if (!b.start_time) {
+            // full-day block
+            conflicts.push({ date: b.date, reason: 'full-day block' });
+          } else if (overlaps(slotStart, slotEnd, (b.start_time || '').slice(0,5), (b.end_time || '').slice(0,5))) {
+            conflicts.push({ date: b.date, reason: 'partial-day block' });
+          }
+        }
+        if (conflicts.length) {
+          setSaving(false);
+          const lines = conflicts.slice(0, 5).map(c => `  ${c.date}: ${c.reason}`).join('\n');
+          const more = conflicts.length > 5 ? `\n  ...and ${conflicts.length - 5} more` : '';
+          setError(`Found ${conflicts.length} conflict${conflicts.length === 1 ? '' : 's'} in the series:\n${lines}${more}\n\nDrop the conflicting dates from the calendar or pick a different time, then try again.`);
+          return;
+        }
+
         // Insert series row first.
         const { data: seriesRow, error: serErr } = await supabase
           .from('booking_series')
