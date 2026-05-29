@@ -147,6 +147,35 @@ serve(async (req) => {
       continue;
     }
 
+    // HK May 29 2026: surface what the platform did on the therapist's
+    // behalf today. Reasoning: the daily evening digest should answer
+    // "what did MyBodyMap do for me today" not just "what's on tomorrow."
+    // Pulls automated outreach (lapse nudges, intake reminders, 48h
+    // reminders) AND custom quicksend messages from today's notification_log.
+    const last24h = new Date(today.getTime() - 24 * 60 * 60 * 1000).toISOString();
+    const { data: outreachToday } = await supabase
+      .from('notification_log')
+      .select('notification_type, audience, status, recipient')
+      .eq('therapist_id', therapist.id)
+      .gte('sent_at', last24h)
+      .eq('audience', 'client')
+      .eq('status', 'sent')
+      .in('notification_type', ['lapse_nudge', 'lapse_final_nudge', 'lapse_signal', 'intake_reminder', 'reminder_48h', 'custom_quicksend']);
+
+    const outreachByType: Record<string, number> = {};
+    for (const row of (outreachToday || [])) {
+      const t = row.notification_type;
+      outreachByType[t] = (outreachByType[t] || 0) + 1;
+    }
+    const outreachLabels: Record<string, string> = {
+      lapse_nudge: 'lapse check-ins (45-day soft nudge)',
+      lapse_final_nudge: 'final goodbye notes (90 days)',
+      lapse_signal: 'lapse signals to you',
+      intake_reminder: 'intake reminders to upcoming clients',
+      reminder_48h: '48-hour appointment reminders',
+      custom_quicksend: 'custom messages you sent',
+    };
+
     // Backwards compatibility: rename todayBookings -> todaySessions
     // so the existing email HTML template (below) does not have to
     // change. Same semantic: 'sessions that happened today'.
@@ -223,6 +252,17 @@ serve(async (req) => {
           <div style="font-size:12px;color:#991B1B;">${c.daysSince} days since last visit</div>
         </div>
       `).join('')}
+    </div>` : ''}
+
+    ${Object.keys(outreachByType).length > 0 ? `
+    <div style="padding:20px 24px;border-bottom:1px solid #F3F4F6;background:#F5F7F2;">
+      <div style="font-size:11px;font-weight:700;color:#2A5741;text-transform:uppercase;letter-spacing:0.07em;margin-bottom:12px;">📬 What we sent for you today</div>
+      ${Object.entries(outreachByType).map(([type, n]) => `
+        <div style="padding:6px 0;font-size:13px;color:#1F4030;">
+          <strong style="color:#2A5741;">${n}</strong> ${outreachLabels[type] || type.replace(/_/g, ' ')}
+        </div>
+      `).join('')}
+      <div style="font-size:11px;color:#4B6353;margin-top:8px;line-height:1.5;">These ran automatically, no action needed.</div>
     </div>` : ''}
 
     <div style="padding:20px 24px;display:flex;gap:12px;flex-wrap:wrap;">
