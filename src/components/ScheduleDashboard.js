@@ -2905,15 +2905,21 @@ function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled, show
               - Send Intake: visible if status is 'pending-intake'.
               - Send Agreement: visible if client has not yet signed
                 (practice_agreement_signed_at is null on clientRow). */}
-          {!appt.preview && (() => {
-            const showIntake = appt.status === 'pending-intake';
-            const showAgreement = clientRow && !clientRow.practice_agreement_signed_at;
-            if (!showIntake && !showAgreement) return null;
-            // HK May 29 2026 QA fix: the booking object stores the
-            // client's phone under different keys depending on the data
-            // source (appt.client_phone OR appt.phone), so the SMS
-            // button was hiding even when a phone was on file. Fall
-            // back through all three locations.
+          {/* HK May 29 2026 (revised): compact single-row quick actions
+              at the top of the booking detail panel. Each action lives
+              on one line: icon + label on the left, two small Email/SMS
+              pills on the right. Replaces the bulky stacked layout HK
+              flagged as 'massive use of space and unprofessional'.
+              Also: when agreement is already signed we show a sage
+              'Signed (date)' indicator instead of hiding the row, so
+              the therapist always sees the state. */}
+          {!appt.preview && clientRow && (() => {
+            const showIntakeSend = appt.status === 'pending-intake';
+            const agreementSigned = !!clientRow.practice_agreement_signed_at;
+            // If intake is done AND agreement is signed, nothing actionable
+            // here. Skip the whole section.
+            if (!showIntakeSend && agreementSigned) return null;
+
             const clientEmail = appt.email || clientRow?.email || '';
             const clientPhone = appt.client_phone || appt.phone || clientRow?.phone || '';
             const hasEmail = !!clientEmail;
@@ -2922,70 +2928,109 @@ function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled, show
             const intakeMailtoSubject = encodeURIComponent('Your intake form');
             const intakeMailtoBody = encodeURIComponent(intakeBody);
             const intakeSmsBody = encodeURIComponent(intakeBody);
-            const channelBtn = {
-              flex: '1 1 110px',
-              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-              background: '#F4F6F2', color: '#2A5741',
-              border: '1.5px solid #D6E0D4', borderRadius: 10,
-              padding: '10px 14px', fontSize: 13, fontWeight: 600,
-              textDecoration: 'none', cursor: 'pointer', fontFamily: 'inherit',
+
+            const pill = (label, icon, href, onClick, disabled) => {
+              const sharedStyle = {
+                display: 'inline-flex', alignItems: 'center', gap: 4,
+                padding: '6px 10px', borderRadius: 999,
+                background: disabled ? '#F4F4F4' : '#fff',
+                border: `1px solid ${disabled ? '#E5E7EB' : '#C8D5BC'}`,
+                color: disabled ? '#9CA3AF' : '#2A5741',
+                fontSize: 12, fontWeight: 600,
+                textDecoration: 'none', cursor: disabled ? 'not-allowed' : 'pointer',
+                fontFamily: 'inherit',
+              };
+              if (href && !disabled) {
+                return <a key={label} href={href} style={sharedStyle}><span style={{ fontSize: 11 }}>{icon}</span>{label}</a>;
+              }
+              return (
+                <button key={label} type="button" onClick={disabled ? undefined : onClick} disabled={disabled} style={sharedStyle}>
+                  <span style={{ fontSize: 11 }}>{icon}</span>{label}
+                </button>
+              );
             };
+
+            const rowStyle = {
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              gap: 8, padding: '8px 0', flexWrap: 'wrap',
+            };
+            const labelStyle = {
+              display: 'flex', alignItems: 'center', gap: 7,
+              fontSize: 13, fontWeight: 600, color: '#1F4030',
+              flexShrink: 0,
+            };
+            const pillRow = {
+              display: 'flex', gap: 6, flexShrink: 0,
+            };
+
+            const signedDate = agreementSigned
+              ? new Date(clientRow.practice_agreement_signed_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+              : '';
+
             return (
-              <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 8 }}>
-                {showIntake && (
-                  <div>
-                    <div style={{ fontSize: 11, fontWeight: 700, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 6 }}>
-                      📝 Send intake
+              <div style={{
+                marginTop: 10,
+                padding: '4px 12px',
+                background: '#FAFAF7',
+                border: '1px solid #EAE5DA',
+                borderRadius: 10,
+              }}>
+                {showIntakeSend && (
+                  <div style={{ ...rowStyle, borderBottom: !agreementSigned ? '1px solid #EFEAE0' : 'none' }}>
+                    <div style={labelStyle}>
+                      <span>📝</span>
+                      <span>Send intake</span>
                     </div>
-                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                      {hasEmail && (
-                        <a href={`mailto:${clientEmail}?subject=${intakeMailtoSubject}&body=${intakeMailtoBody}`} style={channelBtn}>
-                          <span style={{ fontSize: 14 }}>📧</span> Email
-                        </a>
-                      )}
-                      {hasPhone && (
-                        <a href={`sms:${clientPhone}&body=${intakeSmsBody}`} style={channelBtn}>
-                          <span style={{ fontSize: 14 }}>💬</span> SMS
-                        </a>
-                      )}
-                      {!hasEmail && !hasPhone && (
-                        <div style={{ fontSize: 12, color: '#6B7280', fontStyle: 'italic' }}>
-                          No email or phone on file for this client
-                        </div>
-                      )}
-                    </div>
+                    {!hasEmail && !hasPhone ? (
+                      <span style={{ fontSize: 11, color: '#9CA3AF', fontStyle: 'italic' }}>No contact on file</span>
+                    ) : (
+                      <div style={pillRow}>
+                        {pill('Email', '📧', hasEmail ? `mailto:${clientEmail}?subject=${intakeMailtoSubject}&body=${intakeMailtoBody}` : null, null, !hasEmail)}
+                        {pill('SMS', '💬', hasPhone ? `sms:${clientPhone}&body=${intakeSmsBody}` : null, null, !hasPhone)}
+                      </div>
+                    )}
                   </div>
                 )}
-                {showAgreement && (
-                  <div>
-                    <div style={{ fontSize: 11, fontWeight: 700, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 6 }}>
-                      ✍️ Send agreement
+                {agreementSigned ? (
+                  <div style={rowStyle}>
+                    <div style={labelStyle}>
+                      <span>✍️</span>
+                      <span>Agreement</span>
                     </div>
-                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                      {hasEmail && (
-                        <button
-                          type="button"
-                          onClick={() => sendAgreement('email')}
-                          disabled={sendingAgreement === 'email'}
-                          style={{ ...channelBtn, opacity: sendingAgreement === 'email' ? 0.6 : 1 }}>
-                          <span style={{ fontSize: 14 }}>📧</span> {sendingAgreement === 'email' ? 'Sending…' : 'Email'}
-                        </button>
-                      )}
-                      {hasPhone && (
-                        <button
-                          type="button"
-                          onClick={() => sendAgreement('sms')}
-                          disabled={sendingAgreement === 'sms'}
-                          style={{ ...channelBtn, opacity: sendingAgreement === 'sms' ? 0.6 : 1 }}>
-                          <span style={{ fontSize: 14 }}>💬</span> {sendingAgreement === 'sms' ? 'Sending…' : 'SMS'}
-                        </button>
-                      )}
-                      {!hasEmail && !hasPhone && (
-                        <div style={{ fontSize: 12, color: '#6B7280', fontStyle: 'italic' }}>
-                          No email or phone on file for this client
-                        </div>
-                      )}
+                    <span style={{
+                      fontSize: 12, fontWeight: 600, color: '#2A5741',
+                      background: '#EEF3EE', padding: '4px 10px', borderRadius: 999,
+                      border: '1px solid #C8D5BC',
+                    }}>
+                      ✓ Signed {signedDate}
+                    </span>
+                  </div>
+                ) : (
+                  <div style={rowStyle}>
+                    <div style={labelStyle}>
+                      <span>✍️</span>
+                      <span>Send agreement</span>
                     </div>
+                    {!hasEmail && !hasPhone ? (
+                      <span style={{ fontSize: 11, color: '#9CA3AF', fontStyle: 'italic' }}>No contact on file</span>
+                    ) : (
+                      <div style={pillRow}>
+                        {pill(
+                          sendingAgreement === 'email' ? 'Sending…' : 'Email',
+                          '📧',
+                          null,
+                          () => sendAgreement('email'),
+                          !hasEmail || sendingAgreement === 'email'
+                        )}
+                        {pill(
+                          sendingAgreement === 'sms' ? 'Sending…' : 'SMS',
+                          '💬',
+                          null,
+                          () => sendAgreement('sms'),
+                          !hasPhone || sendingAgreement === 'sms'
+                        )}
+                      </div>
+                    )}
                   </div>
                 )}
               </div>

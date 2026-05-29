@@ -131,15 +131,17 @@ export default function MonthCalendar({
 
   return (
     <div>
-      {/* HK May 29 2026: visible 'Include my off days' toggle for
-          therapist-facing surfaces. Discoverable upfront for our 70yo
-          persona instead of hidden behind a per-tap confirm. Defaults
-          OFF so accidentally tapping an off-day still does nothing
-          (struck-through cell remains disabled). Flipping ON makes
-          off-days tappable like regular days while keeping a subtle
-          visual cue (light beige fill) that they're outside normal
-          working hours. Client-facing surfaces don't see this toggle
-          because allowOverrideOffDay defaults false. */}
+      {/* HK May 29 2026: visible 'Include unavailable days' toggle for
+          therapist-facing surfaces. Unlocks BOTH off-days (day-of-week
+          not in availability) AND full-day-blocked dates (one-off PTO
+          marked in Manage your calendar). From the user perspective
+          both are 'days I marked unavailable' and the toggle is the
+          single switch to override that for an exception booking.
+          Discoverable upfront for our 70yo persona instead of hidden
+          behind a per-tap confirm. Defaults OFF so accidentally
+          tapping an unavailable day still does nothing. Client-facing
+          surfaces don't see this toggle because allowOverrideOffDay
+          defaults false. */}
       {allowOverrideOffDay && (
         <div style={{
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
@@ -151,12 +153,12 @@ export default function MonthCalendar({
         }}>
           <div style={{ fontSize: 13, color: C.dark, lineHeight: 1.4, paddingRight: 12 }}>
             <strong style={{ color: includeOffDays ? C.forest : C.dark }}>
-              Include my off days
+              Include unavailable days
             </strong>
             <div style={{ fontSize: 11, color: C.gray, marginTop: 2 }}>
               {includeOffDays
-                ? 'You can now tap any day, including days you normally do not work.'
-                : 'Off days are disabled. Flip this on to book one anyway.'}
+                ? 'You can now tap any day, including off days and blocked days.'
+                : 'Off days and blocked days are disabled. Flip on to book one anyway.'}
             </div>
           </div>
           <button
@@ -240,12 +242,17 @@ export default function MonthCalendar({
           const seriesIdx = seriesIndexFor ? seriesIndexFor(ds) : null;
 
           // Determine if cell is interactive.
-          // Past, hard blocks (full-day, beyond horizon, before minimum) are always disabled.
-          // Off-days are disabled unless allowOverrideOffDay=true AND the
-          // visible 'Include my off days' toggle is ON.
-          const hardDisabled = isPast || isFullDayBlock || beyondHorizon || beforeMinimum;
-          const offDayUnlocked = dowExcluded && allowOverrideOffDay && includeOffDays;
-          const softDisabled = dowExcluded && !offDayUnlocked;
+          // Past, beyond horizon, and before minimum are ALWAYS disabled.
+          // Off-days AND full-day blocks are unlocked together by the
+          // visible 'Include unavailable days' toggle (allowOverrideOffDay
+          // gate). HK May 29 2026: extended unlock to cover full-day
+          // blocks too; both are 'days I marked unavailable' from the
+          // therapist's perspective and the toggle is the single
+          // override switch.
+          const hardDisabled = isPast || beyondHorizon || beforeMinimum;
+          const isUnavailable = dowExcluded || isFullDayBlock;
+          const offDayUnlocked = isUnavailable && allowOverrideOffDay && includeOffDays;
+          const softDisabled = isUnavailable && !offDayUnlocked;
           const disabled = hardDisabled || softDisabled;
 
           // Resolve visual style. Selection wins over everything else.
@@ -258,9 +265,12 @@ export default function MonthCalendar({
           if (isPast) {
             opacity = 0.4;
           } else if (isFullDayBlock) {
-            background = C.amberHash;
-            textColor = C.amber;
-            opacity = 0.7;
+            // When unlocked by the toggle, soften the amber visual so
+            // the cell reads as tappable. Keep a faint amber tint to
+            // remind the therapist this is a day she marked off.
+            background = offDayUnlocked ? '#FEF8EC' : C.amberHash;
+            textColor = offDayUnlocked ? C.dark : C.amber;
+            opacity = offDayUnlocked ? 1 : 0.7;
           } else if (dowExcluded) {
             background = C.offdayFill;
             textColor = offDayUnlocked ? C.dark : C.offdayText;
