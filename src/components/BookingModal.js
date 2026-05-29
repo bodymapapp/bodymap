@@ -250,10 +250,17 @@ export default function BookingModal({ therapist, mode = 'create', existingBooki
 
     const dow = new Date(date + 'T12:00:00').getDay();
     const av = availability.find(a => a.day_of_week === dow);
-    if (!av) { setLoadingSlots(false); return; }
-
-    const start = (av.start_time || '09:00').slice(0, 5);
-    const end   = (av.end_time   || '17:00').slice(0, 5);
+    // HK May 29 2026: when the therapist enables "Include my off days"
+    // on the MonthCalendar and picks a day she doesn't normally work,
+    // there is no availability row for that day_of_week. Previously
+    // generateSlots returned early with empty slots, which made the
+    // toggle feel broken: cell tappable, but "No standard slots on
+    // this day" with no slots to pick. Fall back to a default 9am-5pm
+    // window so the standard 30-min grid still gets generated. The
+    // toggle is the gate; if date is set to an off-day at all, it was
+    // an explicit override and the therapist wants to schedule there.
+    const start = (av?.start_time || '09:00').slice(0, 5);
+    const end   = (av?.end_time   || '17:00').slice(0, 5);
 
     // Fetch existing bookings on that date to avoid conflicts
     const { data: booked } = await supabase
