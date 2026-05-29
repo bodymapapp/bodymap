@@ -1383,3 +1383,43 @@ DEFERRED until above ships:
 - Confirm-membership-purchase fire payment_received
 - Daily evening digest copy
 - Lapse nudges (cron, naturally tested over 45+ days)
+
+---
+
+## Recurring appointments (queued May 29 2026)
+
+HK asked: "what is our way to schedule a client for recurring appointments? They may have a logic (every month on day X) but more than likely no logic, we just know what dates they will come on."
+
+Today: no recurring booking support exists. Each session is booked individually.
+
+Design (per HK conversation May 29 2026):
+
+Primary use case is ad-hoc: massage therapy clients commonly book multiple future sessions in one conversation but with irregular spacing ("every 3 weeks, then 5 weeks, then back to 3"). Strict rule-based recurring is the exception, not the rule. So the design centers on a date-list builder, with a rule-based shortcut for the few cases where it helps.
+
+Build plan (~3 hrs):
+
+1. Schema (10 min):
+   - bookings.series_id (uuid, nullable)
+   - booking_series table: id, therapist_id, client_id, created_at, rule_text (free-text describing the rule if any: "every 4 weeks for 6 sessions")
+
+2. BookingModal multi-date builder (90 min):
+   - After first date+time picked, surface "Add another date" link
+   - Each tap appends a row to a date-list state
+   - Optional shortcut at top: "Repeat every [N] weeks for [M] occurrences" -> populates date list, individual dates editable/removable
+   - All rows share same client + service + duration
+   - Single submit: inserts N bookings with shared series_id in one transaction
+   - Conflict check across all proposed dates upfront
+
+3. Schedule render (20 min):
+   - Small "X of N" pill on booking detail panel and chip on timeline when series_id is set
+   - Tooltip lists other sessions in series
+
+4. Cancel + reschedule UX (40 min):
+   - When acting on a series booking, prompt: "Just this session" vs "All future in series"
+   - Reuses existing cancel/reschedule flows under the hood
+
+5. Test data + verification (30 min)
+
+Acceptance criteria: a therapist can book 4 future sessions for a client in one flow, see them tied together in Schedule, cancel one without affecting the others, or cancel "all future" in one action.
+
+Deferred behind notification testing + package error fix + PWA refresh. Not blocking real-customer use today; competitors all offer this but it's not a differentiator. Position: after notifications verify green, before SMS work.
