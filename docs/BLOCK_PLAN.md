@@ -251,31 +251,20 @@ Platform-level work that doesn't belong to a single ribbon.
 **Compliance gap exposed by this work:** the SMS sender code does NOT currently append STOP/HELP opt-out language to messages. TCR requires this for campaign approval. See Macro #12 below.
 
 ### Macro #12: SMS opt-out compliance (STOP/HELP language)
-**Status:** queued, ~1 hour. Required for Macro #11 campaign approval and for FCC/CTIA compliance regardless.
-**Discovered:** May 17 2026, during A2P registration prep. Grep of `_shared/notifications.ts` for "STOP" returned zero hits.
-**What's required:**
-  - Every message sent to a client must include "Reply STOP to opt out" at the first touchpoint, and at minimum periodically thereafter
-  - STOP keyword must be honored: when a client texts STOP, mark `clients.sms_opted_out_at` and skip them in future SMS sends
-  - HELP keyword must return contact info (the therapist's email or a brand support email)
-**What:**
-  1. Add `sms_opted_out_at timestamptz` column to `clients` table
-  2. In `_shared/notifications.ts` SMS code path, check `client.sms_opted_out_at` before sending. If set, log as `status: 'skipped', error_message: 'client_opted_out'` and don't send.
-  3. Append `Reply STOP to opt out.` to every C-SMS message body when client.sms_opted_out_at is null AND the message doesn't already contain "STOP" in caps
-  4. Build a Twilio webhook receiver edge function `sms-inbound` that handles STOP/HELP keywords. Twilio messaging services already handle STOP/HELP by default, but we need the database side to know about opt-outs so we don't waste API calls trying to send to opted-out users.
-**Cost of not doing this:** A2P campaign rejection, FCC fines if reported, real harm to clients who can't opt out of unwanted texts.
+**Status:** CODE COMPLETE May 18 2026, verified May 29 2026 via audit.
+**What shipped:**
+  - `clients.sms_opted_out_at` column added
+  - `_shared/notifications.ts` SMS path checks the column; skips and logs `status='skipped' error_message='client_opted_out'` when set
+  - Every client SMS gets "Reply STOP to opt out." appended unless the body already contains "STOP" in caps
+  - `sms-inbound` edge function exists and handles STOP / STOPALL / UNSUBSCRIBE / CANCEL / END / QUIT keywords. Stamps `sms_opted_out_at = now()` on the matching client. Responds with empty TwiML so Twilio sends its own auto-confirmation (CTIA-compliant out of the box).
+**Outstanding HK-only task:** configure the Twilio messaging service inbound webhook URL in the Twilio dashboard to point at `${SUPABASE_URL}/functions/v1/sms-inbound`. Once A2P approval lands (Macro #11), STOP wiring is verifiable end-to-end.
 
 ### Macro #13: Twilio status callbacks for true SMS delivery state
-**Status:** queued, ~30-45 min. Surfaced by Macro #10 (compliance dashboard) revealing the silent-drop problem.
-**Discovered:** May 17 2026. The notification_log status=sent only reflects Twilio API acceptance, not carrier delivery. A2P-blocked sends report sent but never arrive. The dashboard's matrix shows yellow cells that are lying.
-**What:**
-  1. Add `status_callback` URL parameter to every Twilio send in `sendSmsViaTwilio` in `_shared/notifications.ts`. URL: `${SUPABASE_URL}/functions/v1/twilio-status-callback`
-  2. Add `delivery_status` and `delivery_status_updated_at` columns to notification_log
-  3. New edge function `twilio-status-callback`: Twilio POSTs to this URL when message state changes (queued → sent → delivered, or queued → undelivered → failed). Function looks up the notification_log row by provider_id (Twilio message SID) and updates delivery_status.
-  4. Update compliance dashboard to render cells based on delivery_status when available, falling back to status when Twilio hasn't called back yet. Color logic:
-     - Green = delivered (real success)
-     - Yellow = sent (Twilio accepted, awaiting carrier callback, typically <30 sec)
-     - Red = undelivered or failed (carrier dropped, real failure)
-**Why this matters:** without this, the matrix shows green when carriers are silently dropping every message. With this, HK sees red the moment a delivery actually fails, with the Twilio error code attached.
+**Status:** CODE COMPLETE May 18 2026, verified May 29 2026 via audit.
+**What shipped:**
+  - `sendSmsViaTwilio` in `_shared/notifications.ts` sets `StatusCallback` parameter on every outbound SMS pointing at `${SUPABASE_URL}/functions/v1/twilio-status-callback`
+  - `twilio-status-callback` edge function exists (188 lines) and receives Twilio's POSTs on every state change. Updates `notification_log.delivery_status` + `delivery_status_updated_at` for the matching `provider_id` (message SID).
+**Compliance dashboard render still TBD:** the dashboard reads `status` not `delivery_status`. Small follow-up to switch the cell-color logic to prefer delivery_status when present. ~15 min when SMS is actually flowing post-A2P.
 
 ### Macro #14 (Fire #18): Modal scroll-to-confirm audit across 6 files
 **Status:** RESOLVED May 29 2026 after audit.
