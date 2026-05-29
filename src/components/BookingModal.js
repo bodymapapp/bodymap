@@ -638,6 +638,22 @@ export default function BookingModal({ therapist, mode = 'create', existingBooki
     if (avDows.includes(d.getDay()) && !blockedDates.has(ds)) availDates.push(ds);
   }
 
+  // HK May 29 2026: lock page-behind scroll while the modal is open.
+  // Prevents scroll-chaining: when the modal's inner body scrolls past
+  // its boundary, browsers default to scrolling whatever's behind it
+  // (the Schedule page). overscroll-behavior:contain on each scroll
+  // layer is belt-and-suspenders; the body-lock is the primary fix.
+  useEffect(() => {
+    const previousOverflow = document.body.style.overflow;
+    const previousTouchAction = document.body.style.touchAction;
+    document.body.style.overflow = 'hidden';
+    document.body.style.touchAction = 'none';
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.body.style.touchAction = previousTouchAction;
+    };
+  }, []);
+
   return createPortal((
     <div style={{
       position: 'fixed',
@@ -652,6 +668,7 @@ export default function BookingModal({ therapist, mode = 'create', existingBooki
       paddingBottom: 'max(20px, env(safe-area-inset-bottom, 0px))',
       overflowY: 'auto',
       WebkitOverflowScrolling: 'touch',
+      overscrollBehavior: 'contain',
     }}
       onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
       <div style={{
@@ -663,6 +680,7 @@ export default function BookingModal({ therapist, mode = 'create', existingBooki
         display: 'flex',
         flexDirection: 'column',
         boxShadow: '0 24px 64px rgba(0,0,0,0.25)',
+        overscrollBehavior: 'contain',
       }}>
 
         {/* Header */}
@@ -683,6 +701,7 @@ export default function BookingModal({ therapist, mode = 'create', existingBooki
           minHeight: 0,
           overflowY: 'auto',
           WebkitOverflowScrolling: 'touch',
+          overscrollBehavior: 'contain',
         }}>
 
           {/* Client info, readonly for reschedule */}

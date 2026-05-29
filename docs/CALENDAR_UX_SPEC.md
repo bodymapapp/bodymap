@@ -20,7 +20,7 @@ Every cell is in exactly one state at any moment. Combinations like "selected + 
 | State | When | Visual | Tap behavior |
 |-------|------|--------|--------------|
 | **Past** | `cellDate < today` | Faded 55% opacity, default text | Disabled, no tap. Cursor `not-allowed`. |
-| **Off-day (recurring)** | `day_of_week` not in therapist's availability | Light beige fill, struck-through number, gray text | Client audience: disabled, no tap. Therapist audience with `allowOverrideOffDay=true`: tap shows inline confirm "This is normally an off day. Book anyway?" with sage CTA. |
+| **Off-day (recurring)** | `day_of_week` not in therapist's availability | Cream-beige fill, struck-through number (when toggle off), gray text. Cream-beige fill, normal number (when toggle on). | Client audience: disabled, no tap. Therapist audience: toggle OFF means disabled; toggle ON means tappable like a normal day. See "Override-off-day pattern" below. |
 | **Full-day block** | iso in `blockedDates` set (no start_time) | Amber striped background | Disabled. Block off-times are PTO/closed; never selectable here. To override, therapist must un-block in Schedule first. |
 | **Beyond horizon** | `> maxDate` (e.g. booking horizon) | Faded, default | Disabled. "Bookings open within X days" helper. |
 | **Before minimum** | `< minDate` (e.g. lead time) | Faded, default | Disabled. "Bookings need X hours lead" helper. |
@@ -99,17 +99,25 @@ NO vertical-scroll month stack. NO infinite scroll. NO swipe gestures (touch swi
 
 ---
 
-## Override-off-day confirmation pattern
+## Override-off-day pattern (visible toggle)
 
-When `allowOverrideOffDay=true` and the therapist taps an off-day cell:
+When `allowOverrideOffDay=true` and the surface is therapist-facing, a toggle pill renders at the top of the calendar:
 
-1. Cell does NOT immediately turn sage
-2. A small inline banner appears below the grid: "**Saturday June 7** is normally an off day. Book this date anyway?"
-3. Two buttons: `Pick another day` (dismisses banner) and `Book anyway` (commits the selection)
-4. On confirm, the cell selects normally and the banner clears
-5. If they tap another off-day before confirming, the banner updates to the new date
+> **Include my off days**
+> Off days are disabled. Flip this on to book one anyway.
 
-Confirmation persists per-tap (not per-session). Tapping the same off-day twice in a row produces two confirmations, not auto-commit.
+States:
+
+- **Toggle OFF (default):** off-day cells render cream-beige + struck-through number + disabled cursor. Taps do nothing. Therapist sees the toggle and the constraint at the same time.
+- **Toggle ON:** off-day cells keep the cream-beige fill (subtle "this is outside your normal hours" reminder) but the number reads cleanly without strikethrough, and the cell is tappable like any normal day.
+
+Why a toggle instead of a per-tap confirm:
+
+- Discoverability: for a 70yo solo LMT, the option to override should be VISIBLE before she tries to tap something. A struck-through cell that secretly accepts taps and asks a confirmation is hidden behavior. The toggle declares the affordance upfront.
+- Bulk-friendly: in series mode the therapist may pick multiple off-day Sundays. With a per-tap confirm she would tap N times and confirm N times. With the toggle she flips once and proceeds.
+- Reversible: she can flip the toggle off mid-flow and the calendar returns to safe defaults without resetting her selection.
+
+The toggle is local to the calendar instance (resets when the modal closes). It is NOT persisted as a therapist preference. Booking on off-days should remain an opt-in per session, not a stance.
 
 ---
 
@@ -145,6 +153,7 @@ If a future surface needs a different model (e.g. week view, agenda view), build
 - **May 27 2026**, `MonthCalendar` extracted from BookingPage's inline `Cal` function. Adopted by BulkSessionScheduler.
 - **May 29 2026**, `SelectableMonthView` built for BookingModal (mistake; should have used MonthCalendar). Consolidated back to MonthCalendar same day. SelectableMonthView removed.
 - **May 29 2026**, This spec doc created. MonthCalendar enhanced with `mode='multi'`, `bookingsByDate`, `partialBlockedDates`, `seriesIndexFor`, `allowOverrideOffDay`. BookingModal refactored to use MonthCalendar with `mode='multi'` for series.
+- **May 29 2026 (revision)**, Per-tap "Book anyway?" confirm replaced with a visible "Include my off days" toggle pill at the top of the calendar. Toggle is the discoverable affordance our 70yo persona expects. Also fixed scroll-chaining on BookingModal: added `overscroll-behavior: contain` on the modal scroll layers and body-scroll lock while the modal is mounted, so the Schedule page behind no longer scrolls when the modal hits a boundary.
 
 ---
 

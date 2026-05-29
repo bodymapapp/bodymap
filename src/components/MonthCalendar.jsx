@@ -86,7 +86,14 @@ export default function MonthCalendar({
 
   const [yr, setYr] = useState(initialYear ?? today.getFullYear());
   const [mo, setMo] = useState(initialMonth ?? today.getMonth());
-  const [overrideCandidate, setOverrideCandidate] = useState(null); // ISO of an off-day tapped, pending confirm
+  // HK May 29 2026: replaced the per-tap "Book anyway?" confirm with a
+  // visible toggle. HK feedback: "I don't quickly see a toggle to
+  // schedule on day off." For our 70yo persona discoverability beats
+  // efficiency; the toggle states the option upfront instead of making
+  // her tap a struck-through cell to find it. When ON, off-days lose
+  // the strikethrough and become tappable like regular days. When OFF
+  // (default), off-days are clearly marked unavailable.
+  const [includeOffDays, setIncludeOffDays] = useState(false);
 
   // Memoize a Set of selected ISOs so cell lookups are O(1) whether
   // single or multi mode.
@@ -106,29 +113,12 @@ export default function MonthCalendar({
   })();
 
   function prevMonth() {
-    setOverrideCandidate(null);
     if (mo === 0) { setMo(11); setYr(y => y - 1); }
     else setMo(m => m - 1);
   }
   function nextMonth() {
-    setOverrideCandidate(null);
     if (mo === 11) { setMo(0); setYr(y => y + 1); }
     else setMo(m => m + 1);
-  }
-
-  function handleTap(iso, dowExcluded) {
-    if (dowExcluded && allowOverrideOffDay) {
-      // Surface the inline confirm rather than selecting immediately.
-      setOverrideCandidate(iso);
-      return;
-    }
-    onSelect(iso);
-  }
-
-  function confirmOverride() {
-    if (!overrideCandidate) return;
-    onSelect(overrideCandidate);
-    setOverrideCandidate(null);
   }
 
   // Build the cell list for the current month
@@ -139,16 +129,65 @@ export default function MonthCalendar({
     ...Array.from({ length: daysInMonth }, (_, i) => i + 1),
   ];
 
-  // Format the override-candidate banner date in plain English.
-  const overrideLabel = (() => {
-    if (!overrideCandidate) return '';
-    const [y, m, d] = overrideCandidate.split('-').map(Number);
-    const dt = new Date(y, m - 1, d);
-    return dt.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
-  })();
-
   return (
     <div>
+      {/* HK May 29 2026: visible 'Include my off days' toggle for
+          therapist-facing surfaces. Discoverable upfront for our 70yo
+          persona instead of hidden behind a per-tap confirm. Defaults
+          OFF so accidentally tapping an off-day still does nothing
+          (struck-through cell remains disabled). Flipping ON makes
+          off-days tappable like regular days while keeping a subtle
+          visual cue (light beige fill) that they're outside normal
+          working hours. Client-facing surfaces don't see this toggle
+          because allowOverrideOffDay defaults false. */}
+      {allowOverrideOffDay && (
+        <div style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          padding: '10px 12px',
+          marginBottom: 12,
+          background: includeOffDays ? '#EEF3EE' : '#FAFAF7',
+          border: `1.5px solid ${includeOffDays ? C.sage : C.light}`,
+          borderRadius: 10,
+        }}>
+          <div style={{ fontSize: 13, color: C.dark, lineHeight: 1.4, paddingRight: 12 }}>
+            <strong style={{ color: includeOffDays ? C.forest : C.dark }}>
+              Include my off days
+            </strong>
+            <div style={{ fontSize: 11, color: C.gray, marginTop: 2 }}>
+              {includeOffDays
+                ? 'You can now tap any day, including days you normally do not work.'
+                : 'Off days are disabled. Flip this on to book one anyway.'}
+            </div>
+          </div>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={includeOffDays}
+            onClick={() => setIncludeOffDays(v => !v)}
+            style={{
+              flexShrink: 0,
+              width: 48, height: 28,
+              borderRadius: 14,
+              border: 'none',
+              background: includeOffDays ? C.sage : '#D1D5DB',
+              cursor: 'pointer',
+              position: 'relative',
+              transition: 'background 0.18s',
+              fontFamily: 'inherit',
+            }}>
+            <span style={{
+              position: 'absolute',
+              top: 3, left: includeOffDays ? 23 : 3,
+              width: 22, height: 22,
+              borderRadius: '50%',
+              background: '#fff',
+              boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
+              transition: 'left 0.18s',
+            }} />
+          </button>
+        </div>
+      )}
+
       {/* Month nav: chevron-prev / "Month Year" / chevron-next */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
         <button
@@ -197,15 +236,16 @@ export default function MonthCalendar({
           const isFullDayBlock = blockedDates.has ? blockedDates.has(ds) : false;
           const isPartialBlock = partialBlockedDates.has ? partialBlockedDates.has(ds) : false;
           const isSelected = selectedSet.has(ds);
-          const isOverrideCandidate = overrideCandidate === ds;
           const bookingCount = bookingsByDate ? (bookingsByDate.get ? bookingsByDate.get(ds) : 0) || 0 : 0;
           const seriesIdx = seriesIndexFor ? seriesIndexFor(ds) : null;
 
-          // Determine if cell is interactive
+          // Determine if cell is interactive.
           // Past, hard blocks (full-day, beyond horizon, before minimum) are always disabled.
-          // Off-days are disabled UNLESS allowOverrideOffDay is true.
+          // Off-days are disabled unless allowOverrideOffDay=true AND the
+          // visible 'Include my off days' toggle is ON.
           const hardDisabled = isPast || isFullDayBlock || beyondHorizon || beforeMinimum;
-          const softDisabled = dowExcluded && !allowOverrideOffDay;
+          const offDayUnlocked = dowExcluded && allowOverrideOffDay && includeOffDays;
+          const softDisabled = dowExcluded && !offDayUnlocked;
           const disabled = hardDisabled || softDisabled;
 
           // Resolve visual style. Selection wins over everything else.
@@ -223,8 +263,12 @@ export default function MonthCalendar({
             opacity = 0.7;
           } else if (dowExcluded) {
             background = C.offdayFill;
-            textColor = C.offdayText;
-            textDecoration = 'line-through';
+            textColor = offDayUnlocked ? C.dark : C.offdayText;
+            // Strikethrough only when off-day is locked (toggle OFF).
+            // When toggle is ON, we keep the beige fill (subtle reminder
+            // 'this is not your normal working day') but the number
+            // reads cleanly so it doesn't feel disabled.
+            textDecoration = offDayUnlocked ? 'none' : 'line-through';
           } else if (bookingCount > 0) {
             background = '#F4F8F5';
           }
@@ -241,17 +285,12 @@ export default function MonthCalendar({
             textDecoration = 'none';
           }
 
-          if (isOverrideCandidate && !isSelected) {
-            borderColor = C.sage;
-            background = C.sageBg;
-          }
-
           return (
             <button
               key={i}
               type="button"
               disabled={disabled}
-              onClick={() => handleTap(ds, dowExcluded)}
+              onClick={() => onSelect(ds)}
               aria-label={`${dt.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}${dowExcluded ? ', off day' : ''}${isFullDayBlock ? ', blocked' : ''}${bookingCount > 0 ? `, ${bookingCount} booking${bookingCount === 1 ? '' : 's'}` : ''}`}
               style={{
                 position: 'relative',
@@ -320,49 +359,8 @@ export default function MonthCalendar({
         })}
       </div>
 
-      {/* Off-day override confirm banner */}
-      {overrideCandidate && (
-        <div style={{
-          marginTop: 12,
-          padding: '12px 14px',
-          background: C.sageBg,
-          border: `1.5px solid ${C.sage}`,
-          borderRadius: 10,
-        }}>
-          <div style={{ fontSize: 13, color: C.dark, lineHeight: 1.5, marginBottom: 10 }}>
-            <strong>{overrideLabel}</strong> is normally an off day. Book this date anyway?
-          </div>
-          <div style={{ display: 'flex', gap: 8 }}>
-            <button
-              type="button"
-              onClick={() => setOverrideCandidate(null)}
-              style={{
-                flex: 1, padding: '8px 0', borderRadius: 8,
-                border: `1.5px solid ${C.light}`,
-                background: C.white, color: C.gray,
-                fontSize: 13, fontWeight: 600, cursor: 'pointer',
-                fontFamily: 'inherit',
-              }}>
-              Pick another day
-            </button>
-            <button
-              type="button"
-              onClick={confirmOverride}
-              style={{
-                flex: 1, padding: '8px 0', borderRadius: 8,
-                border: 'none',
-                background: C.sage, color: C.white,
-                fontSize: 13, fontWeight: 700, cursor: 'pointer',
-                fontFamily: 'inherit',
-              }}>
-              Book anyway
-            </button>
-          </div>
-        </div>
-      )}
-
       {/* "Service is offered on X only" helper (client-facing context) */}
-      {isPartialSchedule && service && !overrideCandidate && (
+      {isPartialSchedule && service && (
         <div style={{
           marginTop: 12,
           padding: '8px 12px',
