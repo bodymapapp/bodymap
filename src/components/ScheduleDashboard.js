@@ -1638,6 +1638,8 @@ function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled, show
   // the session_payments row to be refunded; setting it null closes
   // the modal.
   const [refundTarget, setRefundTarget] = useState(null);
+  // HK May 29 2026: Send Agreement quick-action state (top of panel).
+  const [sendingAgreement, setSendingAgreement] = useState(false);
   const [paymentRows, setPaymentRows] = useState([]);
   const [paymentsLoading, setPaymentsLoading] = useState(true);
   const [clientRow, setClientRow] = useState(null);
@@ -2795,6 +2797,116 @@ function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled, show
               </div>
             </div>
           </div>
+
+          {/* HK May 29 2026: Quick-send actions at the TOP of the booking
+              detail panel. Previously the Send Intake button was buried at
+              the bottom of the page and Send Agreement was only reachable
+              from the client profile. Surface them here so the therapist
+              can act in one tap, only when relevant.
+              - Send Intake: visible if status is 'pending-intake'.
+              - Send Agreement: visible if client has not yet signed
+                (practice_agreement_signed_at is null on clientRow). */}
+          {!appt.preview && (() => {
+            const showIntake = appt.status === 'pending-intake';
+            const showAgreement = clientRow && !clientRow.practice_agreement_signed_at;
+            if (!showIntake && !showAgreement) return null;
+            return (
+              <div style={{
+                marginTop: 10,
+                display: 'flex',
+                gap: 8,
+                flexWrap: 'wrap',
+              }}>
+                {showIntake && (
+                  <a
+                    href={`sms:&body=${encodeURIComponent(`Hi ${firstName}! Please fill your intake form before your session: ${intakeLink}`)}`}
+                    style={{
+                      flex: '1 1 140px',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                      background: '#F4F6F2', color: '#2A5741',
+                      border: '1.5px solid #D6E0D4', borderRadius: 10,
+                      padding: '10px 14px', fontSize: 13, fontWeight: 600,
+                      textDecoration: 'none',
+                    }}>
+                    <span style={{ fontSize: 14 }}>📝</span> Send intake
+                  </a>
+                )}
+                {showAgreement && (
+                  <button
+                    onClick={async () => {
+                      if (sendingAgreement) return;
+                      if (!clientRow?.id || !therapist?.id) {
+                        notify('Open this booking again after the client record loads');
+                        return;
+                      }
+                      setSendingAgreement(true);
+                      try {
+                        // Generate a signing-request row (same pattern as
+                        // AgreementCard's generateLink).
+                        const token = Array.from(crypto.getRandomValues(new Uint8Array(24)))
+                          .map(b => b.toString(16).padStart(2, '0'))
+                          .join('');
+                        const alphabet = 'abcdefghjkmnpqrstuvwxyz23456789';
+                        const codeBytes = crypto.getRandomValues(new Uint8Array(7));
+                        const shortCode = Array.from(codeBytes)
+                          .map(b => alphabet[b % alphabet.length])
+                          .join('');
+
+                        const { data: req, error: insErr } = await supabase
+                          .from('agreement_send_requests')
+                          .insert({
+                            token,
+                            short_code: shortCode,
+                            therapist_id: therapist.id,
+                            client_id: clientRow.id,
+                            client_name: clientRow.name || null,
+                            client_email: clientRow.email || null,
+                            client_phone: clientRow.phone || null,
+                          })
+                          .select('id, short_code, token')
+                          .single();
+                        if (insErr) throw insErr;
+                        const link = `${window.location.origin}/s/${req.short_code || shortCode}`;
+                        // Fire the email send (non-blocking).
+                        if (clientRow.email) {
+                          supabase.functions.invoke('send-agreement-email', {
+                            body: {
+                              short_code: req.short_code || shortCode,
+                              therapist_id: therapist.id,
+                              client_email: clientRow.email,
+                              client_name: clientRow.name || null,
+                              link,
+                            },
+                          }).catch(() => { /* non-blocking */ });
+                        }
+                        // Also copy the link so the therapist can paste it
+                        // into SMS if email is disabled or undelivered.
+                        try { await navigator.clipboard.writeText(link); } catch (_e) { /* clipboard may be blocked */ }
+                        notify('Agreement link sent and copied');
+                      } catch (e) {
+                        console.error('[Send agreement]', e);
+                        notify('Could not send agreement, try again');
+                      } finally {
+                        setSendingAgreement(false);
+                      }
+                    }}
+                    disabled={sendingAgreement}
+                    style={{
+                      flex: '1 1 140px',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                      background: '#F4F6F2', color: '#2A5741',
+                      border: '1.5px solid #D6E0D4', borderRadius: 10,
+                      padding: '10px 14px', fontSize: 13, fontWeight: 600,
+                      cursor: sendingAgreement ? 'wait' : 'pointer',
+                      fontFamily: 'inherit',
+                      opacity: sendingAgreement ? 0.6 : 1,
+                    }}>
+                    <span style={{ fontSize: 14 }}>✍️</span> {sendingAgreement ? 'Sending…' : 'Send agreement'}
+                  </button>
+                )}
+              </div>
+            );
+          })()}
 
           {/* HK May 27 2026 Phase Pkg-C: prominent package badge.
               70yo persona = big text, sage palette, plain English.

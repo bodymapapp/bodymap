@@ -14,7 +14,8 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { logNotification } from "../_shared/notifications.ts";
-import { emailWrapper, eyebrow, factBox, fromFor, replyToFor, formatApptDateTime } from "../_shared/emailTemplate.ts";
+import { emailWrapper, fromFor, replyToFor, formatApptDateTime } from "../_shared/emailTemplate.ts";
+import { renderClientEmail } from "../_shared/clientEmail.ts";
 
 const cors = {
   'Access-Control-Allow-Origin': '*',
@@ -56,35 +57,32 @@ serve(async (req) => {
   const serviceName = booking.services?.name || 'Massage session';
   const serviceDuration = booking.services?.duration || null;
   const loc = booking.location; const locationAddr = loc ? [loc.street1, loc.street2, [loc.city, loc.state].filter(Boolean).join(", "), loc.postal_code].filter(Boolean).join(", ") : null;
-  const therapistName = therapist?.business_name || therapist?.full_name || 'Your therapist';
+  const therapistFirst = (therapist?.full_name || therapist?.business_name || 'Your therapist').split(' ')[0];
   const clientFirstName = client.name?.split(' ')[0] || 'there';
   const newWhen = formatApptDateTime(booking.booking_date, booking.start_time);
-  const prevWhen = (prev_date && prev_time) ? formatApptDateTime(prev_date, prev_time) : null;
   const rescheduleUrl = `https://mybodymap.app/book/${therapist.custom_url}?reschedule=${booking.id}`;
 
-  const subject = `New time for your session, ${clientFirstName}`;
+  // HK May 29 2026: per EMAIL_COPY_SPEC C10. Calm, helpful, new+old time
+  // both visible, single CTA to view/change again.
+  const subject = `Your session has been moved to ${newWhen}`;
 
-  const facts = [
-    { label: 'New time', value: newWhen },
-    { label: 'Session',  value: serviceName },
-  ];
-  if (serviceDuration) facts.push({ label: 'Duration', value: `${serviceDuration} minutes` });
-  if (locationAddr) facts.push({ label: 'Where', value: locationAddr });
-  if (prevWhen) facts.push({ label: 'Previously', value: prevWhen });
-
-  const bodyHtml = `
-    ${eyebrow('Rescheduled', 'gold')}
-    <h1>Your session has a new time</h1>
-    <p>Hi ${clientFirstName},</p>
-    <p>Confirming that we've moved your session to a new time. Here are the new details:</p>
-    ${factBox(facts)}
-    <p>I'll send a reminder 48 hours before. If this new time doesn't quite work either, you can move it again from the link below.</p>
-    <p style="text-align:center;margin:18px 0 8px;">
-      <a href="${rescheduleUrl}" style="display:inline-block;color:#2A5741;text-decoration:underline;font-size:14px;font-weight:600;">Need to change it again? →</a>
-    </p>
-    <p>See you soon.</p>
-    <p class="muted" style="font-size:13px;margin-top:18px;">- ${therapist?.full_name || therapistName}</p>
-  `;
+  const bodyHtml = renderClientEmail({
+    therapist,
+    toneEyebrow: 'Session rescheduled',
+    toneEyebrowKind: 'gold',
+    title: `Your session is now ${newWhen.split(' at ')[0]}`,
+    opener: `Hi ${clientFirstName}, your ${serviceName} with ${therapistFirst} has been moved to a new time. Here are the new details.`,
+    serviceName,
+    bookingDate: booking.booking_date,
+    startTime: booking.start_time,
+    durationMin: serviceDuration,
+    locationAddress: locationAddr,
+    previousDate: prev_date || null,
+    previousTime: prev_time || null,
+    primaryCta: { label: 'View or change again', href: rescheduleUrl },
+    closingLine: `See you then.`,
+    prefName: 'Booking rescheduled',
+  });
 
   const html = emailWrapper({ subject, bodyHtml, preheader: `Your session is now ${newWhen}.` });
 

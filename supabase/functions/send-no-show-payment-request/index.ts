@@ -10,7 +10,8 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { logNotification } from "../_shared/notifications.ts";
-import { emailWrapper, ctaButton, eyebrow, factBox, fromFor, replyToFor, formatApptDateTime } from "../_shared/emailTemplate.ts";
+import { emailWrapper, fromFor, replyToFor, formatApptDateTime } from "../_shared/emailTemplate.ts";
+import { renderClientEmail } from "../_shared/clientEmail.ts";
 
 const cors = {
   'Access-Control-Allow-Origin': '*',
@@ -43,31 +44,37 @@ serve(async (req) => {
   if (!client?.email) return jsonErr('no client email', 200, { skipped: 'no_client_email' });
   if (client.outreach_unsubscribed_at) return jsonErr('unsubscribed', 200, { skipped: 'unsubscribed' });
 
-  const therapistName = therapist?.business_name || therapist?.full_name || 'Your therapist';
+  const therapistFirst = (therapist?.full_name || therapist?.business_name || 'Your therapist').split(' ')[0];
   const clientFirstName = client.name?.split(' ')[0] || 'there';
   const apptWhen = formatApptDateTime(booking.booking_date, booking.start_time);
-  const fee = `$${(fee_amount_cents / 100).toFixed(2)}`;
+  const serviceName = booking.services?.name || 'session';
   const payUrl = payment_link_url || `https://mybodymap.app/book/${therapist.custom_url}`;
+  const policyText = (therapist as any)?.cancellation_policy?.custom_text
+    || (therapist as any)?.cancellation_policy_text
+    || null;
 
-  const subject = `A note about your session today`;
+  // HK May 29 2026: per EMAIL_COPY_SPEC C12-link. Polite payment request,
+  // never punishing. Two CTAs: pay now (primary), rebook (secondary).
+  const subject = `About your missed session on ${apptWhen.split(' at ')[0]}`;
 
-  const bodyHtml = `
-    ${eyebrow('A small note', 'gold')}
-    <h1>About the session you missed</h1>
-    <p>Hi ${clientFirstName},</p>
-    <p>I held your time today and was looking forward to seeing you. When you weren't able to make it, a cancellation fee applies per my policy, but the payment didn't go through on the card I had on file.</p>
-    <p>No worries, here's a link to take care of it whenever you have a moment:</p>
-    ${factBox([
-      { label: 'For',         value: apptWhen },
-      { label: 'Session',     value: booking.services?.name || 'Massage session' },
-      { label: 'Amount',  value: fee },
-    ])}
-    ${ctaButton(`Take care of the ${fee} →`, payUrl)}
-    <p>If something came up that you'd like to share, or if the card on file needs updating, just reply to this email and I'll help sort it out.</p>
-    <p class="muted" style="font-size:13px;margin-top:18px;">- ${therapist?.full_name || therapistName}</p>
-  `;
+  const bodyHtml = renderClientEmail({
+    therapist,
+    toneEyebrow: 'About your missed session',
+    toneEyebrowKind: 'gold',
+    title: `About your missed session`,
+    opener: `Hi ${clientFirstName}, I held your time and was looking forward to seeing you. Since you couldn't make it, the no-show fee per my cancellation policy applies. There's no card on file to charge, so here's a link to take care of it whenever you have a moment.`,
+    serviceName,
+    bookingDate: booking.booking_date,
+    startTime: booking.start_time,
+    feeAmountCents: fee_amount_cents,
+    policyInline: policyText,
+    primaryCta: { label: `Pay $${(fee_amount_cents / 100).toFixed(2)} now`, href: payUrl },
+    secondaryCta: { label: 'Book another session', href: `https://mybodymap.app/book/${therapist.custom_url}` },
+    closingLine: `If the card on file needs updating or you'd like to discuss this, just reply to this email.`,
+    prefName: 'No-show, payment request',
+  });
 
-  const html = emailWrapper({ subject, bodyHtml, preheader: `A quick payment link for the session today.` });
+  const html = emailWrapper({ subject, bodyHtml, preheader: `A way to take care of the ${apptWhen} no-show fee whenever you're ready.` });
 
   const res = await fetch('https://api.resend.com/emails', {
     method: 'POST',

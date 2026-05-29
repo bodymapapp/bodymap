@@ -12,7 +12,8 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { logNotification } from "../_shared/notifications.ts";
-import { emailWrapper, ctaButton, eyebrow, factBox, tipBox, fromFor, replyToFor, formatApptDateTime } from "../_shared/emailTemplate.ts";
+import { emailWrapper, fromFor, replyToFor, formatApptDateTime } from "../_shared/emailTemplate.ts";
+import { renderClientEmail } from "../_shared/clientEmail.ts";
 
 const cors = {
   'Access-Control-Allow-Origin': '*',
@@ -45,42 +46,37 @@ serve(async (req) => {
   if (!client?.email) return jsonErr('no client email', 200, { skipped: 'no_client_email' });
   if (client.outreach_unsubscribed_at) return jsonErr('unsubscribed', 200, { skipped: 'unsubscribed' });
 
-  const therapistName = therapist?.business_name || therapist?.full_name || 'Your therapist';
+  const therapistFirst = (therapist?.full_name || therapist?.business_name || 'Your therapist').split(' ')[0];
   const clientFirstName = client.name?.split(' ')[0] || 'there';
   const apptWhen = formatApptDateTime(booking.booking_date, booking.start_time);
   const bookingUrl = `https://mybodymap.app/book/${therapist.custom_url}`;
-  const fee = fee_amount_cents ? `$${(fee_amount_cents / 100).toFixed(2)}` : null;
+  const serviceName = booking.services?.name || 'session';
+  const policyText = (therapist as any)?.cancellation_policy?.custom_text
+    || (therapist as any)?.cancellation_policy_text
+    || null;
 
-  const subject = `About your session on ${apptWhen.split(' at ')[0]}`;
+  // HK May 29 2026: per EMAIL_COPY_SPEC C9. Transparent, not punishing,
+  // shows fee + policy inline.
+  const subject = `Your cancellation and fee receipt`;
 
-  let feeBlock = '';
-  if (fee && fee_charged) {
-    feeBlock = tipBox(
-      `A small note about the fee`,
-      `Because this cancellation came in close to the appointment time, a cancellation fee of ${fee} was applied to your card on file. This is part of how I'm able to hold time exclusively for clients in advance. I appreciate you understanding.`,
-      'gold',
-    );
-  } else if (fee && !fee_charged) {
-    feeBlock = tipBox(
-      `A small note about the fee`,
-      `Because this cancellation came in close to the appointment time, a ${fee} cancellation fee applies. I'll reach out separately about how to take care of it.`,
-      'gold',
-    );
-  }
+  const bodyHtml = renderClientEmail({
+    therapist,
+    toneEyebrow: 'Cancellation confirmed',
+    toneEyebrowKind: 'gold',
+    title: `Your cancellation is confirmed`,
+    opener: `Hi ${clientFirstName}, we've cancelled your ${serviceName}. Because this came in close to the appointment time, the cancellation fee per my policy applies. Sharing the receipt below.`,
+    serviceName,
+    bookingDate: booking.booking_date,
+    startTime: booking.start_time,
+    feeAmountCents: (fee_amount_cents && fee_charged) ? fee_amount_cents : null,
+    feeChargedTo: (fee_amount_cents && fee_charged) ? 'card on file' : null,
+    policyInline: policyText,
+    primaryCta: { label: 'Book another time', href: bookingUrl },
+    closingLine: `If you have any questions about the fee, please reply to this email.`,
+    prefName: 'Client cancellation, late',
+  });
 
-  const bodyHtml = `
-    ${eyebrow('Cancellation received', 'gold')}
-    <h1>I'll see you another time</h1>
-    <p>Hi ${clientFirstName},</p>
-    <p>Your <strong>${booking.services?.name || 'session'}</strong> on <strong>${apptWhen}</strong> has been cancelled. I hope everything is okay on your end.</p>
-    ${feeBlock}
-    <p>Whenever the timing works again, I'd love to see you. My open times are below.</p>
-    ${ctaButton('Find a time that works', bookingUrl)}
-    <p>Take care.</p>
-    <p class="muted" style="font-size:13px;margin-top:18px;">- ${therapist?.full_name || therapistName}</p>
-  `;
-
-  const html = emailWrapper({ subject, bodyHtml, preheader: 'Cancelled and confirmed.' });
+  const html = emailWrapper({ subject, bodyHtml, preheader: `Your ${serviceName} on ${apptWhen} is cancelled. Fee receipt inside.` });
 
   const res = await fetch('https://api.resend.com/emails', {
     method: 'POST',

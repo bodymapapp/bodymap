@@ -11,7 +11,8 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { logNotification } from "../_shared/notifications.ts";
-import { emailWrapper, ctaButton, eyebrow, factBox, fromFor, replyToFor, formatApptDateTime } from "../_shared/emailTemplate.ts";
+import { emailWrapper, fromFor, replyToFor, formatApptDateTime } from "../_shared/emailTemplate.ts";
+import { renderClientEmail } from "../_shared/clientEmail.ts";
 
 const cors = {
   'Access-Control-Allow-Origin': '*',
@@ -50,30 +51,31 @@ serve(async (req) => {
   if (client.outreach_unsubscribed_at) return jsonErr('unsubscribed', 200, { skipped: 'unsubscribed' });
 
   const serviceName = booking.services?.name || 'session';
-  const therapistName = therapist?.business_name || therapist?.full_name || 'Your therapist';
+  const therapistFirstName = (therapist?.full_name || therapist?.business_name || 'Your therapist').split(' ')[0];
   const clientFirstName = client.name?.split(' ')[0] || 'there';
   const apptWhen = formatApptDateTime(booking.booking_date, booking.start_time);
   const bookingUrl = `https://mybodymap.app/book/${therapist.custom_url}`;
 
-  const subject = `An update on your ${serviceName} from ${therapistName}`;
+  // HK May 29 2026: per docs/EMAIL_COPY_SPEC.md C7. Apologetic, personal,
+  // session details visible, optional reason quoted, single CTA to rebook.
+  const subject = `${therapistFirstName} had to cancel ${apptWhen.split(',')[0]}'s session`;
 
-  const reasonBlock = reason && reason.trim()
-    ? `<p style="font-style:italic;color:#3D4F43;background:#FAFAF7;border-left:3px solid #6B9E80;padding:12px 16px;border-radius:0 8px 8px 0;margin:14px 0;">"${reason.trim()}"</p>`
-    : '';
+  const bodyHtml = renderClientEmail({
+    therapist,
+    toneEyebrow: 'Session cancelled',
+    toneEyebrowKind: 'rose',
+    title: `${therapistFirstName} had to cancel`,
+    opener: `Hi ${clientFirstName}, I'm so sorry to send this. I have to cancel your ${serviceName} that we had scheduled. I know rearranging your day for this isn't nothing, and I appreciate your patience with me.`,
+    serviceName,
+    bookingDate: booking.booking_date,
+    startTime: booking.start_time,
+    reason: reason || null,
+    primaryCta: { label: 'Find another time', href: bookingUrl },
+    closingLine: `Thank you for understanding. If you have any questions, just reply to this email and I'll get back to you personally.`,
+    prefName: 'Cancellation by therapist',
+  });
 
-  const bodyHtml = `
-    ${eyebrow('Session cancelled', 'rose')}
-    <h1>${therapistName} had to cancel</h1>
-    <p>Hi ${clientFirstName},</p>
-    <p>I'm so sorry to send this. Something came up and I won't be able to see you for your <strong>${serviceName}</strong> on <strong>${apptWhen}</strong>. I know rearranging your day for this is not nothing, and I appreciate your patience with me.</p>
-    ${reasonBlock}
-    <p>Whenever you're ready, the link below shows my open times. No rush.</p>
-    ${ctaButton('Find a new time →', bookingUrl)}
-    <p>Thank you for understanding. Reply to this email if you have any questions, and I'll get back to you personally.</p>
-    <p class="muted" style="font-size:13px;margin-top:24px;">- ${therapist?.full_name || therapistName}</p>
-  `;
-
-  const html = emailWrapper({ subject, bodyHtml, preheader: `Your session on ${apptWhen} can't happen. Here's how to find a new time.` });
+  const html = emailWrapper({ subject, bodyHtml, preheader: `Your ${serviceName} on ${apptWhen} can't happen. Here's how to find a new time.` });
 
   const res = await fetch('https://api.resend.com/emails', {
     method: 'POST',

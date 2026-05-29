@@ -101,36 +101,32 @@ async function sendForBooking(supabase: any, RESEND_KEY: string, bookingId: stri
   const serviceName = booking.services?.name || 'Massage session';
   const serviceDuration = booking.services?.duration || null;
   const loc = booking.location; const locationAddr = loc ? [loc.street1, loc.street2, [loc.city, loc.state].filter(Boolean).join(", "), loc.postal_code].filter(Boolean).join(", ") : null;
-  const therapistName = therapist?.business_name || therapist?.full_name || 'Your therapist';
+  const therapistFirst = (therapist?.full_name || therapist?.business_name || 'Your therapist').split(' ')[0];
   const clientFirstName = client.name?.split(' ')[0] || 'there';
   const apptWhen = formatApptDateTime(booking.booking_date, booking.start_time);
-  const bookingUrl = `https://mybodymap.app/book/${therapist.custom_url}`;
   const rescheduleUrl = `https://mybodymap.app/book/${therapist.custom_url}?reschedule=${booking.id}`;
 
-  const subject = `Looking forward to seeing you, ${clientFirstName}`;
+  // HK May 29 2026: per EMAIL_COPY_SPEC C4. Helpful, no pressure,
+  // session details box always present.
+  const subject = `Your session with ${therapistFirst} is on ${apptWhen.split(' at ')[0]}`;
 
-  const facts = [
-    { label: 'When',     value: apptWhen },
-    { label: 'Session',  value: serviceName },
-  ];
-  if (serviceDuration) facts.push({ label: 'Duration', value: `${serviceDuration} minutes` });
-  if (locationAddr) facts.push({ label: 'Where', value: locationAddr });
+  const bodyHtml = renderClientEmail({
+    therapist,
+    toneEyebrow: 'Two days to go',
+    toneEyebrowKind: 'sage',
+    title: `I'm looking forward to seeing you`,
+    opener: `Hi ${clientFirstName}, just a heads-up that we have time together coming up. Here are the details for your records.`,
+    serviceName,
+    bookingDate: booking.booking_date,
+    startTime: booking.start_time,
+    durationMin: serviceDuration,
+    locationAddress: locationAddr,
+    primaryCta: { label: 'View or reschedule', href: rescheduleUrl },
+    closingLine: `If anything has come up, you can move it from the link above. See you soon.`,
+    prefName: 'Session reminder (48h)',
+  });
 
-  const bodyHtml = `
-    ${eyebrow('Two days to go', 'sage')}
-    <h1>I'm looking forward to seeing you</h1>
-    <p>Hi ${clientFirstName},</p>
-    <p>A gentle reminder that we have time together coming up in two days. Hopefully you've already started looking forward to it as much as I have.</p>
-    ${factBox(facts)}
-    <p>If life has shifted and the timing no longer works, you can move things around from the link below. No worries either way.</p>
-    <p style="text-align:center;margin:18px 0 8px;">
-      <a href="${rescheduleUrl}" style="display:inline-block;color:#2A5741;text-decoration:underline;font-size:14px;font-weight:600;">Need to reschedule? →</a>
-    </p>
-    <p>See you soon.</p>
-    <p class="muted" style="font-size:13px;margin-top:18px;">- ${therapist?.full_name || therapistName}</p>
-  `;
-
-  const html = emailWrapper({ subject, bodyHtml, preheader: `Your ${serviceName || 'session'} is two days away.` });
+  const html = emailWrapper({ subject, bodyHtml, preheader: `Your ${serviceName} on ${apptWhen} is two days away.` });
 
   const res = await fetch('https://api.resend.com/emails', {
     method: 'POST',

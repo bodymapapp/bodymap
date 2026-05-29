@@ -28,6 +28,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { notifyTherapist, notifyClient } from "../_shared/notifications.ts";
+import { renderClientEmailDoc } from "../_shared/clientEmail.ts";
 
 const cors = {
   'Access-Control-Allow-Origin': '*',
@@ -120,6 +121,25 @@ serve(async (req) => {
     const title = `${firstName} paid $${dollars}`;
     const summary = `${methodLabel}${whenStr ? ' for ' + whenStr : ''}${hasTip ? ` (includes $${tipDollars} tip)` : ''}.`;
 
+    // HK May 29 2026: therapist payment receipt was bland (one line).
+    // Build a real detail box with service, when, method, tip, total.
+    const serviceName = booking?.services?.name || 'Session';
+    const therapistDetailRows: Array<[string, string]> = [];
+    therapistDetailRows.push(['From', clientName]);
+    therapistDetailRows.push(['Service', serviceName]);
+    if (whenStr) therapistDetailRows.push(['Session', whenStr]);
+    therapistDetailRows.push(['Method', methodLabel]);
+    if (hasTip) therapistDetailRows.push(['Tip', `$${tipDollars}`]);
+    therapistDetailRows.push(['Total', `$${dollars}`]);
+    const therapistDetailBox = `
+      <table style="width:100%;border-collapse:collapse;margin:16px 0;background:#FAFAF7;border:1px solid #ECE7DC;border-radius:10px;overflow:hidden;">
+        ${therapistDetailRows.map(([label, value], i) => `
+          <tr style="${i < therapistDetailRows.length - 1 ? 'border-bottom:1px solid #ECE7DC;' : ''}">
+            <td style="padding:9px 14px;font-size:12px;font-weight:700;color:#6B7280;text-transform:uppercase;letter-spacing:0.04em;white-space:nowrap;">${label}</td>
+            <td style="padding:9px 14px;font-size:14px;color:#1A2E22;text-align:right;font-weight:${label === 'Total' ? '700' : '500'};">${String(value).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</td>
+          </tr>`).join('')}
+      </table>`;
+
     const emailHtml = `
 <!DOCTYPE html>
 <html><head><meta charset="utf-8"></head>
@@ -128,7 +148,8 @@ serve(async (req) => {
     <div style="background:#fff;border-radius:16px;padding:32px 28px;box-shadow:0 4px 20px rgba(0,0,0,0.06);">
       <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#2A5741;margin-bottom:8px;">💚 Payment received</div>
       <h1 style="font-family:Georgia,serif;font-size:26px;font-weight:700;color:#2A5741;margin:0 0 6px;">$${dollars} from ${clientName}</h1>
-      <p style="font-size:14px;color:#6B7280;margin:0 0 18px;line-height:1.6;">${methodLabel}${whenStr ? ' &middot; ' + whenStr : ''}${hasTip ? ' &middot; tip $' + tipDollars : ''}</p>
+      <p style="font-size:14px;color:#6B7280;margin:0 0 4px;line-height:1.6;">${methodLabel}${whenStr ? ' &middot; ' + whenStr : ''}${hasTip ? ' &middot; tip $' + tipDollars : ''}</p>
+      ${therapistDetailBox}
       <a href="https://mybodymap.app/dashboard/billing" style="display:inline-block;background:#2A5741;color:#fff;text-decoration:none;padding:11px 20px;border-radius:8px;font-size:13px;font-weight:700;">Open Billing</a>
       <div style="font-size:11px;color:#9CA3AF;margin-top:24px;line-height:1.6;">
         You are getting this because "Payment received" is on in your notification settings.
@@ -162,28 +183,34 @@ serve(async (req) => {
     let clientResult = null;
     if (client) {
       const serviceName = booking?.services?.name || 'your session';
+      const clientFirst = (client.name || '').split(' ')[0] || 'there';
+      const therapistFirst = (therapist?.full_name || businessName).split(' ')[0];
 
-      const clientEmailHtml = `
-<!DOCTYPE html>
-<html><head><meta charset="utf-8"></head>
-<body style="margin:0;padding:0;background:#F5F0E8;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;color:#0D1F17;">
-  <div style="max-width:520px;margin:0 auto;padding:32px 16px;">
-    <div style="background:#fff;border-radius:16px;padding:32px 28px;box-shadow:0 4px 20px rgba(0,0,0,0.06);">
-      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#2A5741;margin-bottom:8px;">Receipt</div>
-      <h1 style="font-family:Georgia,serif;font-size:24px;font-weight:700;color:#2A5741;margin:0 0 6px;">Thank you, ${(client.name || '').split(' ')[0] || 'there'}.</h1>
-      <p style="font-size:14px;color:#374151;margin:0 0 16px;line-height:1.6;">${businessName} has received your payment of <strong>$${dollars}</strong>${whenStr ? ' for your session on ' + whenStr : ''}.</p>
-      <div style="background:#FAF6EE;border-radius:10px;padding:14px 16px;margin:14px 0;font-size:13px;color:#4B5563;">
-        <div style="display:flex;justify-content:space-between;padding:4px 0;"><span>Service</span><span style="font-weight:600;color:#1F2937;">${serviceName}</span></div>
-        <div style="display:flex;justify-content:space-between;padding:4px 0;"><span>Method</span><span style="font-weight:600;color:#1F2937;">${methodLabel}</span></div>
-        ${hasTip ? `<div style="display:flex;justify-content:space-between;padding:4px 0;"><span>Tip</span><span style="font-weight:600;color:#1F2937;">$${tipDollars}</span></div>` : ''}
-        <div style="display:flex;justify-content:space-between;padding:8px 0 0;border-top:1px solid #E5E7EB;margin-top:6px;font-weight:700;color:#2A5741;"><span>Total</span><span>$${dollars}</span></div>
-      </div>
-      <div style="font-size:12px;color:#9CA3AF;margin-top:20px;line-height:1.6;">
-        Questions? Reply to this email and ${businessName} will get back to you.
-      </div>
-    </div>
-  </div>
-</body></html>`;
+      // HK May 29 2026: per EMAIL_COPY_SPEC C13. Clean receipt, NOT
+      // marketing, full breakdown so the client has a real invoice in
+      // their inbox they can forward to an HSA/FSA admin if needed.
+      const extraRows: Array<{ label: string, value: string }> = [];
+      extraRows.push({ label: 'Method', value: methodLabel });
+      if (hasTip) extraRows.push({ label: 'Tip', value: `$${tipDollars}` });
+      extraRows.push({ label: 'Total', value: `$${dollars}` });
+
+      const clientEmailHtml = renderClientEmailDoc(
+        `Receipt: $${dollars} payment to ${businessName}`,
+        {
+          therapist,
+          toneEyebrow: 'Receipt',
+          toneEyebrowKind: 'sage',
+          title: `Thank you, ${clientFirst}`,
+          opener: `${businessName} has received your payment of $${dollars}${whenStr ? ' for your ' + serviceName + ' on ' + whenStr : ''}. Here's your receipt.`,
+          serviceName,
+          bookingDate: booking?.booking_date || null,
+          startTime: booking?.start_time || null,
+          extraFactRows: extraRows,
+          closingLine: `Questions about this charge? Just reply to this email.`,
+          prefName: 'Payment receipt',
+        },
+        `Your receipt for $${dollars}`
+      );
 
       clientResult = await notifyClient({
         supabase, therapist, client,

@@ -10,7 +10,8 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { logNotification } from "../_shared/notifications.ts";
-import { emailWrapper, ctaButton, eyebrow, factBox, fromFor, replyToFor, formatApptDateTime } from "../_shared/emailTemplate.ts";
+import { emailWrapper, fromFor, replyToFor, formatApptDateTime } from "../_shared/emailTemplate.ts";
+import { renderClientEmail } from "../_shared/clientEmail.ts";
 
 const cors = {
   'Access-Control-Allow-Origin': '*',
@@ -43,34 +44,38 @@ serve(async (req) => {
   if (!client?.email) return jsonErr('no client email', 200, { skipped: 'no_client_email' });
   if (client.outreach_unsubscribed_at) return jsonErr('unsubscribed', 200, { skipped: 'unsubscribed' });
 
-  const therapistName = therapist?.business_name || therapist?.full_name || 'Your therapist';
+  const therapistFirst = (therapist?.full_name || therapist?.business_name || 'Your therapist').split(' ')[0];
   const clientFirstName = client.name?.split(' ')[0] || 'there';
   const apptWhen = formatApptDateTime(booking.booking_date, booking.start_time);
   const bookingUrl = `https://mybodymap.app/book/${therapist.custom_url}`;
-  const fee = `$${(fee_amount_cents / 100).toFixed(2)}`;
+  const serviceName = booking.services?.name || 'session';
 
-  const subject = `A note about your session today`;
+  // HK May 29 2026: per EMAIL_COPY_SPEC C12. Professional, transparent,
+  // shows the fee + the policy inline (not just a link), never punishing.
+  const policyText = (therapist as any)?.cancellation_policy?.custom_text
+    || (therapist as any)?.cancellation_policy_text
+    || null;
 
-  const facts = [
-    { label: 'For',         value: apptWhen },
-    { label: 'Session',     value: booking.services?.name || 'Massage session' },
-    { label: 'Fee charged', value: fee },
-  ];
-  if (charge_id) facts.push({ label: 'Reference', value: charge_id });
+  const subject = `About your missed session on ${apptWhen.split(' at ')[0]}`;
 
-  const bodyHtml = `
-    ${eyebrow('A small note', 'gold')}
-    <h1>About the session you missed</h1>
-    <p>Hi ${clientFirstName},</p>
-    <p>I held your time today and was looking forward to seeing you. When you weren't able to make it, a cancellation fee was applied to your card on file. I'm sharing this so you have the receipt.</p>
-    ${factBox(facts)}
-    <p>If something came up that you'd like to share, I'd love to hear from you. And whenever you're ready to book another session, the link below has my open times.</p>
-    ${ctaButton('Find a time that works', bookingUrl)}
-    <p>Take care of yourself.</p>
-    <p class="muted" style="font-size:13px;margin-top:18px;">- ${therapist?.full_name || therapistName}</p>
-  `;
+  const bodyHtml = renderClientEmail({
+    therapist,
+    toneEyebrow: 'About your missed session',
+    toneEyebrowKind: 'gold',
+    title: `About your missed session`,
+    opener: `Hi ${clientFirstName}, I held your time and was looking forward to seeing you. Since you didn't make it, per the cancellation policy a fee has been charged to your card on file. Sharing the receipt here so you have it.`,
+    serviceName,
+    bookingDate: booking.booking_date,
+    startTime: booking.start_time,
+    feeAmountCents: fee_amount_cents,
+    feeChargedTo: 'card on file',
+    policyInline: policyText,
+    primaryCta: { label: 'Book another session', href: bookingUrl },
+    closingLine: `If this was a misunderstanding or something came up, please reply to this email and I'll get back to you.`,
+    prefName: 'No-show, fee charged',
+  });
 
-  const html = emailWrapper({ subject, bodyHtml, preheader: 'A receipt for the session today, and a warm hello.' });
+  const html = emailWrapper({ subject, bodyHtml, preheader: `A receipt for ${apptWhen} and a way to rebook when you're ready.` });
 
   const res = await fetch('https://api.resend.com/emails', {
     method: 'POST',

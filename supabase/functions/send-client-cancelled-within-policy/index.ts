@@ -9,7 +9,8 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { logNotification } from "../_shared/notifications.ts";
-import { emailWrapper, ctaButton, eyebrow, factBox, fromFor, replyToFor, formatApptDateTime } from "../_shared/emailTemplate.ts";
+import { emailWrapper, fromFor, replyToFor, formatApptDateTime } from "../_shared/emailTemplate.ts";
+import { renderClientEmail } from "../_shared/clientEmail.ts";
 
 const cors = {
   'Access-Control-Allow-Origin': '*',
@@ -42,25 +43,31 @@ serve(async (req) => {
   if (!client?.email) return jsonErr('no client email', 200, { skipped: 'no_client_email' });
   if (client.outreach_unsubscribed_at) return jsonErr('unsubscribed', 200, { skipped: 'unsubscribed' });
 
-  const therapistName = therapist?.business_name || therapist?.full_name || 'Your therapist';
+  const therapistFirst = (therapist?.full_name || therapist?.business_name || 'Your therapist').split(' ')[0];
   const clientFirstName = client.name?.split(' ')[0] || 'there';
   const apptWhen = formatApptDateTime(booking.booking_date, booking.start_time);
   const bookingUrl = `https://mybodymap.app/book/${therapist.custom_url}`;
+  const serviceName = booking.services?.name || 'session';
 
-  const subject = `About your session on ${apptWhen.split(' at ')[0]}`;
+  // HK May 29 2026: per EMAIL_COPY_SPEC C8. Matter-of-fact, no judgment,
+  // shows session details + 'no fee charged', rebook CTA.
+  const subject = `Your cancellation is confirmed`;
 
-  const bodyHtml = `
-    ${eyebrow('Cancellation received', 'sage')}
-    <h1>I'll see you another time</h1>
-    <p>Hi ${clientFirstName},</p>
-    <p>Your <strong>${booking.services?.name || 'session'}</strong> on <strong>${apptWhen}</strong> has been cancelled. No charge, no need to explain.</p>
-    <p>Life is full and things shift. Whenever the timing works for you again, I'd love to see you. The link below has my open times.</p>
-    ${ctaButton('Find a time that works', bookingUrl)}
-    <p>Take care of yourself.</p>
-    <p class="muted" style="font-size:13px;margin-top:18px;">- ${therapist?.full_name || therapistName}</p>
-  `;
+  const bodyHtml = renderClientEmail({
+    therapist,
+    toneEyebrow: 'Cancellation confirmed',
+    toneEyebrowKind: 'sage',
+    title: `Your cancellation is confirmed`,
+    opener: `Hi ${clientFirstName}, we've cancelled your ${serviceName}. No fee was charged, no need to explain. Whenever the timing works for you again, I'd love to see you.`,
+    serviceName,
+    bookingDate: booking.booking_date,
+    startTime: booking.start_time,
+    primaryCta: { label: 'Book another time', href: bookingUrl },
+    closingLine: `Take care.`,
+    prefName: 'Client cancellation, within policy',
+  });
 
-  const html = emailWrapper({ subject, bodyHtml, preheader: 'Cancelled and confirmed. I hope to see you again soon.' });
+  const html = emailWrapper({ subject, bodyHtml, preheader: `Your ${serviceName} on ${apptWhen} is cancelled. No charge.` });
 
   const res = await fetch('https://api.resend.com/emails', {
     method: 'POST',

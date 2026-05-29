@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { sendSmsViaTwilio, shouldSend, logNotification } from "../_shared/notifications.ts";
+import { renderClientEmailDoc } from "../_shared/clientEmail.ts";
 
 const cors = {
   'Access-Control-Allow-Origin': '*',
@@ -59,15 +60,20 @@ serve(async (req) => {
   let smsStatus = 'skipped_prefs';
   let emailId: string | null = null;
 
-  // Parse SOAP notes - show Assessment (what worked) and Plan (next steps) to client
-  let soapHtml = '';
+  const therapistFirst = (therapist?.full_name || therapist?.business_name || 'Your therapist').split(' ')[0];
+  const businessName = therapist?.business_name || therapist?.full_name || 'Your therapist';
+
+  // Parse SOAP notes: surface only the client-friendly parts (A=what worked, P=next time).
+  let sessionSummary: string | null = null;
   try {
     const parsed = JSON.parse(session.therapist_notes || '{}');
     if (parsed.__soap) {
-      if (parsed.A) soapHtml += `<p style="font-size:14px;color:#374151;margin:0 0 8px;line-height:1.6;"><strong>What we worked on:</strong> ${parsed.A}</p>`;
-      if (parsed.P) soapHtml += `<p style="font-size:14px;color:#374151;margin:0;line-height:1.6;"><strong>For next time:</strong> ${parsed.P}</p>`;
+      const parts: string[] = [];
+      if (parsed.A) parts.push(`What we worked on: ${parsed.A}`);
+      if (parsed.P) parts.push(`For next time: ${parsed.P}`);
+      if (parts.length) sessionSummary = parts.join('\n\n');
     }
-  } catch(e) {}
+  } catch (_e) { /* malformed notes - skip */ }
 
   const publicMessage = session.public_notes || '';
   const bookingUrl = `https://www.mybodymap.app/book/${therapist?.custom_url}`;
@@ -75,37 +81,24 @@ serve(async (req) => {
     weekday: 'long', month: 'long', day: 'numeric'
   });
 
-  const emailHtml = `<!DOCTYPE html>
-<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
-<body style="margin:0;padding:0;background:#F5F0E8;font-family:system-ui,sans-serif;">
-<div style="max-width:560px;margin:0 auto;padding:32px 16px;">
-  <div style="text-align:center;margin-bottom:24px;">
-    <span style="font-size:32px;">🌿</span>
-    <h1 style="font-family:Georgia,serif;font-size:22px;font-weight:700;color:#2A5741;margin:8px 0 0;">MyBodyMap</h1>
-  </div>
-  <div style="background:#fff;border-radius:16px;padding:32px;box-shadow:0 2px 16px rgba(0,0,0,0.08);">
-    <h2 style="font-family:Georgia,serif;font-size:22px;font-weight:700;color:#1A1A2E;margin:0 0 8px;">Great session today, ${clientFirstName} ✨</h2>
-    <p style="color:#6B7280;font-size:15px;margin:0 0 24px;line-height:1.6;">Here's a quick note from ${therapistName} after your ${sessionDate} session.</p>
-    ${publicMessage ? `
-    <div style="background:linear-gradient(135deg,#F0FDF4,#DCFCE7);border:1.5px solid #86EFAC;border-radius:12px;padding:20px;margin-bottom:24px;">
-      <p style="font-size:13px;font-weight:700;color:#2A5741;margin:0 0 8px;text-transform:uppercase;letter-spacing:0.05em;">From ${therapistName}</p>
-      <p style="font-size:15px;color:#1A1A2E;margin:0;line-height:1.7;font-style:italic;">"${publicMessage}"</p>
-    </div>` : ''}
-    ${soapHtml ? `
-    <div style="background:#F5F0E8;border-radius:12px;padding:20px;margin-bottom:24px;">
-      <p style="font-size:13px;font-weight:700;color:#2A5741;margin:0 0 12px;text-transform:uppercase;letter-spacing:0.05em;">Session summary</p>
-      ${soapHtml}
-    </div>` : ''}
-    <div style="background:#FEF3C7;border:1.5px solid #FCD34D;border-radius:12px;padding:16px;margin-bottom:24px;">
-      <p style="font-size:13px;font-weight:700;color:#92400E;margin:0 0 4px;">Take care of yourself 💛</p>
-      <p style="font-size:13px;color:#92400E;margin:0;line-height:1.6;">Drink plenty of water today. Hydration helps your muscles recover faster.</p>
-    </div>
-    <a href="${bookingUrl}" style="display:block;background:#2A5741;color:#fff;text-decoration:none;border-radius:10px;padding:14px 20px;text-align:center;font-size:15px;font-weight:700;margin-bottom:16px;">Book Your Next Session →</a>
-    <p style="font-size:12px;color:#9CA3AF;text-align:center;margin:0;">Questions? Reply to this email or contact ${therapistName} directly.</p>
-  </div>
-  <p style="font-size:11px;color:#9CA3AF;text-align:center;margin:24px 0 0;">Sent by MyBodyMap · mybodymap.app</p>
-</div>
-</body></html>`;
+  // HK May 29 2026: per EMAIL_COPY_SPEC C6. Warm, restorative, NOT salesy.
+  const subject = `Great session ${sessionDate.includes(',') ? sessionDate.split(',')[0] : 'today'}, ${clientFirstName}`;
+  const opener = publicMessage
+    ? `Hi ${clientFirstName}, hope you're feeling great after our session. A short note from ${therapistFirst} below.`
+    : `Hi ${clientFirstName}, hope you're feeling great after our session. Here's a short note for your records.`;
+
+  const emailHtml = renderClientEmailDoc(subject, {
+    therapist,
+    toneEyebrow: 'After your session',
+    toneEyebrowKind: 'sage',
+    title: `Hope you're feeling great`,
+    opener,
+    serviceName: session.service_name || null,
+    reason: publicMessage || sessionSummary || null,
+    primaryCta: { label: 'Book your next session', href: bookingUrl },
+    closingLine: `A small thing: drink plenty of water today. Hydration helps your body recover faster. Your preferences are saved here, so booking again is just a couple taps whenever you're ready.`,
+    prefName: 'Post-session note',
+  }, `A short note from ${therapistFirst} after your session.`);
 
   if (sendEmail && clientEmail) {
     const res = await fetch('https://api.resend.com/emails', {

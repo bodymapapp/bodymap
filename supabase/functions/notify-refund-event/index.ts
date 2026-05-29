@@ -21,6 +21,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { notifyTherapist, notifyClient } from "../_shared/notifications.ts";
+import { renderClientEmail } from "../_shared/clientEmail.ts";
 
 const cors = {
   'Access-Control-Allow-Origin': '*',
@@ -153,27 +154,31 @@ serve(async (req) => {
     // ─── Client fan-out ────────────────────────────────────────────
     let clientResult = null;
     if (client) {
-      const clientEmailHtml = `
-<!DOCTYPE html>
-<html><head><meta charset="utf-8"></head>
-<body style="margin:0;padding:0;background:#F5F0E8;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;color:#0D1F17;">
-  <div style="max-width:520px;margin:0 auto;padding:32px 16px;">
-    <div style="background:#fff;border-radius:16px;padding:32px 28px;box-shadow:0 4px 20px rgba(0,0,0,0.06);">
-      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#2A5741;margin-bottom:8px;">Refund issued</div>
-      <h1 style="font-family:Georgia,serif;font-size:24px;font-weight:700;color:#2A5741;margin:0 0 6px;">$${dollars} refunded</h1>
-      <p style="font-size:14px;color:#374151;margin:0 0 16px;line-height:1.6;">${businessName} has issued a refund of <strong>$${dollars}</strong>${whenStr ? ' for your session on ' + whenStr : ''}.</p>
-      <div style="background:#FAF6EE;border-radius:10px;padding:14px 16px;margin:14px 0;font-size:13px;color:#4B5563;line-height:1.6;">
-        ${isStripe
-          ? `The amount will return to your card ending in <strong>${payment.payment_method_detail || 'on file'}</strong> within 5 to 10 business days. Your card statement will reflect the refund automatically.`
-          : `This was paid via <strong>${methodLabel}</strong>. ${businessName} will return the funds to you separately.`
-        }
-      </div>
-      <div style="font-size:12px;color:#9CA3AF;margin-top:20px;line-height:1.6;">
-        Questions? Reply to this email and ${businessName} will get back to you.
-      </div>
-    </div>
-  </div>
-</body></html>`;
+      // HK May 29 2026: per EMAIL_COPY_SPEC C16. Clean confirmation,
+      // shows the refund amount + where it's returning to, NOT marketing.
+      const refundReturnPath = isStripe
+        ? `card ending ${payment.payment_method_detail || 'on file'}`
+        : null;
+      const policyNote = isStripe
+        ? `The amount will return to your ${refundReturnPath} within 5 to 10 business days. Your card statement will reflect the refund automatically.`
+        : `This was paid via ${methodLabel}. ${businessName} will return the funds to you separately.`;
+
+      const clientEmailHtml = renderClientEmail({
+        therapist,
+        toneEyebrow: 'Refund issued',
+        toneEyebrowKind: 'sage',
+        title: `$${dollars} refunded`,
+        opener: `${businessName} has issued a refund of $${dollars}${booking?.services?.name ? ' for your ' + booking.services.name : ''}${whenStr ? ' on ' + whenStr : ''}.`,
+        serviceName: booking?.services?.name || null,
+        bookingDate: booking?.booking_date || null,
+        startTime: booking?.start_time || null,
+        refundAmountCents: totalCents,
+        refundedTo: refundReturnPath,
+        policyInline: policyNote,
+        closingLine: `Questions? Reply to this email and ${businessName} will get back to you.`,
+        prefName: 'Refund issued',
+      });
+      const clientHtml = `<!doctype html><html><head><meta charset="utf-8"><title>Refund $${dollars}</title></head><body style="margin:0;padding:0;background:#F5F0E8;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;color:#0D1F17;"><div style="max-width:520px;margin:0 auto;padding:32px 16px;"><div style="background:#fff;border-radius:16px;padding:32px 28px;box-shadow:0 4px 20px rgba(0,0,0,0.06);">${clientEmailHtml}</div></div></body></html>`;
 
       const clientSms = isStripe
         ? `${businessName}: refunded $${dollars} to your card. Back on the card in 5-10 business days.`
@@ -183,7 +188,7 @@ serve(async (req) => {
         supabase, therapist, client,
         eventType: 'refund_issued',
         emailSubject: `Refund: $${dollars} from ${businessName}`,
-        emailHtml: clientEmailHtml,
+        emailHtml: clientHtml,
         smsText: clientSms,
         bookingId: payment.booking_id,
       });
