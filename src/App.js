@@ -40,6 +40,7 @@ import Campaigns from './pages/Campaigns';
 import Comparison from './pages/Comparison';
 import ComparisonPrintable from './pages/ComparisonPrintable';
 import BookingPage from './pages/BookingPage';
+import BookingManage from './pages/BookingManage';
 import GiftLandingPage from './pages/GiftLandingPage';
 import DepositSuccess from './pages/DepositSuccess';
 import ThankYou from './pages/ThankYou';
@@ -131,6 +132,7 @@ function App() {
           <Route path="/dashboard/stripe-connect" element={<ProtectedRoute><StripeConnect /></ProtectedRoute>} />
           <Route path="/dashboard/stripe-connect-standard" element={<ProtectedRoute><StripeConnectStandard /></ProtectedRoute>} />
           <Route path="/book/:slug" element={<BookingPage />} />
+          <Route path="/book/:slug/manage" element={<BookingManage />} />
           <Route path="/gift/:customUrl" element={<GiftLandingPage />} />
           <Route path="/demo" element={<Demo />} />
           <Route path="/why-bodymap" element={<WhyBodyMap />} />

@@ -326,6 +326,7 @@ serve(async (req) => {
           extraFactRows: extraRows,
           policyInline: policyText,
           primaryCta: isPendingApproval ? null : { label: 'Fill my intake form', href: intakeUrl },
+          secondaryCta: isPendingApproval ? null : { label: 'Manage booking (reschedule or cancel)', href: `https://mybodymap.app/book/${therapist.custom_url}/manage?b=${booking.id}` },
           closingLine: isPendingApproval
             ? `Reply to this email if you'd like to add a note for ${therapistFirstName}.`
             : `Filling your intake ahead of time means you're ready the moment you arrive. Questions? Just reply to this email.`,

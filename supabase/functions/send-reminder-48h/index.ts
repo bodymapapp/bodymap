@@ -122,6 +122,7 @@ async function sendForBooking(supabase: any, RESEND_KEY: string, bookingId: stri
     durationMin: serviceDuration,
     locationAddress: locationAddr,
     primaryCta: { label: 'View or reschedule', href: rescheduleUrl },
+    secondaryCta: { label: 'Cancel this booking', href: `https://mybodymap.app/book/${therapist.custom_url}/manage?b=${booking.id}` },
     closingLine: `If anything has come up, you can move it from the link above. See you soon.`,
     prefName: 'Session reminder (48h)',
   });
