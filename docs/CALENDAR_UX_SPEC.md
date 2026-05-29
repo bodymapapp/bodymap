@@ -103,21 +103,28 @@ NO vertical-scroll month stack. NO infinite scroll. NO swipe gestures (touch swi
 
 When `allowOverrideOffDay=true` and the surface is therapist-facing, a toggle pill renders at the top of the calendar:
 
-> **Include my off days**
-> Off days are disabled. Flip this on to book one anyway.
+> **Include unavailable days**
+> Off days and blocked days are disabled. Flip on to book one anyway.
 
 States:
 
-- **Toggle OFF (default):** off-day cells render cream-beige + struck-through number + disabled cursor. Taps do nothing. Therapist sees the toggle and the constraint at the same time.
-- **Toggle ON:** off-day cells keep the cream-beige fill (subtle "this is outside your normal hours" reminder) but the number reads cleanly without strikethrough, and the cell is tappable like any normal day.
+- **Toggle OFF (default):** off-day cells render cream-beige + struck-through + disabled. Full-day-blocked cells render amber-striped + disabled. The therapist sees her schedule structure at a glance.
+- **Toggle ON:** every future day (off-day, blocked, working) renders identically to a normal working day (white background, normal text, fully tappable). The green toggle pill at the top of the calendar IS the override signal; per-cell color cues are intentionally removed to avoid competing with it. Booking-density sage dots still show on cells that have appointments.
 
-Why a toggle instead of a per-tap confirm:
+What past, today, and selected do (regardless of toggle):
 
-- Discoverability: for a 70yo solo LMT, the option to override should be VISIBLE before she tries to tap something. A struck-through cell that secretly accepts taps and asks a confirmation is hidden behavior. The toggle declares the affordance upfront.
-- Bulk-friendly: in series mode the therapist may pick multiple off-day Sundays. With a per-tap confirm she would tap N times and confirm N times. With the toggle she flips once and proceeds.
-- Reversible: she can flip the toggle off mid-flow and the calendar returns to safe defaults without resetting her selection.
+- Past cells: 40% opacity, disabled always.
+- Today: sage ring (unless selected).
+- Selected: forest fill + white number, wins all visuals.
 
-The toggle is local to the calendar instance (resets when the modal closes). It is NOT persisted as a therapist preference. Booking on off-days should remain an opt-in per session, not a stance.
+Why the simple version:
+
+- One switch, two clearly-distinct visual states. Therapist either sees her real schedule (toggle off) or treats the month as fully open (toggle on).
+- No need to interpret cream vs amber vs faint-amber differences.
+- Override mode is visually obvious from the toggle's green-on state alone.
+- The 70yo solo LMT persona benefits from less cognitive load over more visual signals.
+
+Trade-off: when toggle is ON, the therapist can no longer see at a glance which days are normally off or blocked. She has to flip the toggle off to inspect. Acceptable because the override flow is intentional and short-lived.
 
 ---
 

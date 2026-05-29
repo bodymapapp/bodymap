@@ -264,21 +264,23 @@ export default function MonthCalendar({
 
           if (isPast) {
             opacity = 0.4;
+          } else if (offDayUnlocked) {
+            // HK May 29 2026: when the toggle is ON, days that would
+            // normally be off or blocked render exactly like working
+            // days. Single source of override signal: the green toggle
+            // pill at the top of the calendar. Per-cell cream/amber
+            // tints competed with that signal and added cognitive
+            // load. Keep the booking-count visual if any, otherwise
+            // default white.
+            if (bookingCount > 0) background = '#F4F8F5';
           } else if (isFullDayBlock) {
-            // When unlocked by the toggle, soften the amber visual so
-            // the cell reads as tappable. Keep a faint amber tint to
-            // remind the therapist this is a day she marked off.
-            background = offDayUnlocked ? '#FEF8EC' : C.amberHash;
-            textColor = offDayUnlocked ? C.dark : C.amber;
-            opacity = offDayUnlocked ? 1 : 0.7;
+            background = C.amberHash;
+            textColor = C.amber;
+            opacity = 0.7;
           } else if (dowExcluded) {
             background = C.offdayFill;
-            textColor = offDayUnlocked ? C.dark : C.offdayText;
-            // Strikethrough only when off-day is locked (toggle OFF).
-            // When toggle is ON, we keep the beige fill (subtle reminder
-            // 'this is not your normal working day') but the number
-            // reads cleanly so it doesn't feel disabled.
-            textDecoration = offDayUnlocked ? 'none' : 'line-through';
+            textColor = C.offdayText;
+            textDecoration = 'line-through';
           } else if (bookingCount > 0) {
             background = '#F4F8F5';
           }
