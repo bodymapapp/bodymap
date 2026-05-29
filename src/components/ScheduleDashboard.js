@@ -7748,8 +7748,25 @@ export default function ScheduleDashboard({ therapist }) {
           cancellationChargeFiredAt: b.cancellation_charge_fired_at || null,
           previousBookingDate: b.previous_booking_date || null,
           previousStartTime: b.previous_start_time || null,
+          // HK May 29 2026: series fields for the "Session N of M" pill
+          // on bookings that belong to a recurring set. Total is filled
+          // in via a second pass below since we need the count per
+          // series_id.
+          seriesId: b.series_id || null,
+          seriesIndex: b.series_index || null,
         };
       });
+
+      // Build series totals so each booking in a series can show "1 of 4".
+      // HK May 29 2026: a single pass over mapped is enough since we
+      // already fetched every booking in the window.
+      const seriesTotals = new Map();
+      for (const a of mapped) {
+        if (a.seriesId) seriesTotals.set(a.seriesId, (seriesTotals.get(a.seriesId) || 0) + 1);
+      }
+      for (const a of mapped) {
+        if (a.seriesId) a.seriesTotal = seriesTotals.get(a.seriesId) || null;
+      }
 
       // External Google Calendar events (Lindsey #10, May 10 2026).
       // Fetch the therapist's own external_calendar_events and merge

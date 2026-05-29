@@ -1,11 +1,12 @@
 // BookingModal.js
 // Used for: Create Booking, Reschedule, and Rebook (in-session)
 // mode: 'create' | 'reschedule' | 'rebook'
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { supabase } from '../lib/supabase';
 import { findOrCreateClient } from '../lib/findOrCreateClient';
 import CloseButton from './CloseButton';
+import SelectableMonthView from './SelectableMonthView';
 
 const C = {
   forest: '#2A5741', sage: '#6B9E80', beige: '#F5F0E8',
@@ -99,6 +100,66 @@ export default function BookingModal({ therapist, mode = 'create', existingBooki
   // existing booking's location.
   const [locations, setLocations] = useState([]);
   const [locationId, setLocationId] = useState(existingBooking?.location_id || null);
+
+  // ─── Series booking state (HK May 29 2026) ──────────────────────────
+  // Series mode lets the therapist book N sessions for the same client
+  // in one flow. Defaults OFF; disabled entirely on reschedule.
+  // Rule-first design for our 70yo persona: pick every-N-weeks and
+  // count, the calendar auto-selects, manual tweaks supported on top.
+  const [seriesMode, setSeriesMode] = useState(false);
+  const [seriesEveryWeeks, setSeriesEveryWeeks] = useState(2);
+  const [seriesCount, setSeriesCount] = useState(4);
+  // Manual override layer: dates the user explicitly added (beyond rule)
+  // and dates explicitly dropped (subtracted from rule).
+  const [seriesManualAdd, setSeriesManualAdd] = useState([]);
+  const [seriesManualDrop, setSeriesManualDrop] = useState([]);
+
+  // Compute the final list of dates in the series:
+  //   ruleBase = [anchor, anchor + every*7 days, anchor + 2*every*7, ...]
+  //   final = (ruleBase - seriesManualDrop) ∪ seriesManualAdd, deduped, sorted.
+  // anchor = the primary `date` field, so changing it shifts the series.
+  const seriesDates = useMemo(() => {
+    if (!seriesMode) return [];
+    if (!date) return [];
+    const ruleBase = [];
+    const [y, m, d] = date.split('-').map(Number);
+    const anchor = new Date(y, m - 1, d);
+    const count = Math.max(1, Math.min(52, seriesCount | 0));
+    const every = Math.max(1, Math.min(26, seriesEveryWeeks | 0));
+    for (let i = 0; i < count; i++) {
+      const dt = new Date(anchor);
+      dt.setDate(anchor.getDate() + i * every * 7);
+      ruleBase.push(toDateStr(dt));
+    }
+    const dropSet = new Set(seriesManualDrop);
+    const merged = new Set(ruleBase.filter(d => !dropSet.has(d)));
+    for (const d of seriesManualAdd) merged.add(d);
+    return Array.from(merged).sort();
+  }, [seriesMode, date, seriesEveryWeeks, seriesCount, seriesManualAdd, seriesManualDrop]);
+
+  function toggleSeriesDate(iso) {
+    // If currently in seriesDates, drop it. Else add it.
+    if (seriesDates.includes(iso)) {
+      // If it's a rule-generated date, add to drop list. If it's manual-add, remove from add list.
+      if (seriesManualAdd.includes(iso)) {
+        setSeriesManualAdd(arr => arr.filter(d => d !== iso));
+      } else {
+        setSeriesManualDrop(arr => arr.includes(iso) ? arr : [...arr, iso]);
+      }
+    } else {
+      // Add: remove from drop list if it was dropped, else add to manual-add.
+      if (seriesManualDrop.includes(iso)) {
+        setSeriesManualDrop(arr => arr.filter(d => d !== iso));
+      } else {
+        setSeriesManualAdd(arr => arr.includes(iso) ? arr : [...arr, iso]);
+      }
+    }
+  }
+
+  function seriesIndexFor(iso) {
+    const i = seriesDates.indexOf(iso);
+    return i >= 0 ? i + 1 : null;
+  }
 
   // Load services + availability + blocked days
   useEffect(() => {
@@ -258,11 +319,86 @@ export default function BookingModal({ therapist, mode = 'create', existingBooki
     if (!date)          { setError('Please pick a date.'); return; }
     if (!slot)          { setError('Please pick a time slot.'); return; }
     if (!serviceId)     { setError('Please select a service.'); return; }
+    if (seriesMode && !isReschedule && seriesDates.length < 2) {
+      setError('A series needs at least 2 dates. Adjust the rule or turn off series mode.');
+      return;
+    }
 
     setSaving(true);
     try {
       let bookingId = null;
       let eventType = null;
+
+      // ─── SERIES PATH (HK May 29 2026) ────────────────────────────
+      // When seriesMode is on, insert a booking_series row, then N
+      // bookings sharing that series_id + series_index 1..N. Each
+      // session uses the same client/service/duration/start_time but
+      // its own booking_date. Notifications fire per booking via
+      // fireBookingConfirmation. Conflicts are not auto-resolved here;
+      // the therapist's calendar preview is the conflict surface.
+      if (seriesMode && !isReschedule) {
+        const svc = services.find(s => s.id === serviceId);
+        const clientIdForBooking = await findOrCreateClient({
+          supabase, therapist_id: therapist.id, name, email, phone,
+        });
+
+        // Insert series row first.
+        const { data: seriesRow, error: serErr } = await supabase
+          .from('booking_series')
+          .insert({
+            therapist_id: therapist.id,
+            client_id: clientIdForBooking,
+            label: `${(svc?.name || 'Session')} series for ${name.trim()}`,
+            rule_text: `Every ${seriesEveryWeeks} week${seriesEveryWeeks === 1 ? '' : 's'} for ${seriesDates.length} sessions`,
+            total_count: seriesDates.length,
+            created_by_therapist_id: therapist.id,
+          })
+          .select('id')
+          .single();
+        if (serErr) throw serErr;
+        const seriesId = seriesRow.id;
+
+        const sortedDates = [...seriesDates].sort();
+        const rows = sortedDates.map((dateStr, idx) => ({
+          therapist_id:  therapist.id,
+          service_id:    serviceId,
+          client_id:     clientIdForBooking,
+          client_name:   name.trim(),
+          client_email:  email.trim().toLowerCase(),
+          client_phone:  phone.trim(),
+          booking_date:  dateStr,
+          start_time:    slot.start,
+          end_time:      slot.end,
+          notes:         notes.trim(),
+          status:        'confirmed',
+          deposit_required: false,
+          deposit_amount:   0,
+          deposit_paid:     false,
+          location_id:   locationId || null,
+          addon_ids:           Array.from(selectedAddonIds),
+          addon_total_price:   addonTotalPrice,
+          addon_extra_minutes: addonExtraMinutes,
+          series_id:    seriesId,
+          series_index: idx + 1,
+        }));
+
+        const { data: inserted, error: bulkErr } = await supabase
+          .from('bookings')
+          .insert(rows)
+          .select('id, booking_date, series_index');
+        if (bulkErr) throw bulkErr;
+
+        // Fire booking confirmation for each. Non-blocking, paced
+        // lightly so we don't bury Resend's 5/sec budget.
+        for (const b of (inserted || [])) {
+          fireBookingConfirmation(b.id, 'booking_created');
+          await new Promise(r => setTimeout(r, 220));
+        }
+
+        onSuccess?.();
+        onClose();
+        return;
+      }
 
       if (isReschedule && existingBooking?.id) {
         // Update existing booking date/time. location_id only sent
@@ -708,23 +844,74 @@ export default function BookingModal({ therapist, mode = 'create', existingBooki
             </div>
           )}
 
-          {/* Date picker */}
-          <div>
+          {/* Date picker (HK May 29 2026): replaced the horizontal chip
+              strip with SelectableMonthView so the therapist sees their
+              actual calendar (busy/blocked/free) when picking. For
+              series bookings, a rule strip above lets them pick "every
+              N weeks for M sessions" and the calendar auto-selects. */}
+          {!isReschedule && (
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+              <label style={{ fontSize: 11, fontWeight: 700, color: C.gray, textTransform: 'uppercase', letterSpacing: '0.07em' }}>
+                {seriesMode ? 'Series' : 'Date'}
+              </label>
+              <button
+                type="button"
+                onClick={() => {
+                  setSeriesMode(v => !v);
+                  setSeriesManualAdd([]);
+                  setSeriesManualDrop([]);
+                }}
+                style={{
+                  background: seriesMode ? C.sage : '#fff',
+                  color: seriesMode ? '#fff' : C.forest,
+                  border: `1.5px solid ${seriesMode ? C.sage : C.border}`,
+                  borderRadius: 16, padding: '4px 12px',
+                  fontSize: 11, fontWeight: 700, cursor: 'pointer',
+                  letterSpacing: '0.04em',
+                }}>
+                {seriesMode ? 'Series ON' : 'Book a series'}
+              </button>
+            </div>
+          )}
+          {isReschedule && (
             <label style={{ fontSize: 11, fontWeight: 700, color: C.gray, textTransform: 'uppercase', letterSpacing: '0.07em', display: 'block', marginBottom: 8 }}>Date</label>
-            {availDates.length === 0 ? (
-              <div style={{ fontSize: 13, color: C.gray, padding: '10px 0' }}>No availability set up yet. Add your working hours in Settings.</div>
-            ) : (
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, maxHeight: 220, overflowY: 'auto', paddingRight: 4 }}>
-                {availDates.map(d => (
-                  <button key={d} onClick={() => setDate(d)}
-                    style={{ padding: '8px 12px', borderRadius: 10, border: `1.5px solid ${date === d ? C.forest : C.border}`,
-                      background: date === d ? C.forest : '#fff', color: date === d ? '#fff' : C.dark,
-                      fontSize: 12, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }}>
-                    {fmtDate(d)}
-                  </button>
-                ))}
+          )}
+
+          {seriesMode && !isReschedule && (
+            <div style={{
+              background: '#F4F6F2', border: `1.5px solid #D6E0D4`, borderRadius: 10,
+              padding: '12px 14px', marginBottom: 12, fontSize: 14, color: C.dark, lineHeight: 1.7,
+            }}>
+              Every{' '}
+              <Stepper value={seriesEveryWeeks} min={1} max={26} onChange={setSeriesEveryWeeks} />
+              {' '}weeks for{' '}
+              <Stepper value={seriesCount} min={1} max={52} onChange={setSeriesCount} />
+              {' '}sessions starting <strong style={{ color: C.forest }}>{date ? fmtDate(date) : '(pick a date below)'}</strong>.
+              <div style={{ fontSize: 11, color: C.gray, marginTop: 8, lineHeight: 1.55 }}>
+                {seriesDates.length > 0
+                  ? `${seriesDates.length} session${seriesDates.length === 1 ? '' : 's'} selected. Tap a sage day to drop it, or tap a free day to add one.`
+                  : 'Pick a starting date below to build the series.'}
               </div>
-            )}
+            </div>
+          )}
+
+          <div style={{ marginBottom: 12, maxHeight: 360, overflowY: 'auto', border: `1px solid ${C.border}`, borderRadius: 10, padding: 8 }}>
+            <SelectableMonthView
+              therapist={therapist}
+              mode={seriesMode ? 'series' : 'single'}
+              selectedDates={seriesMode ? seriesDates : (date ? [date] : [])}
+              onSelectDate={(iso) => {
+                if (seriesMode) {
+                  // First tap with no anchor: set the anchor (which seeds the rule).
+                  if (!date) { setDate(iso); return; }
+                  toggleSeriesDate(iso);
+                } else {
+                  setDate(iso);
+                }
+              }}
+              seriesIndexFor={seriesMode ? seriesIndexFor : null}
+              monthsToShow={seriesMode ? 4 : 2}
+            />
           </div>
 
           {/* Time slots */}
@@ -835,4 +1022,29 @@ export default function BookingModal({ therapist, mode = 'create', existingBooki
       </div>
     </div>
   ), document.body);
+}
+
+// HK May 29 2026: small +/- stepper for the series rule strip. Big
+// tappable buttons for our 70yo persona (no dropdowns, no number-pad
+// gymnastics). value is clamped to [min, max].
+function Stepper({ value, min = 1, max = 99, onChange }) {
+  const dec = () => onChange(Math.max(min, (value | 0) - 1));
+  const inc = () => onChange(Math.min(max, (value | 0) + 1));
+  const btn = {
+    width: 28, height: 28,
+    borderRadius: 14, border: '1.5px solid #2A5741',
+    background: '#fff', color: '#2A5741',
+    fontSize: 16, fontWeight: 700, lineHeight: 1,
+    cursor: 'pointer', fontFamily: 'inherit',
+    display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+    padding: 0, verticalAlign: 'middle',
+    WebkitTapHighlightColor: 'transparent',
+  };
+  return (
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, verticalAlign: 'middle' }}>
+      <button type="button" onClick={dec} aria-label="Decrease" style={btn}>−</button>
+      <strong style={{ minWidth: 22, textAlign: 'center', display: 'inline-block', color: '#2A5741', fontSize: 15 }}>{value}</strong>
+      <button type="button" onClick={inc} aria-label="Increase" style={btn}>+</button>
+    </span>
+  );
 }
