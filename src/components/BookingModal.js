@@ -7,6 +7,10 @@ import { supabase } from '../lib/supabase';
 import { findOrCreateClient } from '../lib/findOrCreateClient';
 import CloseButton from './CloseButton';
 import MonthCalendar from './MonthCalendar';
+import RecurringRulePanel, {
+  DEFAULT_RECURRING_RULE,
+  generateSeriesDates,
+} from './RecurringRulePanel';
 
 const C = {
   forest: '#2A5741', sage: '#6B9E80', beige: '#F5F0E8',
@@ -104,59 +108,44 @@ export default function BookingModal({ therapist, mode = 'create', existingBooki
   const [locations, setLocations] = useState([]);
   const [locationId, setLocationId] = useState(existingBooking?.location_id || null);
 
-  // ─── Series booking state (HK May 29 2026) ──────────────────────────
-  // Series mode lets the therapist book N sessions for the same client
-  // in one flow. Defaults OFF; disabled entirely on reschedule.
-  // Rule-first design for our 70yo persona: pick every-N-weeks and
-  // count, the calendar auto-selects, manual tweaks supported on top.
-  const [seriesMode, setSeriesMode] = useState(false);
-  const [seriesEveryWeeks, setSeriesEveryWeeks] = useState(2);
-  const [seriesCount, setSeriesCount] = useState(4);
-  // Manual override layer: dates the user explicitly added (beyond rule)
-  // and dates explicitly dropped (subtracted from rule).
-  const [seriesManualAdd, setSeriesManualAdd] = useState([]);
-  const [seriesManualDrop, setSeriesManualDrop] = useState([]);
+  // ─── Recurring booking state (HK May 29 2026 rebuild) ─────────────
+  // Single unified rule object replacing the previous trio of
+  // seriesMode/seriesEveryWeeks/seriesCount. Covers all common patterns
+  // (interval, frequency unit, day-of-week multi-select, end-by-count
+  // OR end-by-date) in one shape. See RecurringRulePanel for the panel
+  // UI and generateSeriesDates for the pure rule->dates function.
+  // Disabled entirely on reschedule.
+  const [recurringRule, setRecurringRule] = useState(DEFAULT_RECURRING_RULE);
+  // Convenience flag for downstream code; same as recurringRule.on.
+  const seriesMode = recurringRule.on;
 
-  // Compute the final list of dates in the series:
-  //   ruleBase = [anchor, anchor + every*7 days, anchor + 2*every*7, ...]
-  //   final = (ruleBase - seriesManualDrop) ∪ seriesManualAdd, deduped, sorted.
-  // anchor = the primary `date` field, so changing it shifts the series.
-  const seriesDates = useMemo(() => {
-    if (!seriesMode) return [];
-    if (!date) return [];
-    const ruleBase = [];
-    const [y, m, d] = date.split('-').map(Number);
-    const anchor = new Date(y, m - 1, d);
-    const count = Math.max(1, Math.min(52, seriesCount | 0));
-    const every = Math.max(1, Math.min(26, seriesEveryWeeks | 0));
-    for (let i = 0; i < count; i++) {
-      const dt = new Date(anchor);
-      dt.setDate(anchor.getDate() + i * every * 7);
-      ruleBase.push(toDateStr(dt));
-    }
-    const dropSet = new Set(seriesManualDrop);
-    const merged = new Set(ruleBase.filter(d => !dropSet.has(d)));
-    for (const d of seriesManualAdd) merged.add(d);
-    return Array.from(merged).sort();
-  }, [seriesMode, date, seriesEveryWeeks, seriesCount, seriesManualAdd, seriesManualDrop]);
+  // Manual overrides (calendar tap to add/drop a date) live inside the
+  // rule so the panel's preview line stays accurate.
+  // Compute series dates from rule + anchor (the primary `date` field).
+  const seriesDates = useMemo(
+    () => generateSeriesDates(date, recurringRule),
+    [date, recurringRule],
+  );
 
   function toggleSeriesDate(iso) {
-    // If currently in seriesDates, drop it. Else add it.
-    if (seriesDates.includes(iso)) {
-      // If it's a rule-generated date, add to drop list. If it's manual-add, remove from add list.
-      if (seriesManualAdd.includes(iso)) {
-        setSeriesManualAdd(arr => arr.filter(d => d !== iso));
+    // If the date is currently in the series:
+    //   if it's a manual-add → remove from manualAdd
+    //   otherwise (rule-generated) → push to manualDrop
+    // If not in the series:
+    //   if it's in manualDrop → remove from manualDrop
+    //   otherwise → push to manualAdd
+    setRecurringRule(rule => {
+      const inSeries = seriesDates.includes(iso);
+      const inAdd = (rule.manualAdd || []).includes(iso);
+      const inDrop = (rule.manualDrop || []).includes(iso);
+      if (inSeries) {
+        if (inAdd) return { ...rule, manualAdd: rule.manualAdd.filter(d => d !== iso) };
+        return { ...rule, manualDrop: inDrop ? rule.manualDrop : [...(rule.manualDrop || []), iso] };
       } else {
-        setSeriesManualDrop(arr => arr.includes(iso) ? arr : [...arr, iso]);
+        if (inDrop) return { ...rule, manualDrop: rule.manualDrop.filter(d => d !== iso) };
+        return { ...rule, manualAdd: inAdd ? rule.manualAdd : [...(rule.manualAdd || []), iso] };
       }
-    } else {
-      // Add: remove from drop list if it was dropped, else add to manual-add.
-      if (seriesManualDrop.includes(iso)) {
-        setSeriesManualDrop(arr => arr.filter(d => d !== iso));
-      } else {
-        setSeriesManualAdd(arr => arr.includes(iso) ? arr : [...arr, iso]);
-      }
-    }
+    });
   }
 
   function seriesIndexFor(iso) {
@@ -416,13 +405,29 @@ export default function BookingModal({ therapist, mode = 'create', existingBooki
         }
 
         // Insert series row first.
+        // HK May 29 2026: build rule_text from the new recurringRule
+        // object. Reads naturally regardless of the chosen unit/DOWs.
+        const ruleText = (() => {
+          const r = recurringRule;
+          const unitName = r.unit === 'day' ? (r.interval === 1 ? 'day' : 'days')
+            : r.unit === 'month' ? (r.interval === 1 ? 'month' : 'months')
+            : (r.interval === 1 ? 'week' : 'weeks');
+          const dowPart = r.unit === 'week' && r.daysOfWeek && r.daysOfWeek.length > 0
+            ? ` on ${r.daysOfWeek.map(d => ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][d]).join(', ')}`
+            : '';
+          const endPart = r.endMode === 'date' && r.endDate
+            ? ` through ${r.endDate}`
+            : ` for ${seriesDates.length} session${seriesDates.length === 1 ? '' : 's'}`;
+          return `Every ${r.interval} ${unitName}${dowPart}${endPart}`;
+        })();
+
         const { data: seriesRow, error: serErr } = await supabase
           .from('booking_series')
           .insert({
             therapist_id: therapist.id,
             client_id: clientIdForBooking,
             label: `${(svc?.name || 'Session')} series for ${name.trim()}`,
-            rule_text: `Every ${seriesEveryWeeks} week${seriesEveryWeeks === 1 ? '' : 's'} for ${seriesDates.length} sessions`,
+            rule_text: ruleText,
             total_count: seriesDates.length,
             created_by_therapist_id: therapist.id,
           })
@@ -942,49 +947,19 @@ export default function BookingModal({ therapist, mode = 'create', existingBooki
               series bookings, a rule strip above lets them pick "every
               N weeks for M sessions" and the calendar auto-selects. */}
           {!isReschedule && (
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
-              <label style={{ fontSize: 11, fontWeight: 700, color: C.gray, textTransform: 'uppercase', letterSpacing: '0.07em' }}>
-                {seriesMode ? 'Series' : 'Date'}
+            <div style={{ marginBottom: 12 }}>
+              <label style={{ fontSize: 11, fontWeight: 700, color: C.gray, textTransform: 'uppercase', letterSpacing: '0.07em', display: 'block', marginBottom: 6 }}>
+                {seriesMode ? 'Recurring booking' : 'Date'}
               </label>
-              <button
-                type="button"
-                onClick={() => {
-                  setSeriesMode(v => !v);
-                  setSeriesManualAdd([]);
-                  setSeriesManualDrop([]);
-                }}
-                style={{
-                  background: seriesMode ? C.sage : '#fff',
-                  color: seriesMode ? '#fff' : C.forest,
-                  border: `1.5px solid ${seriesMode ? C.sage : C.border}`,
-                  borderRadius: 16, padding: '4px 12px',
-                  fontSize: 11, fontWeight: 700, cursor: 'pointer',
-                  letterSpacing: '0.04em',
-                }}>
-                {seriesMode ? 'Series ON' : 'Book a series'}
-              </button>
+              <RecurringRulePanel
+                rule={recurringRule}
+                anchorIso={date || null}
+                onChange={(newRule) => setRecurringRule(newRule)}
+              />
             </div>
           )}
           {isReschedule && (
             <label style={{ fontSize: 11, fontWeight: 700, color: C.gray, textTransform: 'uppercase', letterSpacing: '0.07em', display: 'block', marginBottom: 8 }}>Date</label>
-          )}
-
-          {seriesMode && !isReschedule && (
-            <div style={{
-              background: '#F4F6F2', border: `1.5px solid #D6E0D4`, borderRadius: 10,
-              padding: '12px 14px', marginBottom: 12, fontSize: 14, color: C.dark, lineHeight: 1.7,
-            }}>
-              Every{' '}
-              <Stepper value={seriesEveryWeeks} min={1} max={26} onChange={setSeriesEveryWeeks} />
-              {' '}weeks for{' '}
-              <Stepper value={seriesCount} min={1} max={52} onChange={setSeriesCount} />
-              {' '}sessions starting <strong style={{ color: C.forest }}>{date ? fmtDate(date) : '(pick a date below)'}</strong>.
-              <div style={{ fontSize: 11, color: C.gray, marginTop: 8, lineHeight: 1.55 }}>
-                {seriesDates.length > 0
-                  ? `${seriesDates.length} session${seriesDates.length === 1 ? '' : 's'} selected. Tap a sage day to drop it, or tap a free day to add one.`
-                  : 'Pick a starting date below to build the series.'}
-              </div>
-            </div>
           )}
 
           <div style={{ marginBottom: 12 }}>

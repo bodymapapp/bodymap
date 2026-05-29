@@ -1,7 +1,7 @@
 // BodyMap service worker
 // IMPORTANT: bumping CACHE_NAME forces all clients to rebuild cache on next visit.
-// HK May 29 2026: bumped to v6 for simplified toggle-on visual ship.
-const CACHE_NAME = 'bodymap-v6';
+// HK May 29 2026: bumped to v7 for recurring booking rebuild ship.
+const CACHE_NAME = 'bodymap-v7';
 
 // Install — no precache. CRA hashes filenames (main.abc123.js), so we can't
 // precache by known path. We cache opportunistically in the fetch handler.

@@ -75,7 +75,7 @@ Therapists CAN override an off-day. The cell is still struck-through (visual cue
 
 ---
 
-## Multi-select mode (for series bookings)
+## Multi-select mode (for recurring bookings)
 
 When `mode='multi'`:
 - `selected` is an array of ISO strings, not a single string
@@ -83,7 +83,67 @@ When `mode='multi'`:
 - Tapping a selected cell removes from the array
 - `seriesIndexFor(iso)` returns the position (1-based) for the badge
 
-Selection ordering is by date, not tap order. The series picker (BookingModal series mode) maintains a rule-driven array; manual taps add/drop from that array.
+Selection ordering is by date, not tap order. The dates are computed from a rule (see Recurring rule below); manual taps push to manualAdd/manualDrop layers on top of that rule.
+
+---
+
+## Recurring rule (RecurringRulePanel)
+
+Recurring/series bookings are driven by a single rule object owned by `RecurringRulePanel`. The panel is the ONLY surface that mutates this shape. Generated dates flow into MonthCalendar as `selected` in multi mode.
+
+### Shape
+
+```js
+{
+  on:         bool,                       // master toggle
+  interval:   int >= 1,                   // every N units
+  unit:       'day' | 'week' | 'month',
+  daysOfWeek: number[],                   // 0..6 subset, only used when unit='week'; empty = use anchor's DOW
+  endMode:    'count' | 'date',
+  endCount:   int >= 1,                   // active when endMode='count'
+  endDate:    ISO string | null,          // active when endMode='date'
+  manualAdd:  ISO string[],               // dates added outside the rule via calendar tap
+  manualDrop: ISO string[],               // rule-generated dates removed via calendar tap
+}
+```
+
+### Generator contract
+
+`generateSeriesDates(anchorIso, rule)` returns the sorted ISO date list and is a **pure function** (no React, no DB). It implements:
+
+- **Week unit:** walks forward by `interval` weeks starting at the Sunday of the anchor's week. For each interval block emits one date per selected day-of-week (or anchor's day-of-week when daysOfWeek is empty). Dates before the anchor are dropped.
+- **Day unit:** anchor, anchor+interval, anchor+2*interval, ...
+- **Month unit:** anchor, anchor+interval months, anchor+2*interval months, ...
+- End boundary: either trimmed to `endCount` (count mode) or stops at `endDate` (date mode).
+- After the rule pass: `manualDrop` removed, then `manualAdd` added, then sorted.
+- Safety cap: 365 dates regardless of rule. The cap also bounds runaway loops if rule is misconfigured.
+
+### Capabilities matrix (vs Outlook recurring panel)
+
+| Capability | Outlook | MyBodyMap |
+|---|---|---|
+| Interval (every N units) | ✓ | ✓ |
+| Frequency unit | Day / Week / Month / Year | Day / Week / Month |
+| Multi-day-of-week | ✓ (week only) | ✓ (week only) |
+| End by count | ✓ | ✓ |
+| End by date | ✓ | ✓ |
+| First-Nth-DOW-of-month | ✓ | ✗ (deliberate, rare in massage) |
+| Yearly | ✓ | ✗ (deliberate, rare in massage) |
+| Exception list editor | ✓ | ✗ (handled via manualDrop on calendar tap) |
+| Live preview line | ✗ | ✓ ("12 sessions through Aug 14, 2026") |
+| Anchor's DOW auto-selected | ✗ | ✓ (italic chip when not explicitly toggled) |
+
+### Panel discoverability
+
+When `rule.on === false`, the panel renders a single full-width compact bar reading **"↻ Set up a recurring booking, Tap to configure"**. One tap expands the full panel. This is the discoverability fix HK called out: a hidden small pill below the addons was the previous failure mode.
+
+### Manual overrides
+
+Tapping a cell in the calendar while the panel is on:
+- If date is currently in the series → push to `manualDrop` (or remove from `manualAdd` if it was a manual add)
+- If date is not in the series → push to `manualAdd` (or remove from `manualDrop` if it was previously dropped)
+
+This lets the therapist tweak a series without abandoning the rule. The preview line updates live.
 
 ---
 
@@ -160,7 +220,8 @@ If a future surface needs a different model (e.g. week view, agenda view), build
 - **May 27 2026**, `MonthCalendar` extracted from BookingPage's inline `Cal` function. Adopted by BulkSessionScheduler.
 - **May 29 2026**, `SelectableMonthView` built for BookingModal (mistake; should have used MonthCalendar). Consolidated back to MonthCalendar same day. SelectableMonthView removed.
 - **May 29 2026**, This spec doc created. MonthCalendar enhanced with `mode='multi'`, `bookingsByDate`, `partialBlockedDates`, `seriesIndexFor`, `allowOverrideOffDay`. BookingModal refactored to use MonthCalendar with `mode='multi'` for series.
-- **May 29 2026 (revision)**, Per-tap "Book anyway?" confirm replaced with a visible "Include my off days" toggle pill at the top of the calendar. Toggle is the discoverable affordance our 70yo persona expects. Also fixed scroll-chaining on BookingModal: added `overscroll-behavior: contain` on the modal scroll layers and body-scroll lock while the modal is mounted, so the Schedule page behind no longer scrolls when the modal hits a boundary.
+- **May 29 2026 (toggle revision):** Per-tap "Book anyway?" confirm replaced with a visible "Include unavailable days" toggle pill at top of calendar. When toggle is ON, off-days AND full-day blocks all render as normal working days (white, tappable). Single override signal = the toggle's own green state.
+- **May 29 2026 (recurring rebuild):** Replaced the single-dimension "Book a series" pill with `RecurringRulePanel.jsx`. Now covers interval + frequency unit + day-of-week multi-select + end-by-date OR count, matching Outlook's recurring panel in breadth while being more discoverable (full-width "Set up a recurring booking" affordance, not a tiny pill) and simpler (no Year option, no first-Nth-DOW patterns, no exception-list editor; manual tap = manualAdd/manualDrop). New shared rule shape documented above. `generateSeriesDates(anchor, rule)` is the single pure function that computes the dates. Old `seriesEveryWeeks` + `seriesCount` state replaced by `recurringRule` object in BookingModal.
 
 ---
 
