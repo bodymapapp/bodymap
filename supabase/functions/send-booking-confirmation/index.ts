@@ -20,6 +20,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { notifyTherapist } from "../_shared/notifications.ts";
+import { renderClientEmailDoc } from "../_shared/clientEmail.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -282,76 +283,56 @@ serve(async (req) => {
           booking_id: booking.id,
         }).then((r: any) => { if (r.error) console.error("[log] skip insert failed", r.error); });
       } else {
+        // HK May 29 2026: per EMAIL_COPY_SPEC C1. Welcoming, set
+        // expectation for the intake, single CTA to fill it. The
+        // policy note when therapist has cancellation_policy_enabled
+        // renders inline so the client sees what they're agreeing to.
+        const policyText = (therapist.cancellation_policy_enabled && therapist.cancellation_policy)
+          ? `Need to change plans? Please let ${therapistFirstName} know as early as possible. Late cancellations and no-shows may be charged per the policy you agreed to at booking.`
+          : null;
+
         const subject = isPendingApproval
           ? `Request received: ${serviceName} with ${therapistName}`
-          : `Booking confirmed: ${serviceName} with ${therapistName}`;
-        const headerLine = isPendingApproval ? "Your request was received" : "Your booking is confirmed";
-        const subText = isPendingApproval
-          ? `${therapistFirstName} will review and reply soon. Most replies come within 24 hours.`
-          : `We will see you on ${escapeHtml(apt.date)} at ${escapeHtml(apt.time)}.`;
+          : `Your session with ${therapistFirstName} is confirmed`;
 
-        const policyHtml = (therapist.cancellation_policy_enabled && therapist.cancellation_policy)
-          ? `
-            <div style="background:${C.cream};border:1px solid ${C.beige};border-radius:10px;padding:14px 16px;margin:16px 0;">
-              <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:${C.gray};margin-bottom:6px;">A note about changes</div>
-              <div style="font-size:13px;color:${C.ink};line-height:1.6;">
-                Need to change plans? Please let ${escapeHtml(therapistFirstName)} know as early as possible. Late cancellations and no-shows may be charged per the policy you agreed to at booking.
-              </div>
-            </div>
-          `
-          : "";
+        const title = isPendingApproval
+          ? `Your request was received`
+          : `Your session is confirmed`;
 
-        const html = `
-<!DOCTYPE html>
-<html><head><meta charset="utf-8"></head>
-<body style="margin:0;padding:0;background:${C.beige};font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;color:${C.ink};">
-  <div style="max-width:560px;margin:0 auto;padding:32px 16px;">
-    <div style="background:#fff;border-radius:16px;padding:32px 28px;box-shadow:0 4px 20px rgba(0,0,0,0.06);">
-      <div style="text-align:center;margin-bottom:24px;">
-        <div style="width:64px;height:64px;border-radius:50%;background:${C.cream};display:inline-flex;align-items:center;justify-content:center;font-size:32px;line-height:64px;">🌿</div>
-      </div>
-      <h1 style="font-family:Georgia,serif;font-size:24px;font-weight:700;color:${C.forest};margin:0 0 8px;text-align:center;">${headerLine}</h1>
-      <p style="font-size:14px;color:${C.gray};text-align:center;margin:0 0 24px;line-height:1.6;">${subText}</p>
+        const opener = isPendingApproval
+          ? `Hi ${clientFirstName || 'there'}, your booking request for ${serviceName} has come through. ${therapistFirstName} will review and reply within a day. Here are the details I have so far.`
+          : `Hi ${clientFirstName || 'there'}, looking forward to seeing you. Here are the details for your records.`;
 
-      <div style="background:${C.cream};border-radius:12px;padding:20px;margin-bottom:20px;">
-        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:${C.gray};margin-bottom:10px;">Your booking</div>
-        <div style="font-size:15px;font-weight:700;color:${C.ink};margin-bottom:6px;">${escapeHtml(serviceName)}</div>
-        <div style="font-size:14px;color:${C.gray};line-height:1.7;">
-          ${escapeHtml(apt.full)}<br/>
-          with ${escapeHtml(therapistName)}
-          ${servicePrice ? `<br/>$${servicePrice}` : ""}
-        </div>
-        ${locationName ? `
-        <div style="margin-top:14px;padding-top:14px;border-top:1px dashed ${C.beige};">
-          <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:${C.gray};margin-bottom:4px;">Location</div>
-          <div style="font-size:14px;font-weight:600;color:${C.ink};margin-bottom:2px;">${escapeHtml(locationName)}</div>
-          ${locationAddress ? `<div style="font-size:13px;color:${C.gray};line-height:1.5;">${escapeHtml(locationAddress)}</div>` : ""}
-          ${locationNotes ? `<div style="font-size:12px;color:${C.gray};line-height:1.5;font-style:italic;margin-top:4px;">${escapeHtml(locationNotes)}</div>` : ""}
-        </div>
-        ` : ""}
-      </div>
+        const fullLocation = locationAddress
+          ? (locationName ? `${locationName}, ${locationAddress}` : locationAddress)
+          : (locationName || null);
 
-      ${!isPendingApproval ? `
-      <div style="background:#F0FDF4;border:1px solid #86EFAC;border-radius:12px;padding:18px 20px;margin-bottom:20px;">
-        <div style="font-size:13px;font-weight:700;color:${C.forest};margin-bottom:6px;">📋 Save time, fill your intake now</div>
-        <div style="font-size:13px;color:${C.ink};line-height:1.6;margin-bottom:12px;">
-          Filling your body map ahead of time means you are ready the moment you arrive.
-        </div>
-        <a href="${intakeUrl}" style="display:inline-block;background:${C.forest};color:#fff;text-decoration:none;padding:10px 18px;border-radius:8px;font-size:13px;font-weight:700;">Fill my intake form</a>
-      </div>
-      ` : ""}
+        const extraRows: Array<{ label: string, value: string }> = [];
+        if (typeof servicePrice === 'number' && servicePrice > 0) {
+          extraRows.push({ label: 'Price', value: `$${servicePrice}` });
+        }
 
-      ${policyHtml}
-
-      <div style="font-size:12px;color:${C.gray};text-align:center;margin-top:24px;line-height:1.6;">
-        Questions? Reply to this email and ${escapeHtml(therapistFirstName)} will get back to you.
-      </div>
-    </div>
-    <div style="text-align:center;margin-top:16px;font-size:11px;color:${C.gray};">
-      Sent by ${escapeHtml(therapistName)} via MyBodyMap
-    </div>
-  </div>
-</body></html>`;
+        const html = renderClientEmailDoc(subject, {
+          therapist,
+          toneEyebrow: isPendingApproval ? 'Booking request' : 'Session confirmed',
+          toneEyebrowKind: 'sage',
+          title,
+          opener,
+          serviceName,
+          bookingDate: booking.booking_date,
+          startTime: booking.start_time,
+          durationMin: service?.duration || null,
+          locationAddress: fullLocation,
+          extraFactRows: extraRows,
+          policyInline: policyText,
+          primaryCta: isPendingApproval ? null : { label: 'Fill my intake form', href: intakeUrl },
+          closingLine: isPendingApproval
+            ? `Reply to this email if you'd like to add a note for ${therapistFirstName}.`
+            : `Filling your intake ahead of time means you're ready the moment you arrive. Questions? Just reply to this email.`,
+          prefName: isPendingApproval ? 'Booking request received' : 'Booking confirmation',
+        }, isPendingApproval
+            ? `${therapistFirstName} will review and reply soon.`
+            : `Your ${serviceName} on ${apt.full}.`);
 
         const fromAddr = quotedFrom(therapistName, "reminders@mybodymap.app");
         const replyTo = therapist.email || undefined;

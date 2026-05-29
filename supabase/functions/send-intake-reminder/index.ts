@@ -14,7 +14,8 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { logNotification } from "../_shared/notifications.ts";
-import { emailWrapper, ctaButton, eyebrow, tipBox, fromFor, replyToFor, formatApptDateTime } from "../_shared/emailTemplate.ts";
+import { fromFor, replyToFor, formatApptDateTime } from "../_shared/emailTemplate.ts";
+import { renderClientEmailDoc } from "../_shared/clientEmail.ts";
 
 const cors = {
   'Access-Control-Allow-Origin': '*',
@@ -118,26 +119,29 @@ async function sendForBooking(supabase: any, RESEND_KEY: string, bookingId: stri
     return { status: 'skipped', reason: 'booking_predates_optin' };
   }
 
-  const therapistName = therapist?.business_name || therapist?.full_name || 'Your therapist';
+  const therapistFirst = (therapist?.full_name || therapist?.business_name || 'Your therapist').split(' ')[0];
   const clientFirstName = client.name?.split(' ')[0] || 'there';
   const apptWhen = formatApptDateTime(booking.booking_date, booking.start_time);
   const intakeUrl = `https://mybodymap.app/intake/${therapist.custom_url}?b=${booking.id}`;
+  const serviceName = booking.services?.name || 'session';
 
-  const subject = `A short intake before we meet, ${clientFirstName}`;
+  // HK May 29 2026: per EMAIL_COPY_SPEC C3. Soft, low-friction.
+  // 90 seconds, helps therapist prepare, no pressure.
+  const subject = `Quick favor before ${apptWhen.split(' at ')[0]}'s session, ${clientFirstName}`;
 
-  const bodyHtml = `
-    ${eyebrow('Before our session', 'sage')}
-    <h1>Two minutes makes a real difference</h1>
-    <p>Hi ${clientFirstName},</p>
-    <p>I'm looking forward to seeing you for your <strong>${booking.services?.name || 'session'}</strong> on <strong>${apptWhen}</strong>. Before then, would you fill out a short intake?</p>
-    <p>It lets me know where you'd like to focus, what to avoid, and anything I should know going in. About two minutes, and it helps your time on the table go further.</p>
-    ${ctaButton('Fill out my intake →', intakeUrl)}
-    ${tipBox('Why this matters', `I read every intake before our session so I'm already thinking about what you need before you arrive. The more I know going in, the more attuned the session can be.`)}
-    <p>If anything comes up, just reply to this email.</p>
-    <p class="muted" style="font-size:13px;margin-top:18px;">- ${therapist?.full_name || therapistName}</p>
-  `;
-
-  const html = emailWrapper({ subject, bodyHtml, preheader: 'Two minutes now means more focused time on the table.' });
+  const html = renderClientEmailDoc(subject, {
+    therapist,
+    toneEyebrow: 'Before our session',
+    toneEyebrowKind: 'sage',
+    title: `Two minutes makes a real difference`,
+    opener: `Hi ${clientFirstName}, I'm looking forward to seeing you. Before then, would you fill out a short intake? It lets me know where you'd like to focus, what to avoid, and anything I should know going in.`,
+    serviceName,
+    bookingDate: booking.booking_date,
+    startTime: booking.start_time,
+    primaryCta: { label: 'Fill out my intake', href: intakeUrl },
+    closingLine: `I read every intake before our session, so the more I know going in, the more attuned the session can be. Reply to this email if anything comes up.`,
+    prefName: 'Intake reminder',
+  }, `Two minutes now means more focused time on the table.`);
 
   const res = await fetch('https://api.resend.com/emails', {
     method: 'POST',

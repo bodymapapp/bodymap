@@ -12,7 +12,8 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { logNotification } from "../_shared/notifications.ts";
-import { emailWrapper, ctaButton, eyebrow, fromFor, replyToFor } from "../_shared/emailTemplate.ts";
+import { fromFor, replyToFor } from "../_shared/emailTemplate.ts";
+import { renderClientEmailDoc } from "../_shared/clientEmail.ts";
 
 const cors = {
   'Access-Control-Allow-Origin': '*',
@@ -155,22 +156,24 @@ async function sendForClient(supabase: any, RESEND_KEY: string, clientId: string
     return { status: 'skipped', reason: 'therapist_opted_out' };
   }
 
-  const therapistName = therapist?.business_name || therapist?.full_name || 'Your therapist';
+  const therapistFirst = (therapist?.full_name || therapist?.business_name || 'Your therapist').split(' ')[0];
   const clientFirstName = client.name?.split(' ')[0] || 'there';
   const bookingUrl = `https://mybodymap.app/book/${therapist.custom_url}`;
 
-  const subject = `Thinking of you, ${clientFirstName}`;
+  // HK May 29 2026: per EMAIL_COPY_SPEC C14. Soft, never salesy.
+  // Targeted nudge recovers ~18% (per chat 16 retention rationale).
+  const subject = `Saving a spot for you this week, ${clientFirstName}`;
 
-  const bodyHtml = `
-    ${eyebrow('A warm hello', 'sage')}
-    <h1>Thinking of you, ${clientFirstName}</h1>
-    <p>It's been a little while since your last session at ${therapistName}. No pressure, just wanted to check in and let you know I'm here whenever you're ready.</p>
-    <p>Life gets full. When the body starts asking for some attention, a session can help reset things.</p>
-    ${ctaButton('Pick a time that works', bookingUrl)}
-    <p class="muted" style="font-size:12px;line-height:1.55;">If you'd rather not get these check-ins, you can <a href="https://mybodymap.app/unsubscribe?c=${client.id}" style="color:#6B7F72;">unsubscribe here</a>. No hard feelings.</p>
-  `;
-
-  const html = emailWrapper({ subject, bodyHtml, preheader: `${therapistName} is here when you're ready.` });
+  const html = renderClientEmailDoc(subject, {
+    therapist,
+    toneEyebrow: 'A warm hello',
+    toneEyebrowKind: 'sage',
+    title: `Thinking of you, ${clientFirstName}`,
+    opener: `It's been a few weeks since your last session. No pressure, just wanted to check in and let you know I'm here whenever you're ready. Life gets full; when the body starts asking for some attention, a session can help reset things.`,
+    primaryCta: { label: 'Pick a time that works', href: bookingUrl },
+    closingLine: `If you'd rather not get these check-ins, you can unsubscribe at the link below. No hard feelings.`,
+    prefName: 'Lapse nudge',
+  }, `${therapistFirst} is here when you're ready.`);
 
   const res = await fetch('https://api.resend.com/emails', {
     method: 'POST',

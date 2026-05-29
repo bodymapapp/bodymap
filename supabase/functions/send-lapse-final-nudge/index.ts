@@ -12,7 +12,8 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { logNotification } from "../_shared/notifications.ts";
-import { emailWrapper, ctaButton, eyebrow, fromFor, replyToFor } from "../_shared/emailTemplate.ts";
+import { fromFor, replyToFor } from "../_shared/emailTemplate.ts";
+import { renderClientEmailDoc } from "../_shared/clientEmail.ts";
 
 const cors = {
   'Access-Control-Allow-Origin': '*',
@@ -131,24 +132,25 @@ async function sendForClient(supabase: any, RESEND_KEY: string, clientId: string
     return { status: 'skipped', reason: 'therapist_opted_out' };
   }
 
-  const therapistName = therapist?.business_name || therapist?.full_name || 'Your therapist';
+  const therapistFirst = (therapist?.full_name || therapist?.business_name || 'Your therapist').split(' ')[0];
+  const businessName = therapist?.business_name || therapist?.full_name || 'Your therapist';
   const clientFirstName = client.name?.split(' ')[0] || 'there';
   const bookingUrl = `https://mybodymap.app/book/${therapist.custom_url}`;
 
-  const subject = `One last note, ${clientFirstName}`;
+  // HK May 29 2026: per EMAIL_COPY_SPEC C15. Warm, gentle goodbye,
+  // NOT guilt-trip. Final touchpoint after C14 got no response.
+  const subject = `Thinking of you, ${clientFirstName}`;
 
-  const bodyHtml = `
-    ${eyebrow('Open door', 'sage')}
-    <h1>One last note, ${clientFirstName}</h1>
-    <p>This is the last check-in I'll send. I wanted you to know that the door at ${therapistName} stays open for you, whenever you're ready, no matter how long it's been.</p>
-    <p>If you'd like to come back, the link below holds a spot.</p>
-    ${ctaButton('Pick a time that works', bookingUrl)}
-    <p>Wishing you well, whatever season you're in.</p>
-    <p class="muted" style="font-size:13px;margin-top:18px;">- ${therapist?.full_name || therapistName}</p>
-    <p class="muted" style="font-size:11px;line-height:1.55;margin-top:24px;border-top:1px solid #E8E0D0;padding-top:12px;">You won't get any more check-in emails like this from ${therapistName}. If you ever want a new appointment, the booking link above always works.</p>
-  `;
-
-  const html = emailWrapper({ subject, bodyHtml, preheader: `${therapistName} is here whenever you're ready.` });
+  const html = renderClientEmailDoc(subject, {
+    therapist,
+    toneEyebrow: 'Open door',
+    toneEyebrowKind: 'sage',
+    title: `Thinking of you, ${clientFirstName}`,
+    opener: `This is the last check-in I'll send. I wanted you to know that the door at ${businessName} stays open for you, whenever you're ready, no matter how long it's been. If life has taken you in a different direction, no hard feelings.`,
+    primaryCta: { label: 'Book if you want', href: bookingUrl },
+    closingLine: `Wishing you well, whatever season you're in. You won't get any more check-in emails like this from me. The booking link above always works if you ever want to come back.`,
+    prefName: 'Lapse final goodbye',
+  }, `${therapistFirst} is here whenever you're ready.`);
 
   const res = await fetch('https://api.resend.com/emails', {
     method: 'POST',
