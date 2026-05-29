@@ -81,31 +81,41 @@ export default function SelectableMonthView({
   // Pull bookings + blocked_days for the visible window. Cheap query,
   // therapist_id-filtered. Refetched once on mount (the modal lifetime
   // is short, no need for live subscriptions here).
+  // HK May 29 2026: was leaving loading=true on any error, which made
+  // the entire calendar grid not render. Now we always flip loading
+  // false in finally so the grid renders even when data is empty/errored.
   useEffect(() => {
     if (!therapist?.id) return;
     let alive = true;
     (async () => {
-      const startIso = isoDate(monthStart);
-      const [{ data: bData }, { data: blData }] = await Promise.all([
-        supabase
-          .from('bookings')
-          .select('id, booking_date, start_time, services(name), client_name, status')
-          .eq('therapist_id', therapist.id)
-          .gte('booking_date', startIso)
-          .lte('booking_date', lastIso)
-          .neq('status', 'cancelled')
-          .order('start_time', { ascending: true }),
-        supabase
-          .from('blocked_days')
-          .select('date, start_time, end_time, note')
-          .eq('therapist_id', therapist.id)
-          .gte('date', startIso)
-          .lte('date', lastIso),
-      ]);
-      if (!alive) return;
-      setBookings(bData || []);
-      setBlocked(blData || []);
-      setLoading(false);
+      try {
+        const startIso = isoDate(monthStart);
+        const [bRes, blRes] = await Promise.all([
+          supabase
+            .from('bookings')
+            .select('id, booking_date, start_time, services(name), client_name, status')
+            .eq('therapist_id', therapist.id)
+            .gte('booking_date', startIso)
+            .lte('booking_date', lastIso)
+            .neq('status', 'cancelled')
+            .order('start_time', { ascending: true }),
+          supabase
+            .from('blocked_days')
+            .select('date, start_time, end_time, note')
+            .eq('therapist_id', therapist.id)
+            .gte('date', startIso)
+            .lte('date', lastIso),
+        ]);
+        if (!alive) return;
+        if (bRes.error) console.warn('[SelectableMonthView] bookings error', bRes.error);
+        if (blRes.error) console.warn('[SelectableMonthView] blocked_days error', blRes.error);
+        setBookings(bRes.data || []);
+        setBlocked(blRes.data || []);
+      } catch (err) {
+        console.warn('[SelectableMonthView] fetch threw', err);
+      } finally {
+        if (alive) setLoading(false);
+      }
     })();
     return () => { alive = false; };
   }, [therapist?.id, monthStart, lastIso]);
@@ -172,12 +182,12 @@ export default function SelectableMonthView({
       </div>
 
       {loading && (
-        <div style={{ padding: 16, color: C.inkMute, fontSize: 13, textAlign: 'center' }}>
+        <div style={{ padding: 8, color: C.inkMute, fontSize: 12, textAlign: 'center' }}>
           Loading your calendar...
         </div>
       )}
 
-      {!loading && months.map((m, mi) => (
+      {months.map((m, mi) => (
         <div key={mi} style={{ marginBottom: 16 }}>
           <div style={{
             fontFamily: 'Georgia, serif', fontSize: 16, fontWeight: 700,
@@ -190,7 +200,7 @@ export default function SelectableMonthView({
             gap: 4,
           }}>
             {m.cells.map((d, ci) => {
-              if (!d) return <div key={`e${ci}`} />;
+              if (!d) return <div key={`e${mi}-${ci}`} style={{ minHeight: 44 }} />;
               const iso = isoDate(d);
               const isPast = d < today;
               const isToday = +d === +today;
@@ -214,12 +224,17 @@ export default function SelectableMonthView({
 
               return (
                 <button
-                  key={iso}
+                  key={`${mi}-${iso}`}
                   onClick={() => interactable && onSelectDate && onSelectDate(iso)}
                   disabled={!interactable}
                   style={{
                     position: 'relative',
-                    aspectRatio: '1 / 1.1',
+                    // HK May 29 2026: explicit min/max height instead of
+                    // aspectRatio. aspectRatio can collapse to 0 inside
+                    // some nested flex columns on iOS Safari, which
+                    // caused the calendar to render an empty grid (only
+                    // the weekday header visible).
+                    minHeight: 44,
                     background: baseBg,
                     border: `1px solid ${C.line}`,
                     borderRadius: 8,

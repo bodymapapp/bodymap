@@ -940,7 +940,7 @@ export default function BookingModal({ therapist, mode = 'create', existingBooki
             </div>
           )}
 
-          <div style={{ marginBottom: 12, maxHeight: 360, overflowY: 'auto', border: `1px solid ${C.border}`, borderRadius: 10, padding: 8 }}>
+          <div style={{ marginBottom: 12 }}>
             <SelectableMonthView
               therapist={therapist}
               mode={seriesMode ? 'series' : 'single'}
