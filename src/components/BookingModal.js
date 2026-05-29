@@ -269,14 +269,24 @@ export default function BookingModal({ therapist, mode = 'create', existingBooki
         // when therapist has multi-location active (otherwise the
         // existing FK stays untouched, which is the correct behavior
         // for single-location accounts).
-        const updatePayload = { booking_date: date, start_time: slot.start, end_time: slot.end, notes };
+        // HK May 29 2026: capture previous_booking_date + previous_start_time
+        // + rescheduled_at on the row itself so the Schedule timeline
+        // can show "Rescheduled from <old date> <old time>" without
+        // needing a separate history table lookup.
+        const prevDate = existingBooking?.booking_date || existingBooking?.start_date || null;
+        const prevTime = existingBooking?.start_time || null;
+        const updatePayload = {
+          booking_date: date,
+          start_time: slot.start,
+          end_time: slot.end,
+          notes,
+          previous_booking_date: prevDate,
+          previous_start_time: prevTime,
+          rescheduled_at: new Date().toISOString(),
+        };
         if (locations.length >= 2 && locationId) {
           updatePayload.location_id = locationId;
         }
-        // Capture prev values BEFORE update so the C10 email can
-        // include 'previously: <old time>' context.
-        const prevDate = existingBooking?.booking_date || existingBooking?.start_date || null;
-        const prevTime = existingBooking?.start_time || null;
         const { error: e } = await supabase.from('bookings')
           .update(updatePayload)
           .eq('id', existingBooking.id);

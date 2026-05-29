@@ -42,11 +42,66 @@ const t2m = t => { if(!t) return 0; const m=t.match(/(\d+):(\d+)\s*(AM|PM)/i); i
 const getToday = () => { const d = new Date(); d.setHours(0,0,0,0); return d; };
 
 const STATUS = {
-  'intake-done':    {label:'Brief Ready', bg:'#DCFCE7', color:'#16A34A', dot:'#16A34A', icon:'🧭'},
-  'pending-intake': {label:'No Intake',   bg:'#FEF3C7', color:'#D97706', dot:'#F59E0B', icon:'📋'},
-  'complete':       {label:'Complete',    bg:'#F3F4F6', color:'#6B7280', dot:'#9CA3AF', icon:'✓'},
-  'external':       {label:'From Google', bg:'#EFEAFD', color:'#5B4DC8', dot:'#7F77DD', icon:'📅'},
+  'intake-done':    {label:'Brief Ready',  bg:'#DCFCE7', color:'#16A34A', dot:'#16A34A', icon:'🧭'},
+  'pending-intake': {label:'No Intake',    bg:'#FEF3C7', color:'#D97706', dot:'#F59E0B', icon:'📋'},
+  'complete':       {label:'Complete',     bg:'#F3F4F6', color:'#6B7280', dot:'#9CA3AF', icon:'✓'},
+  'external':       {label:'From Google',  bg:'#EFEAFD', color:'#5B4DC8', dot:'#7F77DD', icon:'📅'},
+  // HK May 29 2026: trace patterns for actions taken on a booking. Each
+  // entry stays at its original time slot in the timeline but visually
+  // de-emphasised, so the therapist can see what HAPPENED at 9am even
+  // though it is no longer a confirmable session. The annotation line
+  // under the time slot (rendered separately) carries the detail like
+  // "Cancelled 2:14 PM" or "$1 no-show fee charged".
+  'cancelled':      {label:'Cancelled',    bg:'#FEE2E2', color:'#B91C1C', dot:'#DC2626', icon:'✕'},
+  'no_show':        {label:'No-show',      bg:'#FEF3C7', color:'#92400E', dot:'#D97706', icon:'⚠'},
+  'refunded':       {label:'Refunded',     bg:'#EDE9FE', color:'#6D28D9', dot:'#7C3AED', icon:'↩'},
+  'rescheduled':    {label:'Rescheduled',  bg:'#E0F2FE', color:'#0369A1', dot:'#0284C7', icon:'↻'},
 };
+
+// HK May 29 2026: build the human-readable annotation line that sits
+// under an appt's time on the timeline. Returns a short string like
+// "Cancelled May 28, 2:14 PM" or "$1 no-show fee charged" or
+// "Refunded $120" or null when no trace applies. Cheap, called per
+// render but the input is small.
+function traceAnnotation(appt) {
+  if (!appt) return null;
+  const fmtTime = (iso) => {
+    if (!iso) return '';
+    try {
+      const d = new Date(iso);
+      if (isNaN(d.getTime())) return '';
+      return d.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+    } catch (_e) { return ''; }
+  };
+  if (appt.status === 'cancelled') {
+    const fee = appt.cancellationChargeAmount > 0 ? ` · $${(appt.cancellationChargeAmount / 100).toFixed(2)} fee` : '';
+    const at  = appt.cancellationChargeFiredAt ? ` · ${fmtTime(appt.cancellationChargeFiredAt)}` : '';
+    return `Cancelled${at}${fee}`;
+  }
+  if (appt.status === 'no_show') {
+    const fee = appt.cancellationChargeAmount > 0 ? `$${(appt.cancellationChargeAmount / 100).toFixed(2)} no-show fee charged` : 'No-show, no fee charged';
+    return fee;
+  }
+  if (appt.status === 'refunded') {
+    return `Refunded $${(appt.refundedCents / 100).toFixed(2)}`;
+  }
+  if (appt.status === 'rescheduled' && appt.previousBookingDate) {
+    return `Rescheduled from ${appt.previousBookingDate}${appt.previousStartTime ? ' ' + appt.previousStartTime.slice(0,5) : ''}`;
+  }
+  return null;
+}
+
+// HK May 29 2026: shared trace styling for a booking card. Returns
+// { opacity, textDecoration } that callers spread on the card and the
+// client name. Used by Timeline, Weekly, and Monthly so a cancelled
+// booking looks consistently muted across every view.
+function traceStyles(appt) {
+  const muted = appt && (appt.status === 'cancelled' || appt.status === 'no_show' || appt.status === 'refunded' || appt.status === 'rescheduled');
+  return {
+    opacity: muted ? 0.55 : 1,
+    textDecoration: appt && appt.status === 'cancelled' ? 'line-through' : 'none',
+  };
+}
 
 const makeSample = (today) => [
   {id:'s1',client:'Emma R.',   time:'9:00 AM', duration:60,date:addDays(today,0),status:'intake-done',   sessions:4, preview:true,service:'Swedish Massage',focus:[],notes:'Prefers quiet session'},
@@ -4267,7 +4322,15 @@ function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled, show
           client={clientRow}
           defaultAmountCents={defaultAmountCents}
           onClose={() => setShowCheckout(false)}
-          onPaid={() => { refreshPayments(); }}
+          onPaid={(paidCents) => {
+            // HK May 29 2026: soft-confirm toast so the therapist
+            // knows the payment was recorded. Also tell the parent
+            // so the timeline can refresh and show the paid pill.
+            const amount = typeof paidCents === 'number' ? ` $${(paidCents / 100).toFixed(2)}` : '';
+            notify(`Payment recorded${amount}`);
+            refreshPayments();
+            if (typeof onCancelled === 'function') onCancelled();
+          }}
           onClientLinked={(picked) => {
             // HK May 24 2026 (Phase 13.12b): the inline ClientPicker
             // updated bookings.client_id + client_name + client_email
@@ -4291,7 +4354,16 @@ function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled, show
           payment={refundTarget}
           therapist={therapist}
           onClose={() => setRefundTarget(null)}
-          onRefunded={() => { refreshPayments(); }}
+          onRefunded={(amountCents) => {
+            // HK May 29 2026: soft-confirm toast + force a parent
+            // refresh so the timeline picks up the refunded state and
+            // the trace pill appears immediately.
+            const amount = typeof amountCents === 'number' ? ` $${(amountCents / 100).toFixed(2)}` : '';
+            notify(`Refunded${amount}`);
+            refreshPayments();
+            // Trigger parent refresh so timeline pill updates
+            if (typeof onCancelled === 'function') onCancelled();
+          }}
         />
       )}
       {/* HK May 25 2026 Work D: inline DocumentDrawer. Tapping any of
@@ -4830,43 +4902,42 @@ function TimelineView({ therapist, allAppts, dayOffset, setDayOffset, today, onR
               const st=STATUS[appt.status]||STATUS['pending-intake'];
               const isSel=selected?.id===appt.id;
               const isPast=dayOffset===0&&t2m(appt.time)+appt.duration<nowMin;
+              // HK May 29 2026: trace styling for cancelled/no-show/refund/reschedule
+              const ts = traceStyles(appt);
+              const ann = traceAnnotation(appt);
               return (
                 <div key={appt.id} data-appt-card="1" onClick={()=>setSelected(isSel?null:appt)}
                   style={{position:'absolute',top:y,left:2,right:2,height:bh,
-                    background:appt.preview?'#F9FAFB':(appt.paid?'#F0F6EE':appt.status==='intake-done'?'#DCFCE7':appt.status==='complete'?'#F3F4F6':'#FEF3C7'),
+                    background:appt.preview?'#F9FAFB':(appt.paid?'#F0F6EE':appt.status==='intake-done'?'#DCFCE7':appt.status==='complete'?'#F3F4F6':appt.status==='cancelled'?'#FEF2F2':appt.status==='no_show'?'#FFFBEB':appt.status==='refunded'?'#F5F3FF':appt.status==='rescheduled'?'#F0F9FF':'#FEF3C7'),
                     border:`1.5px ${appt.preview?'dashed':'solid'} ${appt.preview?'#D1D5DB':appt.paid?'#B7D1AB':st.dot}`,
                     borderLeft:`4px solid ${appt.preview?'#CBD5E1':appt.paid?'#2A5741':st.dot}`,
                     borderRadius:10,cursor:'pointer',overflow:'hidden',
-                    opacity:appt.preview?0.5:isPast?0.6:1,
+                    opacity:appt.preview?0.5:isPast?Math.min(0.6, ts.opacity):ts.opacity,
                     boxShadow:isSel?'0 4px 20px rgba(0,0,0,0.15)':appt.preview?'none':'0 2px 8px rgba(0,0,0,0.07)',
                     transform:isSel?'scale(1.01)':'none',zIndex:isSel?5:1,transition:'all 0.15s'}}>
                   <div style={{padding:'5px 10px',height:'100%',display:'flex',flexDirection:'column',justifyContent:'space-between'}}>
                     <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',gap:6}}>
                       <div style={{display:'flex',gap:6,alignItems:'center',flex:1,minWidth:0}}>
                         <div style={{width:24,height:24,borderRadius:'50%',flexShrink:0,background:appt.preview?'#D1D5DB':ac(appt.client),color:'#fff',display:'flex',alignItems:'center',justifyContent:'center',fontSize:9,fontWeight:700}}>{initials(appt.client)}</div>
-                        <span style={{fontSize:12,fontWeight:700,color:appt.preview?'#9CA3AF':'#111827',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{appt.client}</span>
+                        <span style={{fontSize:12,fontWeight:700,color:appt.preview?'#9CA3AF':'#111827',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',textDecoration:ts.textDecoration}}>{appt.client}</span>
                         {appt.preview&&<span style={{fontSize:9,fontWeight:700,color:'#94A3B8',background:'#F1F5F9',borderRadius:4,padding:'1px 5px',flexShrink:0}}>PREVIEW</span>}
                       </div>
                       <div style={{flexShrink:0,textAlign:'right'}}>
-                        <div style={{fontSize:11,fontWeight:700,color:appt.preview?'#C4C4C4':'#1F2937'}}>{appt.time}</div>
+                        <div style={{fontSize:11,fontWeight:700,color:appt.preview?'#C4C4C4':'#1F2937',textDecoration:ts.textDecoration}}>{appt.time}</div>
                         <div style={{fontSize:10,color:'#9CA3AF'}}>{appt.duration}m</div>
                         {!appt.preview&&appt.reminder_sent&&<div style={{fontSize:9,color:'#16A34A',fontWeight:700,marginTop:1}}>📧 Sent</div>}
-                        {/* HK May 25 2026: removed misleading "📧 Pending"
-                            indicator. It read as if the SESSION was
-                            pending, not just the reminder email which
-                            fires 24h before. The status pill below
-                            already communicates session state. The
-                            reminder schedule is implicit. */}
                       </div>
                     </div>
                     {bh>52&&<div style={{fontSize:11,color:appt.preview?'#C4C4C4':st.color,marginLeft:30}}>
                       {appt.service}
                       {appt.locationName && <span style={{ color: '#9CA3AF', fontWeight: 500 }}> · 📍 {appt.locationName}</span>}
                     </div>}
+                    {/* HK May 29 2026: trace annotation under the card (cancelled/no-show/refund/reschedule). Only renders when applicable. */}
+                    {bh>52 && ann && <div style={{fontSize:10,color:st.color,marginLeft:30,fontWeight:600,marginTop:1}}>{ann}</div>}
                     {bh>72&&(
                       <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
                         <div style={{background:appt.preview?'transparent':st.dot+'22',color:appt.preview?'#C4C4C4':st.color,borderRadius:20,padding:'2px 8px',fontSize:10,fontWeight:700}}>{st.icon} {appt.preview?'Preview':st.label}</div>
-                        {!appt.preview&&appt.paid&&<div style={{fontSize:10,fontWeight:700,color:'#15803D',background:'#DCFCE7',borderRadius:20,padding:'2px 8px',display:'flex',alignItems:'center',gap:3}}>✓ Paid ${(appt.paid_cents/100).toFixed(0)}</div>}
+                        {!appt.preview&&appt.paid&&appt.status!=='refunded'&&<div style={{fontSize:10,fontWeight:700,color:'#15803D',background:'#DCFCE7',borderRadius:20,padding:'2px 8px',display:'flex',alignItems:'center',gap:3}}>✓ Paid ${(appt.paid_cents/100).toFixed(0)}</div>}
                         {!appt.preview&&!appt.paid&&appt.deposit_required&&!appt.deposit_paid&&<div style={{fontSize:9,fontWeight:700,color:'#D97706',background:'#FEF3C7',borderRadius:20,padding:'2px 8px'}}>💳 Deposit due</div>}
                         {!appt.preview&&appt.status==='intake-done'&&<div style={{fontSize:10,fontWeight:700,color:'#2A5741',background:'#DCFCE7',borderRadius:20,padding:'2px 8px'}}>Brief ready →</div>}
                       </div>
@@ -5277,9 +5348,15 @@ function WeeklyView({ therapist, appointments, today, onReschedule, onRefresh, b
                           const dur = appt.duration || 60;
                           const eM = sM + dur;
                           const st = STATUS[appt.status] || STATUS['pending-intake'];
+                          // HK May 29 2026: cancelled/no-show/refunded/rescheduled
+                          // bars stay visible but de-emphasised. Tooltip carries
+                          // the trace annotation so hovering tells the story.
+                          const traced = appt.status === 'cancelled' || appt.status === 'no_show' || appt.status === 'refunded' || appt.status === 'rescheduled';
+                          const ann = traceAnnotation(appt);
+                          const tooltip = `${appt.time} · ${appt.client} · ${st.label}${ann ? ' · ' + ann : ''}`;
                           return (
                             <div key={`a${appt.id}`}
-                              title={`${appt.time} · ${appt.client}`}
+                              title={tooltip}
                               style={{
                                 position: 'absolute',
                                 top: 2, bottom: 2,
@@ -5287,7 +5364,7 @@ function WeeklyView({ therapist, appointments, today, onReschedule, onRefresh, b
                                 width: `${pctWidth(sM, eM)}%`,
                                 background: st.dot || '#6B9E80',
                                 borderRadius: 2,
-                                opacity: 0.85,
+                                opacity: traced ? 0.4 : 0.85,
                                 cursor: 'pointer',
                               }}
                               onClick={(e) => { e.stopPropagation(); setSelected(appt); }}
@@ -5593,9 +5670,13 @@ function WeeklyView({ therapist, appointments, today, onReschedule, onRefresh, b
                         const top = Math.max(0, (startM - winStart) * PX_PER_MIN);
                         const height = Math.max(20, duration * PX_PER_MIN);
                         const st = STATUS[appt.status] || STATUS['pending-intake'];
+                        // HK May 29 2026: trace styling for cancelled/no-show/refunded/rescheduled
+                        const ts = traceStyles(appt);
+                        const ann = traceAnnotation(appt);
                         return (
                           <div key={appt.id}
                             onClick={() => !appt.preview && setSelected(appt)}
+                            title={ann || ''}
                             style={{
                               position: 'absolute',
                               top, height,
@@ -5605,7 +5686,7 @@ function WeeklyView({ therapist, appointments, today, onReschedule, onRefresh, b
                               borderRadius: 5,
                               padding: '4px 6px',
                               cursor: appt.preview ? 'default' : 'pointer',
-                              opacity: appt.preview ? 0.5 : 1,
+                              opacity: appt.preview ? 0.5 : ts.opacity,
                               overflow: 'hidden',
                               boxShadow: appt.preview ? 'none' : '0 1px 2px rgba(0,0,0,0.08)',
                               transition: 'transform 0.12s',
@@ -5619,6 +5700,7 @@ function WeeklyView({ therapist, appointments, today, onReschedule, onRefresh, b
                               color: appt.preview ? '#C4C4C4' : st.color,
                               lineHeight: 1.1,
                               marginBottom: 1,
+                              textDecoration: ts.textDecoration,
                             }}>
                               {appt.time}
                             </div>
@@ -5630,6 +5712,7 @@ function WeeklyView({ therapist, appointments, today, onReschedule, onRefresh, b
                               textOverflow: 'ellipsis',
                               whiteSpace: 'nowrap',
                               lineHeight: 1.2,
+                              textDecoration: ts.textDecoration,
                             }}>
                               {appt.client.split(' ')[0]}
                             </div>
@@ -5828,20 +5911,27 @@ function MonthlyView({ therapist, appointments, today, onReschedule, onRefresh, 
       {selAppts.filter(a=>!a.preview).length===0
         ?<div style={{background:'#fff',borderRadius:12,padding:24,textAlign:'center',color:'#9CA3AF',fontSize:14}}>No appointments on this day.</div>
         :<div style={{display:'flex',flexDirection:'column',gap:8}}>
-          {selAppts.filter(a=>!a.preview).map(appt=>(
+          {selAppts.filter(a=>!a.preview).map(appt=>{
+            // HK May 29 2026: trace muting + annotation line
+            const ts = traceStyles(appt);
+            const ann = traceAnnotation(appt);
+            const st = STATUS[appt.status]||STATUS['pending-intake'];
+            return (
             <div key={appt.id} onClick={()=>setSelected(appt)}
-              style={{background:(STATUS[appt.status]||STATUS['pending-intake']).bg,border:`1.5px solid ${(STATUS[appt.status]||STATUS['pending-intake']).dot}`,borderLeft:`4px solid ${(STATUS[appt.status]||STATUS['pending-intake']).dot}`,borderRadius:12,padding:'12px 16px',cursor:'pointer',display:'flex',alignItems:'center',gap:12}}>
+              style={{background:st.bg,border:`1.5px solid ${st.dot}`,borderLeft:`4px solid ${st.dot}`,borderRadius:12,padding:'12px 16px',cursor:'pointer',display:'flex',alignItems:'center',gap:12,opacity:ts.opacity}}>
               <div style={{width:36,height:36,borderRadius:'50%',background:ac(appt.client),color:'#fff',display:'flex',alignItems:'center',justifyContent:'center',fontSize:12,fontWeight:700,flexShrink:0}}>{initials(appt.client)}</div>
               <div style={{flex:1}}>
-                <div style={{fontSize:14,fontWeight:700,color:'#1F2937'}}>{appt.client}</div>
-                <div style={{fontSize:12,color:'#6B7280'}}>{appt.time} · {appt.duration}min · {appt.service||'Session'}</div>
+                <div style={{fontSize:14,fontWeight:700,color:'#1F2937',textDecoration:ts.textDecoration}}>{appt.client}</div>
+                <div style={{fontSize:12,color:'#6B7280',textDecoration:ts.textDecoration}}>{appt.time} · {appt.duration}min · {appt.service||'Session'}</div>
+                {ann && <div style={{fontSize:11,fontWeight:600,color:st.color,marginTop:3}}>{ann}</div>}
               </div>
               <div style={{display:'flex',flexDirection:'column',alignItems:'flex-end',gap:4}}>
-                <div style={{fontSize:11,fontWeight:700,color:(STATUS[appt.status]||STATUS['pending-intake']).color}}>{(STATUS[appt.status]||STATUS['pending-intake']).icon} {(STATUS[appt.status]||STATUS['pending-intake']).label}</div>
+                <div style={{fontSize:11,fontWeight:700,color:st.color}}>{st.icon} {st.label}</div>
                 {appt.deposit_required&&!appt.deposit_paid&&<div style={{fontSize:10,fontWeight:700,color:'#D97706'}}>💳 Deposit due</div>}
               </div>
             </div>
-          ))}
+            );
+          })}
         </div>
       }
       {selected&&<DetailPanel appt={selected} therapist={therapist} onClose={()=>setSelected(null)} onReschedule={a=>{setSelected(null);onReschedule&&onReschedule(a);}} onCancelled={()=>{setSelected(null);if(typeof onRefresh==='function')onRefresh();}} showToast={moShowToast}/>}
@@ -6686,6 +6776,11 @@ export default function ScheduleDashboard({ therapist }) {
   // calendar kept showing the old week start. Jacquie hit this 3
   // times before we found the actual cause.
   const { refreshTherapist } = useAuth();
+  // HK May 29 2026: top-level toast for reschedule + any action that
+  // completes outside a per-view DetailPanel. The per-view tlShowToast/
+  // wkShowToast/moShowToast handle cancel/no-show; this one handles
+  // the BookingModal reschedule flow at the top of the tree.
+  const { toast: scheduleToast, showToast: showScheduleToast } = useToast();
   const [subView,setSubView]=useState('today');
   const [dayOffset,setDayOffset]=useState(0);
   const [realBookings,setRealBookings]=useState(null);
@@ -7107,7 +7202,11 @@ export default function ScheduleDashboard({ therapist }) {
         .from('bookings')
         .select('*, services(name, duration, price, is_couples), location:therapist_locations(name), reminder_sent_at, deposit_required, deposit_paid, deposit_amount, partner_name, partner_email')
         .eq('therapist_id', therapist.id)
-        .neq('status', 'cancelled')
+        // HK May 29 2026: cancelled bookings stay visible in the timeline
+        // so the therapist sees what HAPPENED at that time slot. The
+        // existing date window (past..future) prevents old cancels from
+        // accumulating in the current view. No-show and rescheduled rows
+        // are also visible by the same principle.
         .gte('booking_date', toDateStr(past))
         .lte('booking_date', toDateStr(future))
         .order('booking_date')
@@ -7167,11 +7266,15 @@ export default function ScheduleDashboard({ therapist }) {
         .in('booking_id', bookingIds);
       perfLog('session_payments query', tPayments, `rows=${bookingPayments?.length || 0}`);
       const paidMap = {};
+      const refundedMap = {};  // HK May 29 2026: track refunds so the timeline can mark the slot
       (bookingPayments || []).forEach(p => {
         if (!p.booking_id) return;
-        if (p.status !== 'succeeded') return;
         const cents = (p.amount_cents || 0) + (p.tip_cents || 0);
-        paidMap[p.booking_id] = (paidMap[p.booking_id] || 0) + cents;
+        if (p.status === 'succeeded') {
+          paidMap[p.booking_id] = (paidMap[p.booking_id] || 0) + cents;
+        } else if (p.status === 'refunded') {
+          refundedMap[p.booking_id] = (refundedMap[p.booking_id] || 0) + cents;
+        }
       });
 
       // booking_id → session_id
@@ -7191,11 +7294,20 @@ export default function ScheduleDashboard({ therapist }) {
         // somehow predate the backfill.
         const clientId = b.client_id || sessionInfo?.client_id || null;
 
-        // Single condition for complete: bookings.status === 'completed'
-        // That is the only field the UI updates when marking a session done.
-        const status = b.status === 'completed' ? 'complete'
-                     : sessionId               ? 'intake-done'
-                     :                           'pending-intake';
+        // HK May 29 2026: trace statuses take precedence over the
+        // intake/complete remapping so the timeline can mark cancelled,
+        // no-show, refunded and rescheduled slots distinctly. A booking
+        // with a recorded refund flips to 'refunded' regardless of its
+        // raw status (a refunded session was complete before, but the
+        // last-applied state is the trace we want to surface).
+        let status;
+        if (b.status === 'cancelled')              status = 'cancelled';
+        else if (b.status === 'no_show')           status = 'no_show';
+        else if (b.status === 'rescheduled')       status = 'rescheduled';
+        else if ((refundedMap[b.id] || 0) > 0)     status = 'refunded';
+        else if (b.status === 'completed')         status = 'complete';
+        else if (sessionId)                        status = 'intake-done';
+        else                                       status = 'pending-intake';
 
         return {
           id: b.id,
@@ -7246,6 +7358,20 @@ export default function ScheduleDashboard({ therapist }) {
           // appointment chip. NULL for single-location therapists or
           // pre-migration bookings; the chip render guards on this.
           locationName: b.location?.name || null,
+          // HK May 29 2026: trace-state fields for the new status pills
+          // and annotation line. The timeline reads these to render
+          // "Cancelled 2:14 PM", "$1 no-show fee charged", "$120 refunded",
+          // or "Rescheduled from Tue 10am". All are optional and the
+          // annotation line is hidden when no trace state applies.
+          rawStatus: b.status,
+          paidCents: paidMap[b.id] || 0,
+          refundedCents: refundedMap[b.id] || 0,
+          cancellationChargeAmount: b.cancellation_charge_amount || 0,
+          cancellationChargeStatus: b.cancellation_charge_status || null,
+          cancellationChargeReason: b.cancellation_charge_reason || null,
+          cancellationChargeFiredAt: b.cancellation_charge_fired_at || null,
+          previousBookingDate: b.previous_booking_date || null,
+          previousStartTime: b.previous_start_time || null,
         };
       });
 
@@ -7385,8 +7511,20 @@ export default function ScheduleDashboard({ therapist }) {
         />
       )}
       {rescheduleAppt && (
-        <BookingModal therapist={therapist} mode="reschedule" existingBooking={rescheduleAppt} onClose={() => setRescheduleAppt(null)} onSuccess={fetchBookings} />
+        <BookingModal
+          therapist={therapist}
+          mode="reschedule"
+          existingBooking={rescheduleAppt}
+          onClose={() => setRescheduleAppt(null)}
+          onSuccess={() => {
+            // HK May 29 2026: soft-confirm + refresh so the timeline
+            // shows the rescheduled trace immediately.
+            showScheduleToast('Session rescheduled');
+            fetchBookings();
+          }}
+        />
       )}
+      {scheduleToast}
       <div style={{marginBottom:14}}>
         <div style={{display:'flex',alignItems:'baseline',gap:10,flexWrap:'wrap',marginBottom:10}}>
           <h2 style={{fontFamily:"'Cormorant Garamond', Georgia, serif",fontSize:32,fontWeight:600,color:'#1F4131',margin:0,lineHeight:1,letterSpacing:'-0.02em'}}>Schedule</h2>

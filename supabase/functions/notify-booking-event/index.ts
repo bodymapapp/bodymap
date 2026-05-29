@@ -80,6 +80,8 @@ serve(async (req) => {
     if (!therapist) return respond({ error: 'therapist_not_found' }, 404);
 
     const isNoShow = event_type === 'no_show_recorded';
+    const isReschedule = event_type === 'reschedule';
+    const isCancel = event_type === 'booking_cancelled';
     const clientName = (booking.client_name || 'Client').toString();
     const firstName = clientName.split(' ')[0];
 
@@ -91,41 +93,77 @@ serve(async (req) => {
         : dt.toLocaleString('en-US', { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
     }
 
-    const title = isNoShow
-      ? `${firstName} marked no-show`
-      : `${firstName}'s session was cancelled`;
+    // Previous date/time for reschedule trace ("Moved from ...").
+    let prevWhenStr = '';
+    if (isReschedule && reschedule_prev?.prev_date && reschedule_prev?.prev_time) {
+      const pd = new Date(`${reschedule_prev.prev_date}T${reschedule_prev.prev_time}`);
+      prevWhenStr = isNaN(pd.getTime())
+        ? `${reschedule_prev.prev_date} ${reschedule_prev.prev_time}`
+        : pd.toLocaleString('en-US', { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+    }
 
-    // HK May 28 2026: the old email was one bland summary line. Build an
-    // informational detail box: who, what service, when the session was,
-    // who cancelled, the reason if given, the fee outcome, and a
-    // cancelled-at timestamp so the therapist has the full picture.
+    // ─── Per-event branding + title + summary ────────────────────────
+    let title, summary, banner, bannerColor, smsText, mailFootline;
+    if (isReschedule) {
+      title = `${firstName}'s session was rescheduled`;
+      summary = `${clientName}'s session has been moved${prevWhenStr ? ' from ' + prevWhenStr : ''}${whenStr ? ' to ' + whenStr : ''}.`;
+      banner = '↻ Booking rescheduled';
+      bannerColor = '#0369A1';
+      smsText = `MyBodyMap: ${firstName} rescheduled${whenStr ? ' to ' + whenStr : ''}.`;
+      mailFootline = '"Booking rescheduled"';
+    } else if (isNoShow) {
+      title = `${firstName} marked no-show`;
+      summary = `${clientName} did not show up${whenStr ? ' for their ' + whenStr + ' session' : ''}.`;
+      banner = '🚫 No-show recorded';
+      bannerColor = '#92400E';
+      mailFootline = '"No-show recorded"';
+    } else { // booking_cancelled
+      title = `${firstName}'s session was cancelled`;
+      summary = `${clientName}'s session${whenStr ? ' on ' + whenStr : ''} was cancelled.`;
+      banner = '🗑 Booking cancelled';
+      bannerColor = '#DC2626';
+      mailFootline = '"Booking cancelled"';
+    }
+
+    // ─── Detail box: only show fee row for cancel/no-show, not reschedule ──
+    // HK May 29 2026: previously the fee row hardcoded "No fee charged"
+    // for the case where notify-booking-event was called before the
+    // charge had completed. That produced a contradictory pair of emails
+    // when the no-show actually was charged. Now the fee row is only
+    // included when this function knows the outcome (fee_charged flag is
+    // explicit, OR fee_amount_cents > 0). For reschedule, no fee row.
     const serviceName = (booking as any).services?.name || 'Session';
     const feeCents = typeof fee_amount_cents === 'number' ? fee_amount_cents : 0;
-    const feeLine = isNoShow
-      ? (fee_charged && feeCents > 0 ? `$${(feeCents / 100).toFixed(2)} no-show fee charged` : 'No fee charged')
-      : (fee_charged && feeCents > 0 ? `$${(feeCents / 100).toFixed(2)} cancellation fee charged` : 'No fee charged');
+    const showFeeRow = (isCancel || isNoShow) && (fee_charged === true || fee_charged === false);
+    const feeLine = (feeCents > 0 && fee_charged)
+      ? `$${(feeCents / 100).toFixed(2)} ${isNoShow ? 'no-show' : 'cancellation'} fee charged`
+      : 'No fee charged';
     const whoCancelled = initiated_by === 'client' ? clientName : 'You (the therapist)';
-    const cancelledAtStr = new Date().toLocaleString('en-US', { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZoneName: 'short' });
+    const nowStr = new Date().toLocaleString('en-US', { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZoneName: 'short' });
     const reasonClean = (reason && String(reason).trim()) ? String(reason).trim() : null;
 
-    const summary = isNoShow
-      ? `${clientName} did not show up${whenStr ? ' for their ' + whenStr + ' session' : ''}.`
-      : `${clientName}'s session${whenStr ? ' on ' + whenStr : ''} was cancelled.`;
+    const actionLabel = isReschedule ? 'Rescheduled by' : (isNoShow ? 'Recorded by' : 'Cancelled by');
+    const timestampLabel = isReschedule ? 'Rescheduled at' : (isNoShow ? 'Recorded at' : 'Cancelled at');
 
-    const detailRows = [
+    const detailRows: Array<[string, string] | null> = [
       ['Client', clientName],
       ['Service', serviceName],
-      whenStr ? ['Session was', whenStr] : null,
-      [isNoShow ? 'Recorded by' : 'Cancelled by', whoCancelled],
+      // For reschedule: show "From" and "To". For cancel/no-show: just "Session was".
+      isReschedule && prevWhenStr ? ['Previously', prevWhenStr] : null,
+      isReschedule
+        ? (whenStr ? ['Now scheduled for', whenStr] : null)
+        : (whenStr ? ['Session was', whenStr] : null),
+      [actionLabel, whoCancelled],
       reasonClean ? ['Reason', reasonClean] : null,
-      ['Fee', feeLine],
-      [isNoShow ? 'Recorded at' : 'Cancelled at', cancelledAtStr],
-    ].filter(Boolean) as Array<[string, string]>;
+      showFeeRow ? ['Fee', feeLine] : null,
+      [timestampLabel, nowStr],
+    ];
+    const filteredDetailRows = detailRows.filter((r): r is [string, string] => r !== null);
 
     const detailBoxHtml = `
       <table style="width:100%;border-collapse:collapse;margin:18px 0;background:#FAFAF7;border:1px solid #ECE7DC;border-radius:10px;overflow:hidden;">
-        ${detailRows.map(([label, value], i) => `
-          <tr style="${i < detailRows.length - 1 ? 'border-bottom:1px solid #ECE7DC;' : ''}">
+        ${filteredDetailRows.map(([label, value], i) => `
+          <tr style="${i < filteredDetailRows.length - 1 ? 'border-bottom:1px solid #ECE7DC;' : ''}">
             <td style="padding:10px 14px;font-size:12px;font-weight:700;color:#6B7280;text-transform:uppercase;letter-spacing:0.04em;white-space:nowrap;vertical-align:top;">${label}</td>
             <td style="padding:10px 14px;font-size:14px;color:#1A2E22;text-align:right;">${String(value).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</td>
           </tr>`).join('')}
@@ -137,33 +175,43 @@ serve(async (req) => {
 <body style="margin:0;padding:0;background:#F5F0E8;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;color:#0D1F17;">
   <div style="max-width:520px;margin:0 auto;padding:32px 16px;">
     <div style="background:#fff;border-radius:16px;padding:32px 28px;box-shadow:0 4px 20px rgba(0,0,0,0.06);">
-      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:${isNoShow ? '#92400E' : '#DC2626'};margin-bottom:8px;">${isNoShow ? '🚫 No-show recorded' : '🗑 Booking cancelled'}</div>
+      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:${bannerColor};margin-bottom:8px;">${banner}</div>
       <h1 style="font-family:Georgia,serif;font-size:22px;font-weight:700;color:#2A5741;margin:0 0 6px;">${title}</h1>
       <p style="font-size:14px;color:#6B7280;margin:0 0 4px;line-height:1.6;">${summary}</p>
       ${detailBoxHtml}
       <a href="https://mybodymap.app/dashboard/schedule" style="display:inline-block;background:#2A5741;color:#fff;text-decoration:none;padding:11px 20px;border-radius:8px;font-size:13px;font-weight:700;">Open schedule</a>
       <div style="font-size:11px;color:#9CA3AF;margin-top:24px;line-height:1.6;">
-        You are getting this because "${isNoShow ? 'No-show recorded' : 'Booking cancelled'}" is on in your notification settings.
+        You are getting this because ${mailFootline} is on in your notification settings.
       </div>
     </div>
   </div>
 </body></html>`;
 
-    const therapistResult = await notifyTherapist({
+    // HK May 29 2026: for cancellation with a fee, charge-cancellation-fee
+    // sends its OWN therapist email after the charge succeeds. To avoid
+    // the double-fire HK saw on his C9 test, we skip the cancel/no-show
+    // notification here when fee_charged is true and a fee amount was
+    // passed; the charge function will emit a single email with the
+    // correct fee outcome. If fee_charged is false or undefined, we own
+    // the notification.
+    const skipBecauseChargeWillFire = (isCancel || isNoShow) && fee_charged === true && feeCents > 0;
+
+    const therapistResult = skipBecauseChargeWillFire ? { skipped: 'fee_charge_will_notify' } : await notifyTherapist({
       supabase, therapist,
       eventType: event_type,
       title,
       body: summary,
-      icon: isNoShow ? '🚫' : '🗑',
+      icon: isReschedule ? '↻' : (isNoShow ? '🚫' : '🗑'),
       linkUrl: '/dashboard',
       payload: {
         booking_id,
         client_id: booking.client_id,
-        no_fee: true,
+        fee_charged: fee_charged === true,
+        fee_amount_cents: feeCents,
       },
       emailSubject: title,
       emailHtml,
-      smsText: `MyBodyMap: ${isNoShow ? 'No-show' : 'Cancellation'} for ${firstName}${whenStr ? ' on ' + whenStr : ''}. No fee.`,
+      smsText: smsText || `MyBodyMap: ${isNoShow ? 'No-show' : 'Cancellation'} for ${firstName}${whenStr ? ' on ' + whenStr : ''}.${feeCents > 0 && fee_charged ? ` $${(feeCents / 100).toFixed(2)} charged.` : ''}`,
       bookingId: booking_id,
       clientId: booking.client_id,
     });
