@@ -1914,6 +1914,53 @@ export default function BookingPage() {
     const bid=newBooking?.id||null;
     setBookingId(bid);
 
+    // HK May 29 2026: card-on-file persistence fix.
+    // First-time booking flow: the Stripe SetupIntent saves the card
+    // and fires onCardSaveSuccess, which tries to persist to
+    // clients.payment_method_id - but cardSavedClientId is null for
+    // first-timers because the clients row doesn't exist until the
+    // booking insert finishes (via findOrCreateClient called above).
+    // Result: card saved to Stripe, never linked to the client row,
+    // so when the same person books AGAIN, the lookup finds them
+    // but payment_method_id is NULL and the card form re-renders.
+    // Fix: after the booking insert, if we have a saved card AND a
+    // client_id, link them. Updates are idempotent (only sets the
+    // fields when they are missing).
+    if (cardSavedPaymentMethodId && newBooking?.client_id) {
+      try {
+        // Only patch when not already set, so we don't clobber a more
+        // recent card. ilike here for the email is intentional: this
+        // is the same case-insensitive match used everywhere else.
+        const { data: existingClientRow } = await supabase
+          .from('clients')
+          .select('id, payment_method_id, card_brand, card_last4, card_saved_at, stripe_customer_id, square_customer_id')
+          .eq('id', newBooking.client_id)
+          .single();
+        if (existingClientRow && !existingClientRow.payment_method_id) {
+          const patch = {
+            payment_method_id: cardSavedPaymentMethodId,
+            card_saved_at: new Date().toISOString(),
+          };
+          // Carry the customer id from state if it isn't already on the row.
+          if (cardSavedCustomerId && !existingClientRow.stripe_customer_id && !existingClientRow.square_customer_id) {
+            // We don't know without more context whether this is a
+            // Stripe or Square customer id. Prefer Stripe since that
+            // is the path that fires onCardSaveSuccess; Square's
+            // save-card flow handles its own persistence elsewhere.
+            patch.stripe_customer_id = cardSavedCustomerId;
+          }
+          await supabase.from('clients').update(patch).eq('id', newBooking.client_id);
+          console.log('[card-on-file] linked saved card to client row', newBooking.client_id);
+        }
+      } catch (linkErr) {
+        // Non-blocking. The booking already inserted successfully and
+        // the card already exists in Stripe. Worst case: the client's
+        // next booking re-prompts for a card. Log so HK sees this if
+        // it ever fires.
+        console.warn('[card-on-file] post-insert link failed', linkErr);
+      }
+    }
+
     // HK May 27 2026 Ship 3: when redeeming from a package, write the
     // $0 payment + redemption audit + decrement the remaining counter.
     // Mirrors CheckoutModal.chargeFromPackage so therapist-side and
