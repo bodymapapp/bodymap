@@ -1562,12 +1562,15 @@ function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled, show
 
         // Enrich each purchase with session position info FOR THIS
         // BOOKING and used-count overall. For session_number, we
-        // count bookings ordered chronologically that are either:
-        //   - explicitly linked to this package (package_purchase_id match), OR
-        //   - inferred-match (no FK, but date >= purchased_at and
-        //     service is covered by this package)
-        // 'this_session_number' = this booking's index in that list,
-        // or null if this booking would not be in this package.
+        // count bookings ordered chronologically that are explicitly
+        // linked to this package via bookings.package_purchase_id.
+        // HK May 29 2026: removed inferred-matching by date+service
+        // because it was double-counting unrelated bookings as "in the
+        // package" (Joy's 30 test bookings were all showing as "Session
+        // 18 of 6"). A booking belongs to a package only when the
+        // therapist explicitly redeems it via Checkout, which sets the
+        // FK on the bookings row. If a redemption is missing, the
+        // therapist can still link it from the booking detail panel.
         const enriched = allPurchases.map(p => {
           const purchasedDate = p.purchased_at
             ? new Date(p.purchased_at).toISOString().split('T')[0]
@@ -1578,13 +1581,7 @@ function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled, show
             if (Array.isArray(apply)) return apply.includes(svcId);
             return false;
           };
-          const isInPack = (b) => {
-            if (b.package_purchase_id === p.id) return true;
-            if (b.package_purchase_id && b.package_purchase_id !== p.id) return false;
-            // Unlinked candidate: belongs if date+service cover
-            if (b.booking_date < purchasedDate) return false;
-            return serviceCovered(b.service_id);
-          };
+          const isInPack = (b) => b.package_purchase_id === p.id;
           const packBookings = (clientBookings || []).filter(isInPack);
           let thisSessionNumber = null;
           let usedCount = 0;

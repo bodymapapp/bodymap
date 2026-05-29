@@ -207,19 +207,30 @@ export default function CheckoutModal({
     setRedeeming(true);
     setErrorMsg(null);
     try {
+      // HK May 29 2026: fix for the
+      // session_payments_charge_context_exactly_one constraint violation.
+      // The constraint requires exactly ONE of (booking_id,
+      // member_subscription_id, package_purchase_id). When redeeming a
+      // package against a session, the "context" of the $0 payment row
+      // is the booking, not the package itself. The package linkage
+      // lives on the bookings.package_purchase_id column and the
+      // package_redemptions audit row. Also: payment_method must be one
+      // of the allowed enum values (stripe_*/cash/venmo/zelle/cashapp/
+      // check/other). 'package_redemption' is not allowed; use 'other'
+      // with a descriptive payment_method_detail.
       const { data: insertedPayment, error: payErr } = await supabase
         .from('session_payments')
         .insert({
           booking_id: appt.id,
           member_subscription_id: null,
           member_subscription_renewal_id: null,
-          package_purchase_id: redeemablePackage.id,
+          package_purchase_id: null,                              // moved to bookings + package_redemptions
           therapist_id: therapist.id,
           client_id: client.id,
           amount_cents: 0,
           tip_cents: 0,
-          payment_method: 'package_redemption',
-          payment_method_detail: redeemablePackage.name,
+          payment_method: 'other',                                // 'package_redemption' is not in the CHECK constraint enum
+          payment_method_detail: `Package: ${redeemablePackage.name}`,
           status: 'succeeded',
           paid_at: new Date().toISOString(),
           created_by_therapist_id: therapist.id,
