@@ -32,6 +32,8 @@ import {
   corsHeaders, respond, getSupabaseClient, loadTherapist,
   getProvider, ProviderError,
 } from '../_shared/payment-provider.ts';
+import { notifyTherapist } from '../_shared/notifications.ts';
+import { emailWrapper, factBox, eyebrow, fromFor, replyToFor } from '../_shared/emailTemplate.ts';
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
@@ -130,6 +132,16 @@ serve(async (req) => {
         reason: 'monthly_grant',
       });
 
+      // HK May 29 2026: fire therapist notification on first successful
+      // purchase. Previously this function returned silently and the
+      // therapist had no idea a real customer just bought a membership.
+      // Real money was flowing without therapist visibility.
+      await fireMembershipPurchasedNotification(supabase, {
+        therapist, membership: m, subscription: insertedSub,
+        clientName: client_name || verifiedEmail,
+        clientEmail: verifiedEmail,
+      }).catch(e => console.error('[confirm-membership-purchase] notify failed (stripe)', e));
+
       return respond({ ok: true, subscription_id: insertedSub.id, processor: 'stripe' });
     }
 
@@ -191,6 +203,13 @@ serve(async (req) => {
       reason: 'monthly_grant',
     });
 
+    // HK May 29 2026: fire therapist notification on Square purchase too.
+    await fireMembershipPurchasedNotification(supabase, {
+      therapist, membership: m, subscription: insertedSub,
+      clientName: client_name || verifiedEmail,
+      clientEmail: verifiedEmail,
+    }).catch(e => console.error('[confirm-membership-purchase] notify failed (square)', e));
+
     return respond({
       ok: true,
       subscription_id: insertedSub.id,
@@ -210,3 +229,64 @@ serve(async (req) => {
     return respond({ error: String(e) }, 500);
   }
 });
+
+// HK May 29 2026: shared notification helper called by both the Stripe
+// and Square success branches. Sends therapist email + in-app + SMS
+// (per their prefs) so they know a membership was just purchased.
+// Failure here must NOT roll back the subscription, since the row is
+// already inserted - so the caller wraps in .catch().
+async function fireMembershipPurchasedNotification(supabase: any, opts: {
+  therapist: any,
+  membership: any,
+  subscription: any,
+  clientName: string,
+  clientEmail: string,
+}) {
+  const { therapist, membership, subscription, clientName, clientEmail } = opts;
+  const firstName = (clientName || '').split(' ')[0] || 'a client';
+  const monthlyDollars = ((membership.monthly_price || 0) / 100).toFixed(2);
+  const credits = membership.monthly_session_credits || 0;
+
+  const title = `${firstName} signed up for ${membership.name || 'your membership'}`;
+  const summary = `${clientName || clientEmail} just purchased ${membership.name || 'a membership'} at $${monthlyDollars} per month.`;
+
+  const rows = [
+    { label: 'Client',       value: clientName || clientEmail },
+    { label: 'Email',        value: clientEmail },
+    { label: 'Membership',   value: membership.name || 'Membership' },
+    { label: 'Monthly price', value: `$${monthlyDollars}` },
+    { label: 'Credits granted', value: `${credits} sessions / month` },
+    { label: 'Processor',    value: subscription.processor === 'square' ? 'Square' : 'Stripe' },
+  ];
+
+  const bodyHtml = `
+    ${eyebrow('New membership', 'sage')}
+    <h1 style="font-family:Georgia,serif;font-size:22px;font-weight:700;color:#2A5741;margin:0 0 8px;">${title}</h1>
+    <p style="font-size:14px;color:#3D4F43;margin:0 0 14px;line-height:1.6;">${summary}</p>
+    ${factBox(rows)}
+    <p style="font-size:12px;color:#9CA3AF;margin-top:18px;line-height:1.55;">
+      The first month's credits have been granted automatically. You can see and manage this membership from the client's profile.
+    </p>
+  `;
+
+  const html = emailWrapper({ subject: title, bodyHtml, preheader: summary });
+
+  await notifyTherapist({
+    supabase, therapist,
+    eventType: 'membership_purchased',
+    title,
+    body: summary,
+    icon: '🎫',
+    linkUrl: '/dashboard',
+    payload: {
+      membership_id: membership.id,
+      subscription_id: subscription.id,
+      client_email: clientEmail,
+      monthly_price_cents: membership.monthly_price,
+    },
+    emailSubject: title,
+    emailHtml: html,
+    smsText: `MyBodyMap: ${firstName} signed up for ${membership.name || 'your membership'} ($${monthlyDollars}/mo). Credits granted.`,
+    clientId: subscription.client_id || null,
+  });
+}
