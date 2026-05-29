@@ -7871,6 +7871,14 @@ export default function ScheduleDashboard({ therapist }) {
           partner_email: b.partner_email || null,
           endTime: (b.end_time || '').slice(0,5),
           startTime: (b.start_time || '').slice(0,5),
+          // HK May 29 2026: raw start_time exposed in addition to the
+          // truncated startTime field. Reschedule path in BookingModal
+          // reads existingBooking.start_time to capture previous_start_time
+          // on the row. Without this, reschedule emails went out missing
+          // the 'rescheduled from <time>' fact (and previous_start_time
+          // saved as NULL in the bookings row, breaking the timeline
+          // trace and the reschedule audit too).
+          start_time: b.start_time || null,
           // HK May 27 2026: expose FK ids so DetailPanel can render
           // the service editor (change service / duration / location
           // / addons / partner on an existing booking). Without these
