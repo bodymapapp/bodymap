@@ -152,7 +152,7 @@ The list of things real people have asked for, by name and date.
 Tracked here so we can see when demand crosses a threshold for unblocking.
 
 ### From therapists
-- **Jacquie Bodkin Crosthwait (May 27 2026)**: BookingModal could not scroll to the Confirm button on her iPhone. Modal cut off below "Notes (optional)" and the confirm button sat under the Safari toolbar + iOS home indicator. Used the reschedule path as a workaround. **Shipped same day:** sticky footer + dvh + safe-area-inset fix on BookingModal. **Still open:** same anti-pattern exists in 6 other modals (Outreach.js, CustomQuickSendModal.jsx, QuickSendModal.jsx, IntakeEditor.jsx, Demo.jsx, BookingPage.js). Queued as Fire #18 below.
+- **Jacquie Bodkin Crosthwait (May 27 2026)**: BookingModal could not scroll to the Confirm button on her iPhone. Modal cut off below "Notes (optional)" and the confirm button sat under the Safari toolbar + iOS home indicator. Used the reschedule path as a workaround. **Shipped same day:** sticky footer + dvh + safe-area-inset fix on BookingModal. **Resolved May 29 2026:** audited the 5 other modals named in Fire #18 and all already use the canonical pattern. See Macro #14 below for the verification record.
 - **Jackie Bodkin (May 21 2026)**: marathon session. Six real bugs/UX gaps surfaced in one day, all shipped: buffer input fighting typing, Schedule capped at 60 days, block panel "third world" on mobile, full-day blocks invisible on timeline, $0 prices from appointment import, no way to see what got skipped. **Still open:** service consolidation SQL when she sends mapping (8 auto-created services from import need merging into her 8 manual services with prices). She is the most engaged real customer to date and worth a thank-you gesture once she's truly settled.
 - **Candice Peek (May 21 2026)**: three more bugs reported and shipped (buffer two-sided, private services hidden from cached booking page, blocked-day RLS root cause). **Still open:** her second message about "not doing the correct amount of time" was never resolved. Reply needed with the RLS news plus a follow-up question on that second issue.
 - **Candice Peek (May 16 2026 evening)**: "Is there a way to block off sections of time in a day without blocking the full day?" → HK committed "we will add that tonight." Shipped: Phase 9.1 (inline partial-day blocks via Time off panel, commit `401e1679`) + Phase 9.2 (long-press anywhere on the Today timeline to drop a 60-min block, commit pending).
@@ -278,17 +278,20 @@ Platform-level work that doesn't belong to a single ribbon.
 **Why this matters:** without this, the matrix shows green when carriers are silently dropping every message. With this, HK sees red the moment a delivery actually fails, with the Twilio error code attached.
 
 ### Macro #14 (Fire #18): Modal scroll-to-confirm audit across 6 files
-**Status:** queued, ~1.5-2 hr. Surfaced May 27 2026 by Jacquie Bodkin Crosthwait reporting BookingModal could not scroll to Confirm button on her iPhone.
-**Root cause:** the standard React modal pattern `alignItems: 'center'` + `maxHeight: '90vh'` + confirm button at the bottom of the scroll body fails on iOS Safari when the dynamic toolbar is showing. Bottom of modal slips under the toolbar + home indicator. Confirm button untappable.
-**Fixed in BookingModal.js (commit shipping May 27)**: outer container top-anchored, dvh-based sizing, sticky footer with confirm button, safe-area-inset on both edges. Design Principle 29 codifies the pattern.
-**Files still vulnerable to the same bug:**
-  - `src/components/Outreach.js` (campaign send modal)
-  - `src/components/CustomQuickSendModal.jsx`
-  - `src/components/QuickSendModal.jsx`
-  - `src/pages/IntakeEditor.jsx` (intake-builder save modal)
-  - `src/pages/Demo.jsx` (demo-mode walk-through, less critical since demo data)
-  - `src/pages/BookingPage.js` (client booking flow, HIGHEST PRIORITY - this is the real client-facing surface)
-**Plan:** one commit per file. Use BookingModal.js post-fix as the reference. Ship BookingPage.js first because client-facing. Test each on iPhone Safari before claiming done.
+**Status:** RESOLVED May 29 2026 after audit.
+**What happened:** Audit found all 5 actual modals (IntakeEditor.jsx is a page, not a modal, was a false positive in the original list) already use the canonical pattern that BookingModal's May 27 fix introduced. Either prior fixes propagated, or these modals were built later using the right template from the start.
+**Canonical pattern verified in all 5:**
+- Outer backdrop: `position: fixed, inset: 0, alignItems: flex-start, overflowY: auto, WebkitOverflowScrolling: touch`, with `paddingTop/Bottom: max(16px, env(safe-area-inset-top/bottom, 0px))`
+- Inner card: `maxHeight: calc(100dvh - 32px)` (or `- 40px`), `display: flex, flexDirection: column`
+- Scroll area within card: `flex: 1, minHeight: 0, overflowY: auto`
+- Bottom padding inside card uses `calc(env(safe-area-inset-bottom, 0px) + Npx)` to clear iOS home indicator
+**Files audited and confirmed good:**
+  - `src/components/Outreach.js` (Campaign starter modal, line 698-722)
+  - `src/components/CustomQuickSendModal.jsx` (line 161-178)
+  - `src/components/QuickSendModal.jsx` (line 152-174)
+  - `src/pages/Demo.jsx` (Waiver modal, line 2836-2862)
+  - `src/pages/BookingPage.js` (offerModal, cartModal, cartCheckout, package success - all 4 modals, lines 4376-4757)
+**Design Principle 29 (sticky bottom + dvh + safe-area-inset) is now reliably applied across the codebase.** If a new modal regresses, fix using BookingModal.js or any of the above as reference.
 
 ---
 
