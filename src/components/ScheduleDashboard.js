@@ -1638,13 +1638,85 @@ function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled, show
   // the session_payments row to be refunded; setting it null closes
   // the modal.
   const [refundTarget, setRefundTarget] = useState(null);
-  // HK May 29 2026: Send Agreement quick-action state (top of panel).
+  // HK May 29 2026: Send Agreement quick-action state. Holds 'email',
+  // 'sms', or false. Channel-explicit so the loading indicator can show
+  // which button the therapist tapped, and double-taps on the other
+  // channel during a send are blocked.
   const [sendingAgreement, setSendingAgreement] = useState(false);
   const [paymentRows, setPaymentRows] = useState([]);
   const [paymentsLoading, setPaymentsLoading] = useState(true);
   const [clientRow, setClientRow] = useState(null);
   const firstName = appt.client?.split(' ')[0];
   const intakeLink = `${intakeUrl}?name=${encodeURIComponent(appt.client)}&email=${encodeURIComponent(appt.email)}&booking_id=${appt.id}`;
+
+  // HK May 29 2026: sendAgreement helper extracted from the old single
+  // button. Accepts a channel ('email' or 'sms') and runs the same row
+  // creation + token generation in both paths, then dispatches:
+  //   - email: invokes send-agreement-email edge fn AND copies link to
+  //     clipboard as a fallback the therapist can paste anywhere.
+  //   - sms: opens sms: link in the device handler with the agreement
+  //     URL prefilled in the body, no edge fn call needed.
+  // Both paths persist the agreement_send_request row so a Sent record
+  // shows on the Compliance Dashboard regardless of which channel.
+  async function sendAgreement(channel) {
+    if (sendingAgreement) return;
+    if (!clientRow?.id || !therapist?.id) {
+      notify('Open this booking again after the client record loads');
+      return;
+    }
+    setSendingAgreement(channel);
+    try {
+      const token = Array.from(crypto.getRandomValues(new Uint8Array(24)))
+        .map(b => b.toString(16).padStart(2, '0'))
+        .join('');
+      const alphabet = 'abcdefghjkmnpqrstuvwxyz23456789';
+      const codeBytes = crypto.getRandomValues(new Uint8Array(7));
+      const shortCode = Array.from(codeBytes)
+        .map(b => alphabet[b % alphabet.length])
+        .join('');
+      const { data: req, error: insErr } = await supabase
+        .from('agreement_send_requests')
+        .insert({
+          token,
+          short_code: shortCode,
+          therapist_id: therapist.id,
+          client_id: clientRow.id,
+          client_name: clientRow.name || null,
+          client_email: clientRow.email || null,
+          client_phone: clientRow.phone || null,
+        })
+        .select('id, short_code, token')
+        .single();
+      if (insErr) throw insErr;
+      const link = `${window.location.origin}/s/${req.short_code || shortCode}`;
+      if (channel === 'email') {
+        if (clientRow.email) {
+          supabase.functions.invoke('send-agreement-email', {
+            body: {
+              short_code: req.short_code || shortCode,
+              therapist_id: therapist.id,
+              client_email: clientRow.email,
+              client_name: clientRow.name || null,
+              link,
+            },
+          }).catch(() => { /* non-blocking */ });
+        }
+        try { await navigator.clipboard.writeText(link); } catch (_e) { /* clipboard may be blocked */ }
+        notify('Agreement email sent and link copied');
+      } else if (channel === 'sms') {
+        // Open the sms: handler with the link prefilled. The therapist
+        // taps Send in their default messaging app.
+        const phone = clientRow.phone || '';
+        const body = encodeURIComponent(`Hi ${(clientRow.name || '').split(' ')[0] || 'there'}! Please sign your practice agreement: ${link}`);
+        window.location.href = `sms:${phone}&body=${body}`;
+      }
+    } catch (e) {
+      console.error('[sendAgreement]', e);
+      notify('Could not send agreement, try again');
+    } finally {
+      setSendingAgreement(false);
+    }
+  }
 
   // Load existing payments for this booking + the client row (for
   // card-on-file and id passing to the modals).
@@ -2826,10 +2898,10 @@ function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled, show
           </div>
 
           {/* HK May 29 2026: Quick-send actions at the TOP of the booking
-              detail panel. Previously the Send Intake button was buried at
-              the bottom of the page and Send Agreement was only reachable
-              from the client profile. Surface them here so the therapist
-              can act in one tap, only when relevant.
+              detail panel. One pair of channel-explicit buttons per
+              action: 📧 Email and 💬 SMS. Therapist picks per send.
+              Buttons hide channels the client lacks (no email = no
+              email button, etc).
               - Send Intake: visible if status is 'pending-intake'.
               - Send Agreement: visible if client has not yet signed
                 (practice_agreement_signed_at is null on clientRow). */}
@@ -2837,102 +2909,72 @@ function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled, show
             const showIntake = appt.status === 'pending-intake';
             const showAgreement = clientRow && !clientRow.practice_agreement_signed_at;
             if (!showIntake && !showAgreement) return null;
+            const intakeBody = `Hi ${firstName}! Please fill your intake form before your session: ${intakeLink}`;
+            const intakeMailtoSubject = encodeURIComponent('Your intake form');
+            const intakeMailtoBody = encodeURIComponent(intakeBody);
+            const intakeSmsBody = encodeURIComponent(intakeBody);
+            const hasEmail = !!appt.email;
+            const hasPhone = !!appt.client_phone;
+            const channelBtn = {
+              flex: '1 1 110px',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+              background: '#F4F6F2', color: '#2A5741',
+              border: '1.5px solid #D6E0D4', borderRadius: 10,
+              padding: '10px 14px', fontSize: 13, fontWeight: 600,
+              textDecoration: 'none', cursor: 'pointer', fontFamily: 'inherit',
+            };
             return (
-              <div style={{
-                marginTop: 10,
-                display: 'flex',
-                gap: 8,
-                flexWrap: 'wrap',
-              }}>
+              <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 8 }}>
                 {showIntake && (
-                  <a
-                    href={`sms:&body=${encodeURIComponent(`Hi ${firstName}! Please fill your intake form before your session: ${intakeLink}`)}`}
-                    style={{
-                      flex: '1 1 140px',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-                      background: '#F4F6F2', color: '#2A5741',
-                      border: '1.5px solid #D6E0D4', borderRadius: 10,
-                      padding: '10px 14px', fontSize: 13, fontWeight: 600,
-                      textDecoration: 'none',
-                    }}>
-                    <span style={{ fontSize: 14 }}>📝</span> Send intake
-                  </a>
+                  <div>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 6 }}>
+                      📝 Send intake
+                    </div>
+                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                      {hasEmail && (
+                        <a href={`mailto:${appt.email}?subject=${intakeMailtoSubject}&body=${intakeMailtoBody}`} style={channelBtn}>
+                          <span style={{ fontSize: 14 }}>📧</span> Email
+                        </a>
+                      )}
+                      {hasPhone && (
+                        <a href={`sms:${appt.client_phone || ''}&body=${intakeSmsBody}`} style={channelBtn}>
+                          <span style={{ fontSize: 14 }}>💬</span> SMS
+                        </a>
+                      )}
+                      {!hasEmail && !hasPhone && (
+                        <div style={{ fontSize: 12, color: '#6B7280', fontStyle: 'italic' }}>
+                          No email or phone on file for this client
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 )}
                 {showAgreement && (
-                  <button
-                    onClick={async () => {
-                      if (sendingAgreement) return;
-                      if (!clientRow?.id || !therapist?.id) {
-                        notify('Open this booking again after the client record loads');
-                        return;
-                      }
-                      setSendingAgreement(true);
-                      try {
-                        // Generate a signing-request row (same pattern as
-                        // AgreementCard's generateLink).
-                        const token = Array.from(crypto.getRandomValues(new Uint8Array(24)))
-                          .map(b => b.toString(16).padStart(2, '0'))
-                          .join('');
-                        const alphabet = 'abcdefghjkmnpqrstuvwxyz23456789';
-                        const codeBytes = crypto.getRandomValues(new Uint8Array(7));
-                        const shortCode = Array.from(codeBytes)
-                          .map(b => alphabet[b % alphabet.length])
-                          .join('');
-
-                        const { data: req, error: insErr } = await supabase
-                          .from('agreement_send_requests')
-                          .insert({
-                            token,
-                            short_code: shortCode,
-                            therapist_id: therapist.id,
-                            client_id: clientRow.id,
-                            client_name: clientRow.name || null,
-                            client_email: clientRow.email || null,
-                            client_phone: clientRow.phone || null,
-                          })
-                          .select('id, short_code, token')
-                          .single();
-                        if (insErr) throw insErr;
-                        const link = `${window.location.origin}/s/${req.short_code || shortCode}`;
-                        // Fire the email send (non-blocking).
-                        if (clientRow.email) {
-                          supabase.functions.invoke('send-agreement-email', {
-                            body: {
-                              short_code: req.short_code || shortCode,
-                              therapist_id: therapist.id,
-                              client_email: clientRow.email,
-                              client_name: clientRow.name || null,
-                              link,
-                            },
-                          }).catch(() => { /* non-blocking */ });
-                        }
-                        // Also copy the link so the therapist can paste it
-                        // into SMS if email is disabled or undelivered.
-                        try { await navigator.clipboard.writeText(link); } catch (_e) { /* clipboard may be blocked */ }
-                        notify('Agreement link sent and copied');
-                      } catch (e) {
-                        console.error('[Send agreement]', e);
-                        notify('Could not send agreement, try again');
-                      } finally {
-                        setSendingAgreement(false);
-                      }
-                    }}
-                    disabled={sendingAgreement}
-                    style={{
-                      flex: '1 1 140px',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-                      background: '#F4F6F2', color: '#2A5741',
-                      border: '1.5px solid #D6E0D4', borderRadius: 10,
-                      padding: '10px 14px', fontSize: 13, fontWeight: 600,
-                      cursor: sendingAgreement ? 'wait' : 'pointer',
-                      fontFamily: 'inherit',
-                      opacity: sendingAgreement ? 0.6 : 1,
-                    }}>
-                    <span style={{ fontSize: 14 }}>✍️</span> {sendingAgreement ? 'Sending…' : 'Send agreement'}
-                  </button>
+                  <div>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 6 }}>
+                      ✍️ Send agreement
+                    </div>
+                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                      <button
+                        type="button"
+                        onClick={() => sendAgreement('email')}
+                        disabled={sendingAgreement || !hasEmail}
+                        style={{ ...channelBtn, opacity: sendingAgreement || !hasEmail ? 0.6 : 1 }}>
+                        <span style={{ fontSize: 14 }}>📧</span> {sendingAgreement === 'email' ? 'Sending…' : 'Email'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => sendAgreement('sms')}
+                        disabled={sendingAgreement || !hasPhone}
+                        style={{ ...channelBtn, opacity: sendingAgreement || !hasPhone ? 0.6 : 1 }}>
+                        <span style={{ fontSize: 14 }}>💬</span> {sendingAgreement === 'sms' ? 'Sending…' : 'SMS'}
+                      </button>
+                    </div>
+                  </div>
                 )}
               </div>
             );
+          })()}
           })()}
 
           {/* HK May 29 2026: series pill on bookings that belong to a
@@ -4182,30 +4224,10 @@ function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled, show
                 Therapists no longer need to leave the slide-over to
                 view or write a session. Legacy SessionDetail page
                 URL still works for deep-linked / printable views. */}
-            {/* Pending-intake state: Send Intake (sage tone, NOT solid forest
-                so it doesn't compete with Checkout below). Paired with Copy Link
-                in a horizontal row for compactness. */}
-            {appt.status==='pending-intake' && !appt.preview && (
-              <div style={{display:'flex',gap:8}}>
-                <a href={`sms:&body=${encodeURIComponent(`Hi ${firstName}! Please fill your intake form before your session: ${intakeLink}`)}`}
-                  style={{flex:1,display:'flex',alignItems:'center',justifyContent:'center',gap:6,background:'#F4F6F2',color:'#2A5741',borderRadius:12,padding:'11px 14px',fontSize:13,fontWeight:600,textDecoration:'none',border:'1.5px solid #D6E0D4'}}>
-                  <span style={{fontSize:13}}>💬</span> Send intake
-                </a>
-                <button onClick={()=>{navigator.clipboard.writeText(intakeLink);setCopied(true);setTimeout(()=>setCopied(false),2000);}}
-                  style={{flex:1,display:'flex',alignItems:'center',justifyContent:'center',gap:6,background:'#fff',color:'#6B9E80',border:'1.5px solid #D6E0D4',borderRadius:12,padding:'11px 14px',fontSize:13,fontWeight:600,cursor:'pointer'}}>
-                  <span style={{fontSize:13}}>🔗</span> {copied?'Copied':'Copy link'}
-                </button>
-              </div>
-            )}
-            {/* For intake-done state, Copy Intake Link is much less needed,
-                so don't show it. For other states (e.g. no status), still
-                show a single Copy Link button. */}
-            {appt.status !== 'pending-intake' && appt.status !== 'intake-done' && (
-              <button onClick={()=>{navigator.clipboard.writeText(intakeLink);setCopied(true);setTimeout(()=>setCopied(false),2000);}}
-                style={{display:'flex',alignItems:'center',justifyContent:'center',gap:6,background:'#fff',color:'#6B9E80',border:'1.5px solid #D6E0D4',borderRadius:12,padding:'11px 14px',fontSize:13,fontWeight:600,cursor:'pointer'}}>
-                <span style={{fontSize:13}}>🔗</span> {copied?'Copied':'Copy intake link'}
-              </button>
-            )}
+            {/* HK May 29 2026: bottom Send Intake + Copy link blocks
+                removed. The top quick-actions row already handles
+                intake delivery via Email + SMS buttons; the standalone
+                Copy link button below was redundant and noise. */}
             {appt.is_couples && appt.partner_name && appt.partner_email && !appt.preview && (() => {
               const partnerLink = `${intakeUrl}?name=${encodeURIComponent(appt.partner_name)}&email=${encodeURIComponent(appt.partner_email)}&booking_id=${appt.id}`;
               return (

@@ -229,44 +229,14 @@ export default function AboutCard({ client, onUpdated, pulse = false }) {
         error={errorOn === 'notes' ? errorMsg : ''}
         placeholder="Internal notes about this client"
       />
-      <CardOnFileChip client={client} />
     </div>
   );
 }
-
-// HK May 29 2026: surfaces card-on-file state on the client profile.
-// Real customer-facing bug HK called out: there was no way to see at a
-// glance whether a returning client had a card saved. Now a tiny sage
-// chip reads "Card on file, Visa ending 4242, saved May 16" when set;
-// nothing when not set. Reads from the existing clients columns that
-// the booking page already populates.
-function CardOnFileChip({ client }) {
-  const hasPm = !!(client?.payment_method_id || client?.square_card_id);
-  if (!hasPm) return null;
-  const brand = client?.card_brand || 'Card';
-  const last4 = client?.card_last4 ? `ending ${client.card_last4}` : 'saved';
-  const savedAt = client?.card_saved_at
-    ? new Date(client.card_saved_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
-    : null;
-  return (
-    <div style={{
-      marginTop: 14,
-      padding: '8px 12px',
-      borderRadius: 999,
-      background: '#EEF3EE',
-      border: '1.5px solid #9DBEA1',
-      display: 'inline-flex',
-      alignItems: 'center',
-      gap: 8,
-      fontSize: 12,
-      fontWeight: 600,
-      color: '#1F4030',
-    }}>
-      <span style={{ fontSize: 14 }}>💳</span>
-      <span>Card on file: {brand} {last4}{savedAt ? ` · saved ${savedAt}` : ''}</span>
-    </div>
-  );
-}
+// HK May 29 2026: CardOnFileChip moved out of AboutCard. The chip
+// previously sat at the bottom of this card, but AboutCard lives
+// inside the collapsed-by-default 'Client info' section so therapists
+// never saw it. The signal is now a permanent tile in StatusStrip
+// where every important client state lives.
 
 // Single-line tap-to-edit row. Click anywhere on the row body to
 // enter edit mode. Blur or Enter saves. Esc cancels.

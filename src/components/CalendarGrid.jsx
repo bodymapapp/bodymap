@@ -412,17 +412,20 @@ export default function CalendarGrid({ therapist, embedded = false, firstOpen = 
 
     const status = isDateBlocked(dateStr);
     const growthMoment = growthMomentsByDate[dateStr];
+    const holiday = holidaysByDate[dateStr];
 
-    // HK May 27 2026: floating popover removed. For growth moments
-    // and recurring-blocked days, we set selectedDate so the inline
-    // detail panel below the calendar shows context + actions. The
-    // popover was blocking taps on neighboring dates.
-    if (growthMoment || status?.type === 'recurring') {
+    // HK May 29 2026: holiday cells now open the detail panel too, so
+    // the therapist sees WHICH holiday before deciding whether to block.
+    // Previously a green cell silently toggled a block on tap, which
+    // hid the holiday name (the data was loaded but never surfaced).
+    // The detail panel below the calendar shows the holiday name and a
+    // 'Block this day' action.
+    if (growthMoment || status?.type === 'recurring' || (holiday && !status)) {
       setSelectedDate(dateStr);
       return;
     }
-    // For everything else (available days, holidays, one-off blocks),
-    // just toggle. No detail panel needed.
+    // For everything else (available days, already-blocked one-offs),
+    // just toggle.
     toggleOneOffBlock(dateStr);
   }
 
@@ -861,8 +864,31 @@ export default function CalendarGrid({ therapist, embedded = false, firstOpen = 
         </div>
 
         {holiday && !growthMoment && (
-          <div style={{ fontSize: 13, fontWeight: 500, color: C.holidayText, marginBottom: 10 }}>
-            {holiday.name}
+          <div style={{
+            background: '#F0F7F2',
+            border: `1px solid ${C.holidayBorder}`,
+            borderRadius: 8, padding: 12, marginBottom: 12,
+          }}>
+            <div style={{ fontSize: 13, fontWeight: 600, color: C.holidayText, marginBottom: 4 }}>
+              🎉 {holiday.name}
+            </div>
+            <div style={{ fontSize: 12, color: C.ink, lineHeight: 1.5, marginBottom: 10 }}>
+              This is a US holiday. Many clients are off work and may want or skip a session.
+              {status ? ' This day is already blocked on your calendar.' : ' Block this day if you do not want to work.'}
+            </div>
+            {!status && (
+              <button
+                type="button"
+                onClick={async () => { await toggleOneOffBlock(selectedDate); setSelectedDate(null); }}
+                style={{
+                  background: C.forest, color: C.white, border: 'none',
+                  borderRadius: 8, padding: '10px 14px',
+                  fontSize: 13, fontWeight: 500, cursor: 'pointer',
+                  fontFamily: 'inherit', width: '100%',
+                }}>
+                Block this day
+              </button>
+            )}
           </div>
         )}
 

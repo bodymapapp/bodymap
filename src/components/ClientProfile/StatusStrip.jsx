@@ -37,6 +37,16 @@ export default function StatusStrip({ profile, onNextBooking, onAgreementTap }) 
   const agreementSignerName = client?.practice_agreement_signer_name || null;
   const isAgreementSigned = !!agreementSignedAt;
 
+  // ─── Card on file tile content (HK May 29 2026) ───
+  // Promoted from a chip buried at the bottom of AboutCard (which lives
+  // inside the collapsed-by-default 'Client info' section, so therapists
+  // never saw it). Card-on-file is too important to hide behind a click.
+  // Same data source as the booking-page returning-client lookup.
+  const hasCardOnFile = !!(client?.payment_method_id || client?.square_card_id);
+  const cardBrand = client?.card_brand || '';
+  const cardLast4 = client?.card_last4 || '';
+  const cardSavedAt = client?.card_saved_at || null;
+
   return (
     <div style={{
       padding: '0 14px',
@@ -134,6 +144,34 @@ export default function StatusStrip({ profile, onNextBooking, onAgreementTap }) 
               <BigText>Not on file</BigText>
               <Detail>
                 <span style={{ fontStyle: 'italic' }}>Tap to send</span>
+              </Detail>
+            </>
+          )}
+        </Tile>
+
+        {/* Card on file (HK May 29 2026, permanent, always visible).
+            Was previously buried at the bottom of AboutCard inside the
+            collapsed 'Client info' section. Promoted up to StatusStrip
+            so therapists can see at a glance whether a returning client
+            has a card saved without expanding any section. */}
+        <Tile
+          icon="💳"
+          label="Card on file"
+          tone={hasCardOnFile ? 'sage' : 'neutral'}
+          accentBorder={hasCardOnFile}
+        >
+          {hasCardOnFile ? (
+            <>
+              <BigText>{cardBrand || 'Card'}{cardLast4 ? ` · ${cardLast4}` : ''}</BigText>
+              {cardSavedAt && (
+                <Detail>Saved {formatShortDate(cardSavedAt)}</Detail>
+              )}
+            </>
+          ) : (
+            <>
+              <BigText>None on file</BigText>
+              <Detail>
+                <span style={{ fontStyle: 'italic' }}>Saved on first paid booking</span>
               </Detail>
             </>
           )}
