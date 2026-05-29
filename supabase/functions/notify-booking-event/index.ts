@@ -49,6 +49,17 @@ serve(async (req) => {
 
     const SUPABASE_URL = Deno.env.get('SUPABASE_URL') || '';
     const SUPABASE_SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
+    // HK May 29 2026: anon key for fan-out gateway auth. The
+    // SUPABASE_SERVICE_ROLE_KEY env var in this Supabase project's
+    // edge runtime is the legacy non-JWT format which the API gateway
+    // rejects with UNAUTHORIZED_INVALID_JWT_FORMAT when used as a
+    // Bearer token. The ANON key IS a proper JWT and gateway-accepts
+    // it. The function-internal DB client still uses the service-role
+    // key because RLS bypass is needed for cross-therapist queries.
+    // This matches the pattern used by send-booking-confirmation
+    // invocations from the client (BookingModal.fireBookingConfirmation)
+    // which have been working without issues.
+    const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY') || '';
     if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) {
       return respond({ error: 'env_not_set' }, 500);
     }
@@ -297,6 +308,7 @@ serve(async (req) => {
       await fireDownstreamForBookingEvent(
         SUPABASE_URL,
         SUPABASE_SERVICE_KEY,
+        SUPABASE_ANON_KEY,
         event_type,
         booking_id,
         therapist.id,
@@ -340,6 +352,7 @@ serve(async (req) => {
 async function fireDownstreamForBookingEvent(
   supabaseUrl: string,
   serviceKey: string,
+  anonKey: string,
   eventType: string,
   bookingId: string,
   therapistId: string,
@@ -352,10 +365,19 @@ async function fireDownstreamForBookingEvent(
     reason?: string,
   } = {},
 ) {
+  // HK May 29 2026: fan-out gateway auth uses anonKey (a proper JWT)
+  // not serviceKey. The serviceKey at this Supabase project is the
+  // legacy non-JWT format which the API gateway rejects as
+  // UNAUTHORIZED_INVALID_JWT_FORMAT. The function on the other end
+  // does its own DB queries with its own SUPABASE_SERVICE_ROLE_KEY,
+  // so we don't need to forward the service key here. Fall back to
+  // serviceKey if anonKey is unexpectedly empty so the function still
+  // attempts the call (and we'll see the failure in notification_log).
+  const gatewayToken = anonKey || serviceKey;
   const headers = {
     'Content-Type': 'application/json',
-    'Authorization': `Bearer ${serviceKey}`,
-    'apikey': serviceKey,
+    'Authorization': `Bearer ${gatewayToken}`,
+    'apikey': gatewayToken,
   };
   const targets: Array<{ fn: string, payload: any }> = [];
 
