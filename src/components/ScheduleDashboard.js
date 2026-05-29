@@ -6879,6 +6879,206 @@ function CohortCard({ color, icon, title, subtitle, clients, total, actionLabel,
   );
 }
 
+// ─── BlockTimeModal (HK May 29 2026) ────────────────────────────────────
+// Top-level modal so the therapist can block off personal/admin time
+// from the Schedule action row, without having to long-press the
+// timeline. Inserts a row into blocked_days. The long-press path still
+// works as before; this just gives a discoverable button.
+function BlockTimeModal({ therapist, onClose, onSaved }) {
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const [date, setDate] = React.useState(todayStr);
+  const [mode, setMode] = React.useState('full');     // 'full' or 'partial'
+  const [startTime, setStartTime] = React.useState('09:00');
+  const [endTime, setEndTime] = React.useState('17:00');
+  const [note, setNote] = React.useState('');
+  const [saving, setSaving] = React.useState(false);
+  const [err, setErr] = React.useState('');
+
+  async function save() {
+    setErr('');
+    if (!date) { setErr('Pick a date.'); return; }
+    if (mode === 'partial') {
+      if (!startTime || !endTime) { setErr('Pick a start and end time.'); return; }
+      if (endTime <= startTime) { setErr('End time must be after start time.'); return; }
+    }
+    setSaving(true);
+    try {
+      const payload = {
+        therapist_id: therapist.id,
+        date,
+        note: note.trim() || null,
+      };
+      if (mode === 'partial') {
+        payload.start_time = `${startTime}:00`;
+        payload.end_time = `${endTime}:00`;
+      }
+      const { error } = await supabase.from('blocked_days').insert(payload);
+      if (error) throw error;
+      onSaved && onSaved(mode === 'full' ? 'Day blocked' : 'Time blocked');
+    } catch (e) {
+      setErr(e.message || 'Could not save. Try again.');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div
+      onClick={(e) => { if (e.target === e.currentTarget && !saving) onClose(); }}
+      style={{
+        position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        zIndex: 60, padding: 16,
+      }}>
+      <div style={{
+        background: '#fff', borderRadius: 16, maxWidth: 440, width: '100%',
+        boxShadow: '0 12px 48px rgba(0,0,0,0.18)', overflow: 'hidden',
+      }}>
+        <div style={{ padding: '18px 22px', borderBottom: '1px solid #ECE7DC' }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: '#9A3412', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>
+            ⏸ Block off time
+          </div>
+          <div style={{ fontSize: 17, fontWeight: 700, color: '#1F2937', fontFamily: 'Georgia, serif' }}>
+            Reserve this slot for yourself
+          </div>
+          <div style={{ fontSize: 12, color: '#6B7280', marginTop: 4, lineHeight: 1.5 }}>
+            Clients won't be able to book during this time on your public booking page.
+          </div>
+        </div>
+        <div style={{ padding: '18px 22px' }}>
+          <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 6 }}>
+            Date
+          </label>
+          <input
+            type="date"
+            value={date}
+            onChange={e => setDate(e.target.value)}
+            style={{
+              width: '100%', boxSizing: 'border-box',
+              border: '1.5px solid #E5E7EB', borderRadius: 10,
+              padding: '10px 12px', fontSize: 14, color: '#1F2937',
+              fontFamily: 'inherit', marginBottom: 14,
+            }}
+          />
+
+          <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
+            <button
+              onClick={() => setMode('full')}
+              style={{
+                flex: 1,
+                background: mode === 'full' ? '#2A5741' : '#fff',
+                color: mode === 'full' ? '#fff' : '#374151',
+                border: `1.5px solid ${mode === 'full' ? '#2A5741' : '#E5E7EB'}`,
+                borderRadius: 10, padding: '10px 12px', fontSize: 13, fontWeight: 700,
+                cursor: 'pointer', fontFamily: 'inherit',
+              }}>
+              Full day
+            </button>
+            <button
+              onClick={() => setMode('partial')}
+              style={{
+                flex: 1,
+                background: mode === 'partial' ? '#2A5741' : '#fff',
+                color: mode === 'partial' ? '#fff' : '#374151',
+                border: `1.5px solid ${mode === 'partial' ? '#2A5741' : '#E5E7EB'}`,
+                borderRadius: 10, padding: '10px 12px', fontSize: 13, fontWeight: 700,
+                cursor: 'pointer', fontFamily: 'inherit',
+              }}>
+              Part of day
+            </button>
+          </div>
+
+          {mode === 'partial' && (
+            <div style={{ display: 'flex', gap: 10, marginBottom: 14 }}>
+              <div style={{ flex: 1 }}>
+                <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 6 }}>
+                  Start
+                </label>
+                <input
+                  type="time"
+                  value={startTime}
+                  onChange={e => setStartTime(e.target.value)}
+                  style={{
+                    width: '100%', boxSizing: 'border-box',
+                    border: '1.5px solid #E5E7EB', borderRadius: 10,
+                    padding: '10px 12px', fontSize: 14, color: '#1F2937',
+                    fontFamily: 'inherit',
+                  }}
+                />
+              </div>
+              <div style={{ flex: 1 }}>
+                <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 6 }}>
+                  End
+                </label>
+                <input
+                  type="time"
+                  value={endTime}
+                  onChange={e => setEndTime(e.target.value)}
+                  style={{
+                    width: '100%', boxSizing: 'border-box',
+                    border: '1.5px solid #E5E7EB', borderRadius: 10,
+                    padding: '10px 12px', fontSize: 14, color: '#1F2937',
+                    fontFamily: 'inherit',
+                  }}
+                />
+              </div>
+            </div>
+          )}
+
+          <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 6 }}>
+            Reason (optional)
+          </label>
+          <input
+            type="text"
+            value={note}
+            onChange={e => setNote(e.target.value)}
+            placeholder="Doctor, errands, family, lunch..."
+            style={{
+              width: '100%', boxSizing: 'border-box',
+              border: '1.5px solid #E5E7EB', borderRadius: 10,
+              padding: '10px 12px', fontSize: 14, color: '#1F2937',
+              fontFamily: 'inherit', marginBottom: 14,
+            }}
+          />
+
+          {err && (
+            <div style={{
+              background: '#FEE2E2', border: '1px solid #FCA5A5', color: '#7F1D1D',
+              borderRadius: 8, padding: '8px 12px', fontSize: 13, marginBottom: 12,
+            }}>
+              {err}
+            </div>
+          )}
+
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button
+              onClick={onClose}
+              disabled={saving}
+              style={{
+                flex: 1, background: '#F3F4F6', color: '#4B5563', border: 'none',
+                padding: '12px', borderRadius: 10, fontSize: 14, fontWeight: 700,
+                cursor: saving ? 'not-allowed' : 'pointer', fontFamily: 'inherit',
+              }}>
+              Cancel
+            </button>
+            <button
+              onClick={save}
+              disabled={saving}
+              style={{
+                flex: 1, background: '#2A5741', color: '#fff', border: 'none',
+                padding: '12px', borderRadius: 10, fontSize: 14, fontWeight: 700,
+                cursor: saving ? 'wait' : 'pointer', fontFamily: 'inherit',
+                opacity: saving ? 0.7 : 1,
+              }}>
+              {saving ? 'Saving…' : 'Block this time'}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function ScheduleDashboard({ therapist }) {
   // HK May 27 2026 round 4: refresh AuthContext's therapist after we
   // write week_starts_on (or any other settings field) so the new
@@ -6904,6 +7104,10 @@ export default function ScheduleDashboard({ therapist }) {
   const [today] = useState(getToday);
   const SAMPLE = makeSample(today);
   const [showCreate, setShowCreate] = useState(false);
+  // HK May 29 2026: top-level "Block time" modal so the therapist can
+  // block off personal/admin time without long-pressing the timeline.
+  // Was previously only reachable via long-press, which HK lost.
+  const [showBlockTime, setShowBlockTime] = useState(false);
   const [rescheduleAppt, setRescheduleAppt] = useState(null);
   // Phase 9.3 (HK May 18 2026): long-press → option to schedule a
   // session instead of blocking. State lives here so BookingModal
@@ -7613,6 +7817,17 @@ export default function ScheduleDashboard({ therapist }) {
       {showCreate && (
         <BookingModal therapist={therapist} mode="create" onClose={() => setShowCreate(false)} onSuccess={fetchBookings} />
       )}
+      {showBlockTime && (
+        <BlockTimeModal
+          therapist={therapist}
+          onClose={() => setShowBlockTime(false)}
+          onSaved={(msg) => {
+            showScheduleToast(msg || 'Time blocked');
+            fetchBookings();
+            setShowBlockTime(false);
+          }}
+        />
+      )}
       {pendingBookingTime && (
         <BookingModal
           therapist={therapist}
@@ -7897,6 +8112,12 @@ export default function ScheduleDashboard({ therapist }) {
           style={{display:'inline-flex',alignItems:'center',gap:6,background:'linear-gradient(135deg,#2A5741,#3D6B54)',color:'#fff',border:'none',borderRadius:22,padding:'10px 18px',fontSize:13,fontWeight:700,cursor:'pointer',whiteSpace:'nowrap',boxShadow:'0 2px 8px rgba(42,87,65,0.25)',height:40,lineHeight:1,WebkitTapHighlightColor:'transparent'}}>
           <span style={{fontSize:16,lineHeight:1,marginTop:-1}}>+</span>
           <span>Book Appointment</span>
+        </button>
+
+        <button onClick={() => setShowBlockTime(true)}
+          style={{display:'inline-flex',alignItems:'center',gap:6,background:'#fff',color:'#9A3412',border:'1.5px solid #FED7AA',borderRadius:22,padding:'10px 14px',fontSize:13,fontWeight:700,cursor:'pointer',whiteSpace:'nowrap',height:40,lineHeight:1,WebkitTapHighlightColor:'transparent'}}>
+          <span style={{fontSize:14,lineHeight:1}}>⏸</span>
+          <span>Block time</span>
         </button>
 
         <button
