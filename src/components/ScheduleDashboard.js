@@ -2909,12 +2909,19 @@ function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled, show
             const showIntake = appt.status === 'pending-intake';
             const showAgreement = clientRow && !clientRow.practice_agreement_signed_at;
             if (!showIntake && !showAgreement) return null;
+            // HK May 29 2026 QA fix: the booking object stores the
+            // client's phone under different keys depending on the data
+            // source (appt.client_phone OR appt.phone), so the SMS
+            // button was hiding even when a phone was on file. Fall
+            // back through all three locations.
+            const clientEmail = appt.email || clientRow?.email || '';
+            const clientPhone = appt.client_phone || appt.phone || clientRow?.phone || '';
+            const hasEmail = !!clientEmail;
+            const hasPhone = !!clientPhone;
             const intakeBody = `Hi ${firstName}! Please fill your intake form before your session: ${intakeLink}`;
             const intakeMailtoSubject = encodeURIComponent('Your intake form');
             const intakeMailtoBody = encodeURIComponent(intakeBody);
             const intakeSmsBody = encodeURIComponent(intakeBody);
-            const hasEmail = !!appt.email;
-            const hasPhone = !!appt.client_phone;
             const channelBtn = {
               flex: '1 1 110px',
               display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
@@ -2932,12 +2939,12 @@ function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled, show
                     </div>
                     <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                       {hasEmail && (
-                        <a href={`mailto:${appt.email}?subject=${intakeMailtoSubject}&body=${intakeMailtoBody}`} style={channelBtn}>
+                        <a href={`mailto:${clientEmail}?subject=${intakeMailtoSubject}&body=${intakeMailtoBody}`} style={channelBtn}>
                           <span style={{ fontSize: 14 }}>📧</span> Email
                         </a>
                       )}
                       {hasPhone && (
-                        <a href={`sms:${appt.client_phone || ''}&body=${intakeSmsBody}`} style={channelBtn}>
+                        <a href={`sms:${clientPhone}&body=${intakeSmsBody}`} style={channelBtn}>
                           <span style={{ fontSize: 14 }}>💬</span> SMS
                         </a>
                       )}
@@ -2955,26 +2962,34 @@ function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled, show
                       ✍️ Send agreement
                     </div>
                     <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                      <button
-                        type="button"
-                        onClick={() => sendAgreement('email')}
-                        disabled={sendingAgreement || !hasEmail}
-                        style={{ ...channelBtn, opacity: sendingAgreement || !hasEmail ? 0.6 : 1 }}>
-                        <span style={{ fontSize: 14 }}>📧</span> {sendingAgreement === 'email' ? 'Sending…' : 'Email'}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => sendAgreement('sms')}
-                        disabled={sendingAgreement || !hasPhone}
-                        style={{ ...channelBtn, opacity: sendingAgreement || !hasPhone ? 0.6 : 1 }}>
-                        <span style={{ fontSize: 14 }}>💬</span> {sendingAgreement === 'sms' ? 'Sending…' : 'SMS'}
-                      </button>
+                      {hasEmail && (
+                        <button
+                          type="button"
+                          onClick={() => sendAgreement('email')}
+                          disabled={sendingAgreement === 'email'}
+                          style={{ ...channelBtn, opacity: sendingAgreement === 'email' ? 0.6 : 1 }}>
+                          <span style={{ fontSize: 14 }}>📧</span> {sendingAgreement === 'email' ? 'Sending…' : 'Email'}
+                        </button>
+                      )}
+                      {hasPhone && (
+                        <button
+                          type="button"
+                          onClick={() => sendAgreement('sms')}
+                          disabled={sendingAgreement === 'sms'}
+                          style={{ ...channelBtn, opacity: sendingAgreement === 'sms' ? 0.6 : 1 }}>
+                          <span style={{ fontSize: 14 }}>💬</span> {sendingAgreement === 'sms' ? 'Sending…' : 'SMS'}
+                        </button>
+                      )}
+                      {!hasEmail && !hasPhone && (
+                        <div style={{ fontSize: 12, color: '#6B7280', fontStyle: 'italic' }}>
+                          No email or phone on file for this client
+                        </div>
+                      )}
                     </div>
                   </div>
                 )}
               </div>
             );
-          })()}
           })()}
 
           {/* HK May 29 2026: series pill on bookings that belong to a
