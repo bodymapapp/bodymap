@@ -7219,6 +7219,69 @@ export default function ScheduleDashboard({ therapist }) {
 
   useEffect(()=>{if(therapist?.id){ fetchBookings(); loadBlockedDays(); }},[therapist?.id]);
 
+  // ─── PWA refresh: realtime + visibility-change (HK May 29 2026) ─────
+  // HK explicit ask: 'We must have a refresh mechanism without logging
+  // out in the PWA.' Two pieces:
+  //
+  //   1. Supabase realtime subscription on bookings, sessions,
+  //      session_payments, and blocked_days, filtered by therapist_id.
+  //      Any DB write triggers a debounced fetchBookings() so the
+  //      Schedule re-renders with the new state (status pills,
+  //      annotations, Intake-done flips, refunded markers, etc).
+  //
+  //   2. document.visibilitychange listener: when the PWA comes back
+  //      to foreground (iOS users switch apps a lot and the realtime
+  //      socket may have dropped while backgrounded), refetch.
+  //
+  // Both refresh paths share a 400ms debounce so multi-write actions
+  // (cancel = bookings UPDATE + session_payments INSERT + notification_log
+  // INSERT) don't trigger 3 fetches.
+  useEffect(() => {
+    if (!therapist?.id) return;
+
+    let refreshTimer = null;
+    const scheduleRefresh = () => {
+      if (refreshTimer) clearTimeout(refreshTimer);
+      refreshTimer = setTimeout(() => {
+        fetchBookings();
+        loadBlockedDays();
+      }, 400);
+    };
+
+    // Per-table channels, filtered to this therapist only so we don't
+    // pull in noise from other therapists on the same realtime socket.
+    const filt = `therapist_id=eq.${therapist.id}`;
+    const channels = [
+      supabase.channel(`sched-bookings-${therapist.id}`)
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'bookings',         filter: filt }, scheduleRefresh)
+        .subscribe(),
+      supabase.channel(`sched-sessions-${therapist.id}`)
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'sessions',         filter: filt }, scheduleRefresh)
+        .subscribe(),
+      supabase.channel(`sched-payments-${therapist.id}`)
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'session_payments', filter: filt }, scheduleRefresh)
+        .subscribe(),
+      supabase.channel(`sched-blocks-${therapist.id}`)
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'blocked_days',     filter: filt }, scheduleRefresh)
+        .subscribe(),
+      supabase.channel(`sched-clients-${therapist.id}`)
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'clients',          filter: filt }, scheduleRefresh)
+        .subscribe(),
+    ];
+
+    // Foreground-return refresh. iOS PWA + Android both fire this.
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') scheduleRefresh();
+    };
+    document.addEventListener('visibilitychange', onVisible);
+
+    return () => {
+      if (refreshTimer) clearTimeout(refreshTimer);
+      channels.forEach(c => { try { supabase.removeChannel(c); } catch (_e) { /* noop */ } });
+      document.removeEventListener('visibilitychange', onVisible);
+    };
+  }, [therapist?.id]);
+
   async function loadBlockedDays() {
     const tStart = performance.now();
     const { data } = await supabase.from('blocked_days').select('*')
