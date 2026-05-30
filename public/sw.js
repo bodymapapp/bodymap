@@ -1,23 +1,32 @@
 // BodyMap service worker
 // IMPORTANT: bumping CACHE_NAME forces all clients to rebuild cache on next visit.
 // HK May 29 2026: bumped to v10 for inline notification consolidation.
-const CACHE_NAME = 'bodymap-v16';
+const CACHE_NAME = 'bodymap-v17';
 
 // Install — no precache. CRA hashes filenames (main.abc123.js), so we can't
 // precache by known path. We cache opportunistically in the fetch handler.
+// HK May 30 2026: removed skipWaiting() AND clients.claim() from activate
+// below. Previously the SW would skip-waiting on install + claim clients
+// on activate, which means every deploy IMMEDIATELY took over any active
+// browser tab. HK was reporting "works 2-3 min then crashes" during
+// development: he was testing mobile while I was shipping fixes every
+// few minutes. Each ship triggered SW takeover -> bundle swap mid-tap ->
+// React re-mount with new code -> looked like a random crash from his POV.
+// The new behavior: SW updates wait for the next time the user fully closes
+// and reopens the PWA, which is the standard CRA + SW pattern. No more
+// mid-session bundle replacement.
 self.addEventListener('install', event => {
-  self.skipWaiting();
+  // Intentionally NOT calling skipWaiting(). New SW waits in 'waiting'
+  // state until all clients are closed. Standard PWA update behavior.
 });
 
-// Activate — clean old caches + take control immediately.
+// Activate — clean old caches. NO clients.claim() so existing pages
+// continue using the old SW until they reload.
 self.addEventListener('activate', event => {
   event.waitUntil(
-    Promise.all([
-      caches.keys().then(keys =>
-        Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k)))
-      ),
-      self.clients.claim(),
-    ])
+    caches.keys().then(keys =>
+      Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k)))
+    )
   );
 });
 
