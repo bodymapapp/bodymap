@@ -2759,8 +2759,8 @@ function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled, show
           backdrop itself (e.target === e.currentTarget), so nested
           event bubbling from the panel doesn't trigger this. */}
       <div
-        onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
-        style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.3)',zIndex:300,backdropFilter:'blur(2px)'}}
+        onPointerUp={onClose}
+        style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.3)',zIndex:300,backdropFilter:'blur(2px)',cursor:'pointer'}}
       />
       {/* HK May 25 2026 (Phase 24c): definitive scroll fix.
           The previous fix put paddingBottom on the OUTER scroll
