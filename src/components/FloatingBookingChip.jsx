@@ -84,10 +84,19 @@ function savePos(therapistId, x, y) {
 function clampToViewport(x, y) {
   const w = window.innerWidth;
   const h = window.innerHeight;
+  // HK May 30 2026: mobile bottom nav is ~74px tall and renders at
+  // zIndex 999, above the chip. Without subtracting that height
+  // from maxY, dragging the chip to the bottom on mobile hides it
+  // behind the nav and the booking link becomes untappable. The
+  // 16px buffer matches the default-position formula above so the
+  // bottom edge feels consistent whether the chip was auto-placed
+  // or dragged there. Desktop has no bottom nav so no reservation.
+  const isMobileW = w < 768;
+  const bottomReserve = isMobileW ? (74 + 16) : 4;
   const minX = 4;
   const minY = 4;
   const maxX = w - CHIP_SIZE - 4;
-  const maxY = h - CHIP_SIZE - 4;
+  const maxY = h - CHIP_SIZE - bottomReserve;
   return {
     x: Math.max(minX, Math.min(maxX, x)),
     y: Math.max(minY, Math.min(maxY, y)),
