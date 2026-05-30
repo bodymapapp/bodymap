@@ -556,10 +556,21 @@ export default function CancellationChargeModal({
 
   return (
     <>
-      <div onClick={busy ? undefined : onClose} style={{
+      {/* HK May 30 2026: backdrop no longer captures clicks. Previously
+          any tap outside the modal content closed it, which meant
+          miss-taps on small buttons inside the modal (Charge fee, Skip
+          fee, Cancel) dismissed the whole action sheet. For our 70yo
+          persona this read as "the app keeps crashing" because the
+          carefully-opened modal kept disappearing after one wrong tap.
+          Now: backdrop dims for visual hierarchy but does not consume
+          taps. Close requires the explicit X (line 755) or one of the
+          action buttons. While the modal is busy, the legacy
+          onClick={onClose} guard is preserved by way of the modal
+          becoming non-interactive (busy state disables both the
+          backdrop and the X via the disabled={busy} prop). */}
+      <div style={{
         position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)',
-        // Phase 13.8.1 (HK May 17 2026): above MobileBottomNav (z=1000).
-        zIndex: 1100,
+        zIndex: 1100, pointerEvents: 'none',
       }} />
       <div style={{
         position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',

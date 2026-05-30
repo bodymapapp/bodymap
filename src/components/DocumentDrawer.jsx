@@ -534,13 +534,17 @@ export default function DocumentDrawer({ open, onClose, docNumber, docName, docT
         }
       `}</style>
 
-      {/* Backdrop */}
+      {/* Backdrop. HK May 30 2026: no longer captures clicks. Same
+          rationale as DetailPanel + CancellationChargeModal: miss-taps
+          on action buttons inside the drawer were dismissing the whole
+          drawer. Close is via the explicit X button or Done at the
+          bottom. Backdrop now visual-only. */}
       <div
-        onClick={onClose}
         style={{
           position: 'fixed', inset: 0,
           background: 'rgba(28,43,34,0.55)',
           zIndex: 998,
+          pointerEvents: 'none',
           animation: 'bmDrawerFade 0.18s ease',
         }}
         aria-hidden="true"

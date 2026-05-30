@@ -1079,7 +1079,15 @@ export default function CheckoutModal({
   // the ProfileSection card rather than the viewport. Result: modal
   // looked cut off because page content above and below was visible.
   return createPortal(
-    <div style={overlayStyle} onClick={onClose}>
+    <div style={overlayStyle}>
+      {/* HK May 30 2026: backdrop click-to-close removed for same
+          reason as DetailPanel + CancellationChargeModal: miss-taps
+          on action buttons inside the sheet dismissed the whole
+          checkout flow, which felt like crashes to our 70yo persona.
+          Close requires the explicit X / Done / Close button in the
+          header (CloseButton at lines 1095 and 1165). The sheetStyle
+          div retains its own stopPropagation in case anything else
+          depends on it. */}
       <div style={sheetStyle} onClick={e => e.stopPropagation()}>
         {step === 'success' ? (
           <>
