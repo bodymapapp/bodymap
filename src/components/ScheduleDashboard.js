@@ -2748,8 +2748,20 @@ function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled, show
           The backdrop still has pointer-events: none so taps drop to
           the schedule below outside the panel (they will hit the
           underlying card and could reselect, but the panel stays
-          open because it's a controlled state update). */}
-      <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.3)',zIndex:300,backdropFilter:'blur(2px)',pointerEvents:'none'}}/>
+          open because it's a controlled state update).
+
+          HK May 30 2026 update: backdrop click RESTORED with a guard.
+          User explicitly said: "I should be still able to click on the
+          left 10% screen to go back to schedule page." So the left
+          strip must be a close affordance. Buttons are now 44px+ tap
+          targets so the original dismissal-on-miss-tap is no longer a
+          practical issue. Guard: only close if the tap target is the
+          backdrop itself (e.target === e.currentTarget), so nested
+          event bubbling from the panel doesn't trigger this. */}
+      <div
+        onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+        style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.3)',zIndex:300,backdropFilter:'blur(2px)'}}
+      />
       {/* HK May 25 2026 (Phase 24c): definitive scroll fix.
           The previous fix put paddingBottom on the OUTER scroll
           container. WebKit has a long-standing bug where padding
@@ -2767,21 +2779,15 @@ function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled, show
       <div style={{
         position:'fixed',
         top:0, right:0, bottom:0,
-        // HK May 30 2026: on mobile (<=720px) the slide-over is now
-        // genuinely fullscreen (100vw). The previous formula left a
-        // ~30px gap on the left at 390px viewports (40vw=156, max-
-        // clamped to 360px, leaves 390-360=30px exposed). That gap
-        // exposed the schedule grid behind which IS tappable
-        // (backdrop has pointerEvents:none) so any tap in that gap
-        // selected a different appt card or hit empty timeline,
-        // changing `selected` state and making the panel look like
-        // it "closed" or "jumped". The actual surface was still
-        // there but it re-rendered with a new appt or vanished
-        // because the user tapped empty timeline.
-        // Tablet/desktop unchanged: min(560, 40vw).
-        width: isMobileW
-          ? '100vw'
-          : 'min(560px, max(360px, 40vw))',
+        // HK May 30 2026: width keeps the left strip exposed
+        // intentionally. HK said: 'I should be still able to click
+        // on the left 10% screen to go back to schedule page.' So
+        // the slide-over does NOT cover the full mobile viewport;
+        // the visible strip on the left is meant to be a close
+        // affordance. This means we MUST also restore the backdrop
+        // click-to-close so taps in the strip dismiss the panel.
+        // See backdrop block above for the matching change.
+        width: 'min(560px, max(360px, 40vw))',
         maxWidth:'100vw',
         background:'#fff',
         zIndex:301,
@@ -5204,7 +5210,7 @@ function TimelineView({ therapist, allAppts, dayOffset, setDayOffset, today, onR
               const ts = traceStyles(appt);
               const ann = traceAnnotation(appt);
               return (
-                <div key={appt.id} data-appt-card="1" onClick={()=>setSelected(isSel?null:appt)}
+                <div key={appt.id} data-appt-card="1" onClick={()=>setSelected(appt)}
                   style={{position:'absolute',top:y,left:2,right:2,height:bh,
                     background:appt.preview?'#F9FAFB':(appt.paid?'#F0F6EE':appt.status==='intake-done'?'#DCFCE7':appt.status==='complete'?'#F3F4F6':appt.status==='cancelled'?'#FEF2F2':appt.status==='no_show'?'#FFFBEB':appt.status==='refunded'?'#F5F3FF':appt.status==='rescheduled'?'#F0F9FF':'#FEF3C7'),
                     border:`1.5px ${appt.preview?'dashed':'solid'} ${appt.preview?'#D1D5DB':appt.paid?'#B7D1AB':st.dot}`,
