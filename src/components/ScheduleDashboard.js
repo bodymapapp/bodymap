@@ -186,11 +186,18 @@ const btnSecondary = {
   color: SO.forest,
   border: '1.5px solid #D6E0D4',
   borderRadius: 10,
-  padding: '9px 14px',
-  fontSize: 13,
+  // HK May 30 2026: bumped padding 9px -> 13px (vertical) for proper
+  // 44px+ tap target. 9px padding + 13px line-height + 1.5px border
+  // x2 yielded ~26px tap target, well below the 44x44 Apple HIG
+  // minimum and miserable for our 70yo persona. With 13px vertical
+  // padding the actionable area is ~46px tall. Font sizes also
+  // nudged up slightly so the label is more readable.
+  padding: '13px 16px',
+  fontSize: 14,
   fontWeight: 600,
   cursor: 'pointer',
   fontFamily: 'inherit',
+  minHeight: 44,
 };
 
 // Unified empty-state / locked-state pattern. Soft cream card with
@@ -2730,7 +2737,19 @@ function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled, show
 
   return (
     <>
-      <div onClick={onClose} style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.3)',zIndex:300,backdropFilter:'blur(2px)'}}/>
+      {/* HK May 30 2026: backdrop no longer closes on tap. Previously
+          any tap outside the panel content (including miss-taps on
+          small buttons INSIDE the panel area) dismissed it, sending
+          the user back to the schedule. With small tap targets in the
+          panel, miss-taps were common and dismissal felt random. Now:
+          backdrop dims the page (visual hint) but does not consume
+          taps. Explicit X button in the panel header is the only
+          close affordance, which is what the 70yo persona expects.
+          The backdrop still has pointer-events: none so taps drop to
+          the schedule below outside the panel (they will hit the
+          underlying card and could reselect, but the panel stays
+          open because it's a controlled state update). */}
+      <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.3)',zIndex:300,backdropFilter:'blur(2px)',pointerEvents:'none'}}/>
       {/* HK May 25 2026 (Phase 24c): definitive scroll fix.
           The previous fix put paddingBottom on the OUTER scroll
           container. WebKit has a long-standing bug where padding

@@ -1,7 +1,7 @@
 // BodyMap service worker
 // IMPORTANT: bumping CACHE_NAME forces all clients to rebuild cache on next visit.
 // HK May 29 2026: bumped to v10 for inline notification consolidation.
-const CACHE_NAME = 'bodymap-v10';
+const CACHE_NAME = 'bodymap-v11';
 
 // Install — no precache. CRA hashes filenames (main.abc123.js), so we can't
 // precache by known path. We cache opportunistically in the fetch handler.
