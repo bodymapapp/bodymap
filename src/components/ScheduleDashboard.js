@@ -7815,14 +7815,36 @@ export default function ScheduleDashboard({ therapist }) {
       // Single condition: a booking has intake done if and only if a session
       // exists with booking_id = this booking's id. ClientIntake now always
       // resolves booking_id at save time, so this is the only check needed.
+      // HK May 30 2026: ROOT CAUSE FIX for "side panel keeps crashing".
+      //
+      // Before: .in('booking_id', bookingIds) where bookingIds was the
+      // full array of booking UUIDs in the date window (652 for HK's
+      // Joy Demo with a year of history). PostgREST/Supabase encodes
+      // this as `booking_id=in.(uuid1,uuid2,...)` and the URL exceeds
+      // ~30,000 characters, hitting the gateway's URL length limit and
+      // returning HTTP 400 Bad Request. The query returns rows=0
+      // (because it errored), so the schedule renders with EVERY
+      // booking marked as un-paid and without a session. Every realtime
+      // event refetches, every refetch 400s, every refetch shrinks
+      // the data backing the visible cards. The DetailPanel's `appt`
+      // prop ends up pointing at stale or empty data, and the panel
+      // "crashes" / disappears.
+      //
+      // Fix: drop the .in() entirely. We already filter by therapist_id,
+      // which means we already only fetch this therapist's sessions and
+      // payments. Filtering further to "only sessions whose booking_id
+      // is in this list" was an over-narrow filter that wasn't actually
+      // saving us anything (the therapist's total session count is
+      // bounded by their bookings anyway). URL stays short, query
+      // succeeds, the schedule has accurate data, and the panel stays
+      // open.
       const bookingIds = bookingsForSchedule.map(b => b.id);
       const tSessions = performance.now();
       const { data: sessions } = await supabase
         .from('sessions')
         .select('id, booking_id, client_id')
-        .eq('therapist_id', therapist.id)
-        .in('booking_id', bookingIds);
-      perfLog('sessions query', tSessions, `rows=${sessions?.length || 0}, in=${bookingIds.length} ids`);
+        .eq('therapist_id', therapist.id);
+      perfLog('sessions query', tSessions, `rows=${sessions?.length || 0}, bookings=${bookingIds.length}`);
 
       // Phase 14.3j (HK May 17 2026 late): also fetch session_payments to
       // know which bookings have been paid. Without this, the timeline
@@ -7833,8 +7855,7 @@ export default function ScheduleDashboard({ therapist }) {
       const { data: bookingPayments } = await supabase
         .from('session_payments')
         .select('booking_id, status, amount_cents, tip_cents')
-        .eq('therapist_id', therapist.id)
-        .in('booking_id', bookingIds);
+        .eq('therapist_id', therapist.id);
       perfLog('session_payments query', tPayments, `rows=${bookingPayments?.length || 0}`);
       const paidMap = {};
       const refundedMap = {};  // HK May 29 2026: track refunds so the timeline can mark the slot
