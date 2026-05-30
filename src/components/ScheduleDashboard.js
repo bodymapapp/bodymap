@@ -2767,7 +2767,21 @@ function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled, show
       <div style={{
         position:'fixed',
         top:0, right:0, bottom:0,
-        width: 'min(560px, max(360px, 40vw))',
+        // HK May 30 2026: on mobile (<=720px) the slide-over is now
+        // genuinely fullscreen (100vw). The previous formula left a
+        // ~30px gap on the left at 390px viewports (40vw=156, max-
+        // clamped to 360px, leaves 390-360=30px exposed). That gap
+        // exposed the schedule grid behind which IS tappable
+        // (backdrop has pointerEvents:none) so any tap in that gap
+        // selected a different appt card or hit empty timeline,
+        // changing `selected` state and making the panel look like
+        // it "closed" or "jumped". The actual surface was still
+        // there but it re-rendered with a new appt or vanished
+        // because the user tapped empty timeline.
+        // Tablet/desktop unchanged: min(560, 40vw).
+        width: isMobileW
+          ? '100vw'
+          : 'min(560px, max(360px, 40vw))',
         maxWidth:'100vw',
         background:'#fff',
         zIndex:301,
