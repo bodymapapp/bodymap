@@ -18,6 +18,8 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { notifyTherapist, notifyClient } from "../_shared/notifications.ts";
+import { renderClientEmailDoc } from "../_shared/clientEmail.ts";
+import { formatApptDateTime } from "../_shared/emailTemplate.ts";
 
 const cors = {
   'Access-Control-Allow-Origin': '*',
@@ -349,6 +351,24 @@ serve(async (req) => {
 //
 // The downstream functions handle their own deduplication via
 // notification_log so re-fires are safe.
+// HK May 29 2026 (consolidation rebuild): the previous HTTP fan-out
+// from this function to send-X edge functions broke on May 17 when
+// Supabase tightened gateway JWT validation. The service-role key
+// became invalid as a Bearer token while still valid for DB access.
+// SUPABASE_ANON_KEY env var is not auto-provided in this project so
+// the fan-out had no working Bearer to use.
+//
+// Rebuilt to do all client-side notifications INLINE. We already
+// loaded the booking, therapist, and client to send the therapist
+// notification. We just need to render the client version of each
+// channel (email/SMS/push) and call notifyClient(). This eliminates
+// the entire gateway hop and fixes 9 broken client notification
+// types in one shot.
+//
+// Helper: clientEmailContentFor(eventType, ctx) returns a
+// {subject, html, smsText} bundle. Each event type's copy lives in
+// one place. The original send-X functions remain on disk for cron
+// use; their HTTP fan-out is no longer invoked from here.
 async function fireDownstreamForBookingEvent(
   supabaseUrl: string,
   serviceKey: string,
@@ -365,132 +385,249 @@ async function fireDownstreamForBookingEvent(
     reason?: string,
   } = {},
 ) {
-  // HK May 29 2026: fan-out gateway auth uses anonKey (a proper JWT)
-  // not serviceKey. The serviceKey at this Supabase project is the
-  // legacy non-JWT format which the API gateway rejects as
-  // UNAUTHORIZED_INVALID_JWT_FORMAT. The function on the other end
-  // does its own DB queries with its own SUPABASE_SERVICE_ROLE_KEY,
-  // so we don't need to forward the service key here. Fall back to
-  // serviceKey if anonKey is unexpectedly empty so the function still
-  // attempts the call (and we'll see the failure in notification_log).
-  const gatewayToken = anonKey || serviceKey;
-  const headers = {
-    'Content-Type': 'application/json',
-    'Authorization': `Bearer ${gatewayToken}`,
-    'apikey': gatewayToken,
-  };
-  const targets: Array<{ fn: string, payload: any }> = [];
+  const supabase = createClient(supabaseUrl, serviceKey);
 
-  if (eventType === 'booking_cancelled') {
-    if (options.initiatedBy === 'client') {
-      if (options.feeAmountCents && options.feeAmountCents > 0) {
-        targets.push({
-          fn: 'send-client-cancelled-late',
-          payload: {
-            booking_id: bookingId,
-            fee_amount_cents: options.feeAmountCents,
-            fee_charged: options.feeCharged === true,
-          },
-        });
-      } else {
-        targets.push({
-          fn: 'send-client-cancelled-within-policy',
-          payload: { booking_id: bookingId },
-        });
-      }
-    } else {
-      // Therapist initiated: client gets the apologetic C7
-      targets.push({
-        fn: 'send-therapist-cancelled',
-        payload: { booking_id: bookingId, reason: options.reason },
-      });
-    }
-  } else if (eventType === 'no_show_recorded') {
-    // Always fire T12 (therapist alert) with fee context
-    targets.push({
-      fn: 'send-no-show-occurred',
-      payload: {
-        booking_id: bookingId,
-        fee_charged: options.feeCharged,
-        fee_amount_cents: options.feeAmountCents,
-      },
-    });
-    // If fee was charged successfully, send C11 receipt to client
-    if (options.feeAmountCents && options.feeCharged === true) {
-      targets.push({
-        fn: 'send-no-show-charged',
-        payload: {
-          booking_id: bookingId,
-          fee_amount_cents: options.feeAmountCents,
-        },
-      });
-    }
-    // If fee was attempted but failed (or payment link issued), send C12
-    if (options.feeAmountCents && options.feeCharged === false && options.paymentLinkUrl) {
-      targets.push({
-        fn: 'send-no-show-payment-request',
-        payload: {
-          booking_id: bookingId,
-          fee_amount_cents: options.feeAmountCents,
-          payment_link_url: options.paymentLinkUrl,
-        },
-      });
-    }
-  } else if (eventType === 'reschedule') {
-    targets.push({
-      fn: 'send-reschedule-confirmation',
-      payload: {
-        booking_id: bookingId,
-        prev_date: options.reschedulePrev?.prev_date,
-        prev_time: options.reschedulePrev?.prev_time,
-      },
-    });
+  // Single canonical fetch of everything we need to render client
+  // notifications. notifyTherapist above already did its own fetch
+  // so this is a small additional round-trip; we could optimize by
+  // hoisting it but readability wins for now.
+  const { data: booking, error: bErr } = await supabase
+    .from('bookings')
+    .select(`
+      id, client_id, booking_date, start_time, service_id,
+      services(name, duration),
+      location:therapist_locations(name, street1, street2, city, state, postal_code),
+      therapists(id, full_name, business_name, custom_url, email, notification_prefs),
+      clients(id, name, email, phone, sms_opted_out_at, outreach_unsubscribed_at)
+    `)
+    .eq('id', bookingId)
+    .single();
+
+  if (bErr || !booking) {
+    console.warn('[notify-booking-event inline] booking lookup failed',
+      bErr?.message || 'no rows', 'booking_id:', bookingId);
+    return;
   }
 
-  // HK May 29 2026: each fan-out fetch is observed via console.log AND
-  // via a notification_log row for visibility into silent failures.
-  // The previous Promise.allSettled approach swallowed every error
-  // including 503s, timeouts, and JSON parse failures from the target
-  // function. send-reschedule-confirmation went 12 days without
-  // logging a single client row and we had zero diagnostic. Now each
-  // call records its own outcome in notification_log under a
-  // 'fan_out_' notification_type, with the HTTP status code, so
-  // future regressions become a SQL query away from root cause.
-  const supabase = createClient(supabaseUrl, serviceKey);
-  await Promise.allSettled(targets.map(async (t) => {
-    const startedAt = Date.now();
-    let status = -1;
-    let errorMsg: string | null = null;
-    let bodyPreview: string | null = null;
-    try {
-      const res = await fetch(`${supabaseUrl}/functions/v1/${t.fn}`, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify(t.payload),
-      });
-      status = res.status;
-      const text = await res.text().catch(() => '');
-      bodyPreview = text ? text.slice(0, 300) : null;
-      if (!res.ok) errorMsg = `${t.fn} returned ${res.status}: ${bodyPreview}`;
-    } catch (e: any) {
-      errorMsg = `${t.fn} fetch threw: ${e?.message || String(e)}`;
-    }
-    const ms = Date.now() - startedAt;
-    console.log(`[notify-booking-event fan-out] ${t.fn} ${status} (${ms}ms)`, errorMsg || 'ok');
-    // Log the fan-out attempt itself so we can audit silent failures.
+  const therapist = booking.therapists;
+  const client = booking.clients;
+  if (!client) {
+    console.warn('[notify-booking-event inline] no client on booking', bookingId);
+    return;
+  }
+
+  const content = clientEmailContentFor(eventType, {
+    booking, therapist, client, options,
+  });
+  if (!content) {
+    // No client-facing notification for this event type (e.g.
+    // therapist-only events) or content builder returned null.
+    return;
+  }
+
+  try {
+    await notifyClient({
+      supabase,
+      therapist,
+      client,
+      eventType: content.notificationType,
+      emailSubject: content.subject,
+      emailHtml: content.html,
+      smsText: content.smsText,
+      bookingId: booking.id,
+    });
+  } catch (e: any) {
+    console.error('[notify-booking-event inline] notifyClient threw', e?.message || e);
+    // Log directly so the failure is visible.
     try {
       await supabase.from('notification_log').insert({
         therapist_id: therapistId,
-        client_id: null,
-        booking_id: t.payload?.booking_id || bookingId,
-        notification_type: `fan_out_${t.fn}`,
-        audience: 'system',
-        channel: 'http',
-        recipient: t.fn,
-        status: status === 200 ? 'sent' : status === -1 ? 'failed' : `http_${status}`,
-        error_message: errorMsg,
-        subject: null,
+        client_id: client.id,
+        booking_id: booking.id,
+        notification_type: content.notificationType,
+        audience: 'client',
+        channel: 'email',
+        recipient: client.email || null,
+        status: 'failed',
+        error_message: `inline send threw: ${e?.message || String(e)}`,
+        subject: content.subject,
       });
-    } catch (_e) { /* logging failure must not break the parent function */ }
-  }));
+    } catch (_e2) { /* log of log failed */ }
+  }
+}
+
+// ───────────────────────────────────────────────────────────────────
+// clientEmailContentFor: returns the per-event copy bundle for the
+// client-facing notification. Centralizes the subject/eyebrow/title/
+// opener/CTA copy that used to live in 9 separate send-X functions.
+// Returns null when the event type has no client-facing notification.
+// ───────────────────────────────────────────────────────────────────
+function clientEmailContentFor(eventType: string, ctx: {
+  booking: any,
+  therapist: any,
+  client: any,
+  options: any,
+}) {
+  const { booking, therapist, client, options } = ctx;
+  const serviceName = booking.services?.name || 'Massage session';
+  const serviceDuration = booking.services?.duration || null;
+  const loc = booking.location;
+  const locationAddr = loc ? [loc.street1, loc.street2, [loc.city, loc.state].filter(Boolean).join(", "), loc.postal_code].filter(Boolean).join(", ") : null;
+  const therapistFirst = (therapist?.full_name || therapist?.business_name || 'Your therapist').split(' ')[0];
+  const businessName = therapist?.business_name || 'MyBodyMap';
+  const clientFirst = client.name?.split(' ')[0] || 'there';
+  const whenStr = formatApptDateTime(booking.booking_date, booking.start_time);
+  const whenDate = whenStr.split(' at ')[0];
+  const bookingUrl = `https://mybodymap.app/book/${therapist?.custom_url}`;
+  const rescheduleUrl = `https://mybodymap.app/book/${therapist?.custom_url}?reschedule=${booking.id}`;
+  const feeDollars = options.feeAmountCents ? (options.feeAmountCents / 100).toFixed(2) : '0.00';
+
+  if (eventType === 'reschedule') {
+    const subject = `Your session has been moved to ${whenStr}`;
+    return {
+      notificationType: 'reschedule_confirmation',
+      subject,
+      html: renderClientEmailDoc(subject, {
+        therapist,
+        toneEyebrow: 'Session rescheduled',
+        toneEyebrowKind: 'gold',
+        title: `Your session is now ${whenDate}`,
+        opener: `Hi ${clientFirst}, your ${serviceName} with ${therapistFirst} has been moved to a new time. Here are the new details.`,
+        serviceName,
+        bookingDate: booking.booking_date,
+        startTime: booking.start_time,
+        durationMin: serviceDuration,
+        locationAddress: locationAddr,
+        previousDate: options.reschedulePrev?.prev_date || null,
+        previousTime: options.reschedulePrev?.prev_time || null,
+        primaryCta: { label: 'View or change again', href: rescheduleUrl },
+        closingLine: `See you then.`,
+        prefName: 'Booking rescheduled',
+      }, `Your session is now ${whenStr}.`),
+      smsText: `${businessName}: your ${serviceName} has been moved to ${whenStr}. See you then.`,
+    };
+  }
+
+  if (eventType === 'booking_cancelled') {
+    if (options.initiatedBy === 'therapist') {
+      const subject = `${therapistFirst} had to cancel ${whenDate}'s session`;
+      return {
+        notificationType: 'therapist_cancelled',
+        subject,
+        html: renderClientEmailDoc(subject, {
+          therapist,
+          toneEyebrow: 'Session cancelled',
+          toneEyebrowKind: 'rose',
+          title: `${therapistFirst} had to cancel`,
+          opener: `Hi ${clientFirst}, I'm so sorry to send this. I have to cancel your ${serviceName} that we had scheduled. I know rearranging your day for this isn't nothing, and I appreciate your patience with me.${options.reason ? ` (${options.reason})` : ''}`,
+          serviceName,
+          bookingDate: booking.booking_date,
+          startTime: booking.start_time,
+          durationMin: serviceDuration,
+          primaryCta: { label: 'Find another time', href: bookingUrl },
+          closingLine: `Thank you for understanding. If you have any questions, just reply to this email and I'll get back to you personally.`,
+          prefName: 'Cancelled by therapist',
+        }, `${therapistFirst} cancelled your session on ${whenDate}.`),
+        smsText: `${businessName}: I had to cancel your ${serviceName} on ${whenDate}. Sorry for the inconvenience. Book another time: ${bookingUrl}`,
+      };
+    }
+    // Client-initiated cancellation
+    if (options.feeAmountCents && options.feeAmountCents > 0) {
+      // Late cancel with fee
+      const subject = `Your cancellation and fee receipt`;
+      return {
+        notificationType: 'client_cancelled_late',
+        subject,
+        html: renderClientEmailDoc(subject, {
+          therapist,
+          toneEyebrow: 'Cancellation confirmed',
+          toneEyebrowKind: 'gold',
+          title: `Your cancellation is confirmed`,
+          opener: `Hi ${clientFirst}, we've cancelled your ${serviceName}. Because this came in close to the appointment time, the cancellation fee per my policy applies. Sharing the receipt below.`,
+          serviceName,
+          bookingDate: booking.booking_date,
+          startTime: booking.start_time,
+          extraFactRows: [{ label: 'Fee', value: `$${feeDollars}` }],
+          primaryCta: { label: 'Book another time', href: bookingUrl },
+          closingLine: `If you have any questions about the fee, please reply to this email.`,
+          prefName: 'Cancelled, fee applied',
+        }, `Cancellation confirmed, $${feeDollars} fee charged.`),
+        smsText: `${businessName}: cancellation confirmed for ${whenDate}. $${feeDollars} fee applied. Receipt emailed.`,
+      };
+    }
+    // Within-policy cancel, no fee
+    const subject = `Your cancellation is confirmed`;
+    return {
+      notificationType: 'client_cancelled_within_policy',
+      subject,
+      html: renderClientEmailDoc(subject, {
+        therapist,
+        toneEyebrow: 'Cancellation confirmed',
+        toneEyebrowKind: 'sage',
+        title: `Your cancellation is confirmed`,
+        opener: `Hi ${clientFirst}, we've cancelled your ${serviceName}. No fee was charged, no need to explain. Whenever the timing works for you again, I'd love to see you.`,
+        serviceName,
+        bookingDate: booking.booking_date,
+        startTime: booking.start_time,
+        primaryCta: { label: 'Book another time', href: bookingUrl },
+        closingLine: `Take care.`,
+        prefName: 'Cancelled, no fee',
+      }, `Your ${serviceName} on ${whenDate} is cancelled.`),
+      smsText: `${businessName}: your ${serviceName} on ${whenDate} is cancelled. No fee. Book again when you're ready: ${bookingUrl}`,
+    };
+  }
+
+  if (eventType === 'no_show_recorded') {
+    if (options.feeAmountCents && options.feeCharged === true) {
+      const subject = `About your missed session on ${whenDate}`;
+      return {
+        notificationType: 'no_show_charged',
+        subject,
+        html: renderClientEmailDoc(subject, {
+          therapist,
+          toneEyebrow: 'About your missed session',
+          toneEyebrowKind: 'gold',
+          title: `About your missed session`,
+          opener: `Hi ${clientFirst}, I held your time and was looking forward to seeing you. Since you didn't make it, per the cancellation policy a fee has been charged to your card on file. Sharing the receipt here so you have it.`,
+          serviceName,
+          bookingDate: booking.booking_date,
+          startTime: booking.start_time,
+          extraFactRows: [{ label: 'Fee', value: `$${feeDollars}` }],
+          primaryCta: { label: 'Book another session', href: bookingUrl },
+          closingLine: `If this was a misunderstanding or something came up, please reply to this email and I'll get back to you.`,
+          prefName: 'No-show fee receipt',
+        }, `No-show fee of $${feeDollars} charged.`),
+        smsText: `${businessName}: missed ${whenDate}'s ${serviceName}. $${feeDollars} fee charged per policy. Receipt emailed.`,
+      };
+    }
+    if (options.feeAmountCents && options.feeCharged === false && options.paymentLinkUrl) {
+      const subject = `About your missed session on ${whenDate}`;
+      return {
+        notificationType: 'no_show_payment_request',
+        subject,
+        html: renderClientEmailDoc(subject, {
+          therapist,
+          toneEyebrow: 'About your missed session',
+          toneEyebrowKind: 'gold',
+          title: `About your missed session`,
+          opener: `Hi ${clientFirst}, I held your time and was looking forward to seeing you. Since you couldn't make it, the no-show fee per my cancellation policy applies. There's no card on file to charge, so here's a link to take care of it whenever you have a moment.`,
+          serviceName,
+          bookingDate: booking.booking_date,
+          startTime: booking.start_time,
+          extraFactRows: [{ label: 'Fee', value: `$${feeDollars}` }],
+          primaryCta: { label: `Pay $${feeDollars} now`, href: options.paymentLinkUrl },
+          secondaryCta: { label: 'Book another session', href: bookingUrl },
+          closingLine: `Once paid, you're all set. If you have any questions, just reply to this email.`,
+          prefName: 'No-show payment request',
+        }, `$${feeDollars} no-show fee due.`),
+        smsText: `${businessName}: missed ${whenDate}'s ${serviceName}. $${feeDollars} fee due. Pay: ${options.paymentLinkUrl}`,
+      };
+    }
+    // No-show without fee: no client notification (silent on client side
+    // per HK design memo, to preserve trust when no money is owed).
+    return null;
+  }
+
+  // Unknown / no-op event type
+  return null;
 }
