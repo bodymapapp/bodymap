@@ -1734,7 +1734,7 @@ function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled, show
         // Open the sms: handler with the link prefilled. The therapist
         // taps Send in their default messaging app.
         const phone = clientRow.phone || '';
-        const body = encodeURIComponent(`Hi ${(clientRow.name || '').split(' ')[0] || 'there'}! Please sign your practice agreement: ${link}`);
+        const body = encodeURIComponent(`Hi ${(appt.client || clientRow.name || '').split(' ')[0] || 'there'}! Please sign your practice agreement: ${link}`);
         window.location.href = `sms:${phone}&body=${body}`;
       }
     } catch (e) {
@@ -1786,16 +1786,36 @@ function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled, show
         .single();
       if (insErr) throw insErr;
       const link = `${window.location.origin}/i/${req.short_code || shortCode}`;
-      const firstNameLocal = (clientRow.name || appt.client || '').split(' ')[0] || 'there';
+      const firstNameLocal = (appt.client || clientRow.name || '').split(' ')[0] || 'there';
       const messageBody = `Hi ${firstNameLocal}! Please fill your intake form before your session: ${link}`;
       if (channel === 'email') {
         if (clientRow.email) {
-          const subj = encodeURIComponent('Your intake form');
-          const body = encodeURIComponent(messageBody);
-          window.location.href = `mailto:${clientRow.email}?subject=${subj}&body=${body}`;
+          try {
+            const { data: fnData, error: fnErr } = await supabase.functions.invoke('send-intake-email', {
+              body: {
+                short_code: req.short_code || shortCode,
+                therapist_id: therapist.id,
+                client_email: clientRow.email,
+                client_name: appt.client || clientRow.name || null,
+                link,
+              },
+            });
+            if (fnErr || !fnData?.ok) {
+              const detail = fnErr?.message || fnData?.error || 'email delivery failed';
+              console.error('[sendIntake email]', detail);
+              try { await navigator.clipboard.writeText(link); } catch (_) {}
+              notify('Email did not send. Link copied so you can paste it.');
+              return;
+            }
+          } catch (e) {
+            console.error('[sendIntake email] threw:', e);
+            try { await navigator.clipboard.writeText(link); } catch (_) {}
+            notify('Email did not send. Link copied so you can paste it.');
+            return;
+          }
         }
         try { await navigator.clipboard.writeText(link); } catch (_e) {}
-        notify(`Intake link ready for ${clientRow.email}`);
+        notify(`Intake sent to ${clientRow.email}`);
       } else if (channel === 'sms') {
         const phone = clientRow.phone || '';
         const body = encodeURIComponent(messageBody);
@@ -4779,28 +4799,30 @@ function TimelineView({ therapist, allAppts, dayOffset, setDayOffset, today, onR
   // (URL-backed in parent). Single source of truth. The panel only
   // closes when the user explicitly closes it via setSelectedBookingId('').
   //
-  // Why this matters: previously each view had its own local
-  // useState(null) for selected. A useEffect tried to "guard" against
-  // stale data by closing the panel when the booking wasn't in the
-  // current appointments array : but the panel was closing on every
-  // refetch race, every realtime event, every PWA wake. HK reported
-  // crashes and date-snaps that were really just panel-state-loss.
-  //
-  // Fix: panel state lives in the URL. Refetches don't touch URL.
-  // Realtime events don't touch URL. Wake/restore reads URL. Panel
-  // persists across all of these.
-  //
-  // If the URL has a booking ID but the booking isn't in current
-  // allAppts (e.g. cancelled, filtered to a different day), the
-  // panel stays HIDDEN (selected = undefined) but the URL keeps
-  // the id, so navigating back to that day surfaces it again.
+  // Refresh-race resilience: during a fetchBookings refetch, allAppts
+  // is briefly empty before being repopulated. Without the cache,
+  // selected = APPTS.find() returns null, panel disappears, then
+  // reappears next render. From the user's POV that's a flicker. We
+  // cache the last-known-good appt in a ref so the panel keeps
+  // rendering against it through the race. Once a fresh version is
+  // available (matching id), we swap to it.
+  const lastSelectedApptRef = useRef(null);
+  const freshSelected = selectedBookingId
+    ? (allAppts || []).find(a => a.id === selectedBookingId) || null
+    : null;
+  useEffect(() => {
+    if (freshSelected) lastSelectedApptRef.current = freshSelected;
+    if (!selectedBookingId) lastSelectedApptRef.current = null;
+  }, [freshSelected, selectedBookingId]);
+  const selected = freshSelected
+    || (lastSelectedApptRef.current && lastSelectedApptRef.current.id === selectedBookingId
+        ? lastSelectedApptRef.current
+        : null);
+
   const setSelected = (next) => {
     const value = typeof next === 'function' ? next(null) : next;
     if (setSelectedBookingId) setSelectedBookingId(value ? value.id : '');
   };
-  const selected = selectedBookingId
-    ? allAppts.find(a => a.id === selectedBookingId) || null
-    : null;
   const [showLegend,setShowLegend] = useState(false);
   // Phase 9.2 long-press → create block. Tracking the active press and
   // the resulting draft block being confirmed in a sheet.
@@ -5492,14 +5514,23 @@ function WeeklyView({ therapist, appointments, today, onReschedule, onRefresh, b
   const weekStartsOn = therapist?.week_starts_on ?? 0;
   const [weekOffset,setWeekOffset]=useState(0);
 
-  // HK May 31 2026: see TimelineView for why selected is URL-derived.
+  // HK May 31 2026: see TimelineView for the cache rationale.
+  const lastSelectedApptRef = useRef(null);
+  const freshSelected = selectedBookingId
+    ? APPTS.find(a => a.id === selectedBookingId) || null
+    : null;
+  useEffect(() => {
+    if (freshSelected) lastSelectedApptRef.current = freshSelected;
+    if (!selectedBookingId) lastSelectedApptRef.current = null;
+  }, [freshSelected, selectedBookingId]);
+  const selected = freshSelected
+    || (lastSelectedApptRef.current && lastSelectedApptRef.current.id === selectedBookingId
+        ? lastSelectedApptRef.current
+        : null);
   const setSelected = (next) => {
     const value = typeof next === 'function' ? next(null) : next;
     if (setSelectedBookingId) setSelectedBookingId(value ? value.id : '');
   };
-  const selected = selectedBookingId
-    ? APPTS.find(a => a.id === selectedBookingId) || null
-    : null;
 
   const [showLegend,setShowLegend]=useState(false);
   const isMobile=window.innerWidth<640;
@@ -6137,14 +6168,23 @@ function MonthlyView({ therapist, appointments, today, onReschedule, onRefresh, 
   const [monthOffset,setMonthOffset]=useState(0);
   const [selDate,setSelDate]=useState(today);
 
-  // HK May 31 2026: see TimelineView for why selected is URL-derived.
+  // HK May 31 2026: see TimelineView for the cache rationale.
+  const lastSelectedApptRef = useRef(null);
+  const freshSelected = selectedBookingId
+    ? APPTS.find(a => a.id === selectedBookingId) || null
+    : null;
+  useEffect(() => {
+    if (freshSelected) lastSelectedApptRef.current = freshSelected;
+    if (!selectedBookingId) lastSelectedApptRef.current = null;
+  }, [freshSelected, selectedBookingId]);
+  const selected = freshSelected
+    || (lastSelectedApptRef.current && lastSelectedApptRef.current.id === selectedBookingId
+        ? lastSelectedApptRef.current
+        : null);
   const setSelected = (next) => {
     const value = typeof next === 'function' ? next(null) : next;
     if (setSelectedBookingId) setSelectedBookingId(value ? value.id : '');
   };
-  const selected = selectedBookingId
-    ? APPTS.find(a => a.id === selectedBookingId) || null
-    : null;
 
   const viewMonth=new Date(today.getFullYear(),today.getMonth()+monthOffset,1);
   const daysInMonth=new Date(viewMonth.getFullYear(),viewMonth.getMonth()+1,0).getDate();

@@ -290,23 +290,39 @@ export default function CheckoutModal({
     }
   }
 
-  // Load card on file
+  // Load card on file. HK May 31 2026: provider-aware. Loads both
+  // Stripe and Square card fields. Picks whichever matches a CONNECTED
+  // therapist provider. If the saved card is for a processor the
+  // therapist no longer has connected (e.g. Stripe was disconnected
+  // after a Stripe card was saved), card-on-file stays hidden so the
+  // therapist doesn't tap it and hit "This operation requires Stripe"
+  // from the charge-card edge function.
   useEffect(() => {
     if (!client?.id) return;
+    const stripeConnected = !!therapist?.stripe_account_id;
+    const squareConnected = !!therapist?.square_access_token;
     supabase
       .from('clients')
-      .select('payment_method_id, card_last4, card_brand, stripe_customer_id')
+      .select('payment_method_id, card_last4, card_brand, stripe_customer_id, square_card_id, square_customer_id')
       .eq('id', client.id)
       .single()
       .then(async ({ data }) => {
-        if (!data?.payment_method_id) return;
+        if (!data) return;
 
-        // Phase 13.5 followup (HK May 17 2026): self-heal rows where
-        // payment_method_id is set but card_last4 is null (a bug in
-        // earlier card-save flows where the publishable-key fetch
-        // silently failed). Call get-payment-method edge function,
-        // populate the missing fields, then show card-on-file.
-        if (!data.card_last4 && therapist?.stripe_account_id) {
+        // Prefer the card that matches an active therapist provider.
+        // If both Stripe-card-saved AND Square-card-saved AND both
+        // processors connected: Stripe wins (it's the default in
+        // BILLING_STRATEGY.md). If only one processor is connected,
+        // only that processor's card can show.
+        const hasStripeCard = !!(data.payment_method_id && data.stripe_customer_id);
+        const hasSquareCard = !!(data.square_card_id && data.square_customer_id);
+        const useStripe = hasStripeCard && stripeConnected;
+        const useSquare = hasSquareCard && squareConnected;
+
+        if (!useStripe && !useSquare) return; // No usable card
+
+        // Stripe path: self-heal if card_last4 is null
+        if (useStripe && !data.card_last4 && therapist?.stripe_account_id) {
           try {
             const supabaseUrl = process.env.REACT_APP_SUPABASE_URL;
             const anonKey = process.env.REACT_APP_SUPABASE_ANON_KEY;
@@ -332,21 +348,29 @@ export default function CheckoutModal({
               data.card_brand = fixed.brand;
             }
           } catch (e) {
-            // Silent fail: show 'Enter new card' instead of card-on-file.
-            // Not a user-blocking error.
+            // Silent fail: show 'Enter new card' instead.
           }
         }
 
-        if (data.payment_method_id && data.card_last4) {
+        if (useStripe && data.card_last4) {
           setCardOnFile({
+            provider: 'stripe',
             payment_method_id: data.payment_method_id,
             last4: data.card_last4,
             brand: data.card_brand || 'Card',
             stripe_customer_id: data.stripe_customer_id,
           });
+        } else if (useSquare) {
+          setCardOnFile({
+            provider: 'square',
+            square_card_id: data.square_card_id,
+            square_customer_id: data.square_customer_id,
+            last4: data.card_last4 || '••••',
+            brand: data.card_brand || 'Card',
+          });
         }
       });
-  }, [client?.id, therapist?.stripe_account_id]);
+  }, [client?.id, therapist?.stripe_account_id, therapist?.square_access_token]);
 
   // Smart default for link delivery: SMS if client has phone AND therapist has twilio configured
   useEffect(() => {
@@ -674,6 +698,7 @@ export default function CheckoutModal({
   }
 
   // ── Action: Card on file ────────────────────────────────────────
+  // HK May 31 2026: dispatches by saved-card provider.
   async function chargeCardOnFile() {
     if (!validAmount) { setErrorMsg('Enter a valid amount.'); return; }
     if (!cardOnFile) { setErrorMsg('No card on file.'); return; }
@@ -686,23 +711,41 @@ export default function CheckoutModal({
       const chargeDescription = isPackage
         ? `${packagePurchase.name} - ${packagePurchase.sessions} sessions`
         : `Session with ${therapist.business_name || therapist.full_name || 'your therapist'}`;
-      const res = await fetch(`${supabaseUrl}/functions/v1/charge-card`, {
+
+      // Pick the edge function by saved-card provider.
+      const isSquareCard = cardOnFile.provider === 'square';
+      const url = isSquareCard
+        ? `${supabaseUrl}/functions/v1/square-charge-card`
+        : `${supabaseUrl}/functions/v1/charge-card`;
+      const payload = isSquareCard
+        ? {
+            therapist_id: therapist.id,
+            square_card_id: cardOnFile.square_card_id,
+            square_customer_id: cardOnFile.square_customer_id,
+            amount_cents: amountCents,
+            tip_cents: tipCents,
+            description: chargeDescription,
+            client_email: client.email || appt?.email,
+            send_receipt: true,
+          }
+        : {
+            therapist_id: therapist.id,
+            customer_id: cardOnFile.stripe_customer_id,
+            payment_method_id: cardOnFile.payment_method_id,
+            amount_cents: amountCents,
+            tip_cents: tipCents,
+            description: chargeDescription,
+            client_email: client.email || appt?.email,
+            send_receipt: true,
+          };
+      const res = await fetch(url, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${anonKey}`,
           'apikey': anonKey,
         },
-        body: JSON.stringify({
-          therapist_id: therapist.id,
-          customer_id: cardOnFile.stripe_customer_id,
-          payment_method_id: cardOnFile.payment_method_id,
-          amount_cents: amountCents,
-          tip_cents: tipCents,
-          description: chargeDescription,
-          client_email: client.email || appt?.email,
-          send_receipt: true,
-        }),
+        body: JSON.stringify(payload),
       });
       const data = await res.json();
       if (data.error) throw new Error(data.error);
@@ -729,9 +772,9 @@ export default function CheckoutModal({
         client_id: client.id,
         amount_cents: amountCents,
         tip_cents: tipCents,
-        payment_method: 'stripe_card_on_file',
+        payment_method: isSquareCard ? 'square_card_on_file' : 'stripe_card_on_file',
         payment_method_detail: `${cardOnFile.brand} ${cardOnFile.last4}`,
-        stripe_payment_intent_id: data.payment_intent_id || null,
+        stripe_payment_intent_id: isSquareCard ? null : (data.payment_intent_id || null),
         status: 'succeeded',
         paid_at: new Date().toISOString(),
         created_by_therapist_id: therapist.id,
