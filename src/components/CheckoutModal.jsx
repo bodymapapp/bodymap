@@ -28,6 +28,7 @@ import { createPortal } from 'react-dom';
 import { supabase } from '../lib/supabase';
 import { getStripePublishableKey } from '../lib/paymentMode';
 import { findOrCreateClient } from '../lib/findOrCreateClient';
+import SquareCardForm from './payments/SquareCardForm';
 import CloseButton from './CloseButton';
 
 const C = {
@@ -121,6 +122,22 @@ export default function CheckoutModal({
   const cardElRef = useRef(null);
   const cardDivRef = useRef(null);
   const [stripeReady, setStripeReady] = useState(false);
+
+  // HK May 31 2026: Square Web Payments SDK flow for new-card path.
+  // Mirrors the BookingPage pattern: when therapist has Square (not
+  // Stripe), CheckoutModal calls init-card-setup which auto-routes
+  // to the right processor, then renders SquareCardForm OR the
+  // existing Stripe Elements form based on data.processor.
+  //
+  // Why now: Risk Register #5. HK has a customer waiting on Square.
+  // Reusing the already-built SquareCardSetupForm pattern from
+  // BookingPage was the unlock - estimated wrong earlier as "4-6 hour
+  // rebuild" when it's actually ~2 hours of integration.
+  const [squareCardSecret, setSquareCardSecret] = useState(null);
+  const [squareClientId, setSquareClientId] = useState(null);
+  const [squareCustomerId, setSquareCustomerId] = useState(null);
+  const [cardSetupProcessor, setCardSetupProcessor] = useState(null);
+  const [cardSetupLoading, setCardSetupLoading] = useState(false);
 
   // Send-link state
   const [linkDelivery, setLinkDelivery] = useState('sms'); // 'sms' | 'email' | 'both'
@@ -764,16 +781,6 @@ export default function CheckoutModal({
   //   5. Write session_payments row.
   async function chargeNewCard() {
     if (!validAmount) { setErrorMsg('Enter a valid amount.'); return; }
-    // HK May 31 2026: honest message for Square-only therapists.
-    // CheckoutModal's new-card-entry path is Stripe-only today
-    // (uses Stripe Elements). Square equivalent requires Square Web
-    // Payments SDK and is a multi-hour rebuild (Risk Register #5).
-    // Until then, show what actually works for these therapists
-    // instead of a misleading "No Stripe account connected" error.
-    if (!therapist?.stripe_account_id && therapist?.square_connected) {
-      setErrorMsg('Card entry through MyBodyMap is coming for Square. For now, please use Mark as Paid for cash, check, or Zelle, or send a payment link.');
-      return;
-    }
     if (!stripeRef.current || !cardElRef.current) { setErrorMsg('Card form not ready.'); return; }
     setProcessing(true);
     setErrorMsg(null);
@@ -898,6 +905,162 @@ export default function CheckoutModal({
         payment_method: 'stripe_card_new',
         payment_method_detail: cardDetail,
         stripe_payment_intent_id: chargeData.payment_intent_id || null,
+        status: 'succeeded',
+        paid_at: new Date().toISOString(),
+        created_by_therapist_id: therapist.id,
+      }).select('id').single();
+
+      if (insertedPayment?.id) {
+        firePaymentNotification(insertedPayment.id);
+        await resolveRenewalAsPaid(insertedPayment.id);
+      }
+      if (packageRow && onPackageCreated) {
+        onPackageCreated(packageRow);
+      }
+
+      setSuccessDetail({
+        method: 'Card entered',
+        detail: cardDetail,
+        total: (totalCents / 100).toFixed(2),
+      });
+      setStep('success');
+      onPaid?.();
+    } catch (e) {
+      setErrorMsg(e?.message || 'Charge failed. Please try again.');
+    } finally {
+      setProcessing(false);
+    }
+  }
+
+  // HK May 31 2026: when therapist taps "Enter new card" and we don't
+  // already have a card_setup secret, fetch one from init-card-setup.
+  // The edge fn auto-routes to Stripe or Square based on what's
+  // connected. We render the right form below in NewCardForm.
+  useEffect(() => {
+    if (step !== 'card_new') return;
+    if (cardSetupProcessor) return; // already initialized
+    if (cardSetupLoading) return;
+    if (!therapist?.id) return;
+    // Stripe-only therapists keep the existing Stripe Elements path
+    // (which boots its own SetupIntent inside chargeNewCard). Skip
+    // init-card-setup for them so we don't double-call.
+    const stripeOnly = !!therapist.stripe_account_id && !therapist.square_connected;
+    if (stripeOnly) {
+      setCardSetupProcessor('stripe');
+      return;
+    }
+    // Square-only OR both connected -> use init-card-setup orchestrator
+    let cancelled = false;
+    (async () => {
+      setCardSetupLoading(true);
+      try {
+        const supabaseUrl = process.env.REACT_APP_SUPABASE_URL;
+        const anonKey = process.env.REACT_APP_SUPABASE_ANON_KEY;
+        const res = await fetch(`${supabaseUrl}/functions/v1/init-card-setup`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${anonKey}`,
+            'apikey': anonKey,
+          },
+          body: JSON.stringify({
+            therapist_id: therapist.id,
+            client_name: client?.name || appt?.client || '',
+            client_email: client?.email || appt?.email || '',
+            client_phone: client?.phone || appt?.phone || '',
+            mandate_text: 'Therapist checkout charge',
+            // preferred_processor stays unset so the function uses
+            // payment_routing / auto-pick. Stripe wins if both connected
+            // for card-on-file (matches BILLING_STRATEGY.md).
+          }),
+        });
+        const data = res.ok ? await res.json() : await res.json().catch(() => ({}));
+        if (cancelled) return;
+        if (!res.ok || data.error) {
+          setErrorMsg(data.error || `Card setup failed (HTTP ${res.status})`);
+          setCardSetupLoading(false);
+          return;
+        }
+        setCardSetupProcessor(data.processor);
+        setSquareCardSecret(data.client_secret);
+        setSquareCustomerId(data.customer_id);
+        setSquareClientId(data.client_id);
+      } catch (e) {
+        if (!cancelled) setErrorMsg(`Card setup failed: ${e?.message || e}`);
+      } finally {
+        if (!cancelled) setCardSetupLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step, therapist?.id]);
+
+  // ── Action: Charge a fresh card via Square (one-shot, no save first) ──
+  //
+  // Square Web Payments SDK tokenizes the card client-side; the
+  // resulting nonce is a valid source_id for POST /v2/payments. So
+  // we pass it straight to square-charge-card. No save-then-charge
+  // dance. If we ever want to save the card too, we'd call
+  // save-card-on-booking-token in parallel; not needed for HK's
+  // immediate "charge $1 to test" use case.
+  async function chargeNewCardSquare(sourceToken, details) {
+    if (!validAmount) { setErrorMsg('Enter a valid amount.'); return; }
+    if (!sourceToken) { setErrorMsg('Card was not tokenized.'); return; }
+    setProcessing(true);
+    setErrorMsg(null);
+    try {
+      if (!client?.id) throw new Error('Client record missing on this booking.');
+      const supabaseUrl = process.env.REACT_APP_SUPABASE_URL;
+      const anonKey = process.env.REACT_APP_SUPABASE_ANON_KEY;
+      const chargeDescription = isPackage
+        ? `${packagePurchase.name} - ${packagePurchase.sessions} sessions`
+        : `Session with ${therapist.business_name || therapist.full_name || 'your therapist'}`;
+
+      const chargeRes = await fetch(`${supabaseUrl}/functions/v1/square-charge-card`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${anonKey}`,
+          'apikey': anonKey,
+        },
+        body: JSON.stringify({
+          therapist_id: therapist.id,
+          square_card_id: sourceToken, // one-time nonce works as source_id
+          square_customer_id: squareCustomerId,
+          amount_cents: amountCents,
+          tip_cents: tipCents,
+          description: chargeDescription,
+          client_email: client.email || appt?.email,
+          send_receipt: true,
+        }),
+      });
+      const chargeData = await chargeRes.json();
+      if (chargeData.error) throw new Error(chargeData.error);
+      if (!chargeData.success) throw new Error('Charge did not succeed');
+
+      const cardLast4 = details?.card?.last4 || null;
+      const cardBrand = details?.card?.brand || null;
+      const cardDetail = cardBrand && cardLast4
+        ? `${cardBrand} ${cardLast4}`
+        : 'Card';
+
+      let packageRow = null;
+      if (isPackage) {
+        packageRow = await createPackagePurchaseRow();
+      }
+
+      const { data: insertedPayment } = await supabase.from('session_payments').insert({
+        ...buildPaymentContext(packageRow?.id || null),
+        therapist_id: therapist.id,
+        client_id: client.id,
+        amount_cents: amountCents,
+        tip_cents: tipCents,
+        payment_method: 'square_card_new',
+        payment_method_detail: cardDetail,
+        // Note: session_payments.square_payment_id column doesn't exist
+        // yet. The Square payment_id from chargeData.payment_id IS in
+        // Square's dashboard for reconciliation; we'll add a column to
+        // store it locally in a followup migration so reports can join.
         status: 'succeeded',
         paid_at: new Date().toISOString(),
         created_by_therapist_id: therapist.id,
@@ -1271,6 +1434,11 @@ export default function CheckoutModal({
                   onConfirm={chargeNewCard}
                   onBack={() => setStep('method')}
                   processing={processing}
+                  processor={cardSetupProcessor}
+                  cardSetupLoading={cardSetupLoading}
+                  squareCardSecret={squareCardSecret}
+                  onSquareTokenized={chargeNewCardSquare}
+                  errorMsg={errorMsg}
                 />
               )}
 
@@ -1743,7 +1911,69 @@ function ConfirmCardOnFile({ cardOnFile, totalCents, onConfirm, onBack, processi
   );
 }
 
-function NewCardForm({ cardDivRef, ready, totalCents, onConfirm, onBack, processing }) {
+function NewCardForm({
+  cardDivRef, ready, totalCents, onConfirm, onBack, processing,
+  // HK May 31 2026: Square dispatch props
+  processor, cardSetupLoading, squareCardSecret, onSquareTokenized, errorMsg,
+}) {
+  // Loading state while init-card-setup picks a processor for
+  // Square / both-connected therapists.
+  if (cardSetupLoading || (!processor && !ready)) {
+    return (
+      <div>
+        <div style={{ marginBottom: 20 }}>
+          <div style={{ fontSize: 12, color: C.inkSoft, fontWeight: 600, letterSpacing: '0.04em', textTransform: 'uppercase', marginBottom: 8 }}>Card details</div>
+          <div style={{
+            padding: '16px 14px',
+            border: `1.5px solid ${C.border}`,
+            borderRadius: 12,
+            background: '#fff',
+            minHeight: 52,
+          }} />
+          <div style={{ fontSize: 12, color: C.inkFade, fontStyle: 'italic', fontFamily: 'Georgia, serif', marginTop: 8 }}>
+            Loading secure card form
+          </div>
+        </div>
+        <ActionRow onBack={onBack} onConfirm={() => {}} processing={false} confirmLabel={`Charge $${(totalCents / 100).toFixed(2)}`} disabled={true} />
+      </div>
+    );
+  }
+
+  // Square path: render the shared SquareCardForm which handles the
+  // Web Payments SDK lifecycle. On tokenize success it calls
+  // onSquareTokenized(token) which routes through chargeNewCardSquare
+  // in the parent (one-shot charge via square-charge-card edge fn).
+  if (processor === 'square') {
+    return (
+      <div>
+        <div style={{ marginBottom: 12 }}>
+          <div style={{ fontSize: 12, color: C.inkSoft, fontWeight: 600, letterSpacing: '0.04em', textTransform: 'uppercase', marginBottom: 8 }}>Card details</div>
+        </div>
+        <SquareCardForm
+          clientSecret={squareCardSecret}
+          buttonLabel={processing ? 'Processing…' : `Charge $${(totalCents / 100).toFixed(2)}`}
+          buttonDisabled={processing}
+          onTokenized={onSquareTokenized}
+          onError={(msg) => { /* parent picks up errorMsg state via setErrorMsg already wired in chargeNewCardSquare */ }}
+          showSecurityLine={true}
+        />
+        <button
+          onClick={onBack}
+          disabled={processing}
+          style={{
+            marginTop: 12, width: '100%', background: 'transparent',
+            border: `1.5px solid ${C.border}`, color: C.inkSoft,
+            borderRadius: 12, padding: '12px', fontSize: 14, fontWeight: 600,
+            cursor: processing ? 'default' : 'pointer',
+          }}
+        >
+          Back
+        </button>
+      </div>
+    );
+  }
+
+  // Stripe path (default): existing Stripe Elements form unchanged.
   return (
     <div>
       <div style={{ marginBottom: 20 }}>
@@ -1754,8 +1984,6 @@ function NewCardForm({ cardDivRef, ready, totalCents, onConfirm, onBack, process
           borderRadius: 12,
           background: '#fff',
           minHeight: 52,
-          // Stripe Elements iframe is inserted here. We give it room
-          // to render naturally without compression artifacts.
         }} />
         {!ready && (
           <div style={{ fontSize: 12, color: C.inkFade, fontStyle: 'italic', fontFamily: 'Georgia, serif', marginTop: 8 }}>
