@@ -1403,7 +1403,7 @@ function RecapEditor({ session, parsedSoap, therapist, allSessions, onSaved, onR
   );
 }
 
-function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled, showToast }) {
+function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled, showToast, onRequestCheckout, paymentsRefreshTick = 0 }) {
   const notify = showToast || (() => {});
   // Mobile detection for paddingBottom that clears the mobile bottom nav
   // (74px) so the Cancel button doesn't get cut off. HK reported May 25
@@ -1641,7 +1641,8 @@ function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled, show
   }, [appt?.id, appt?.email, appt?.service_id, appt?.package_purchase_id, appt?.booking_date, therapist?.id, appt?.preview]);
   // Phase 12: Checkout modal. Phase 19 (May 18 2026) folded MarkAsPaid
   // into the same modal so there is now just one charge modal.
-  const [showCheckout, setShowCheckout] = useState(false);
+  // Phase 1 (HK May 31 2026): checkout state lifted to ScheduleDashboard
+  // root via onRequestCheckout. CheckoutModal no longer renders here.
   // Phase 14.3b (HK May 17 2026): in-app refund. refundTarget holds
   // the session_payments row to be refunded; setting it null closes
   // the modal.
@@ -1831,6 +1832,9 @@ function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled, show
 
   // Load existing payments for this booking + the client row (for
   // card-on-file and id passing to the modals).
+  // HK May 31 2026: paymentsRefreshTick is bumped by ScheduleDashboard
+  // after CheckoutModal reports onPaid, so this effect re-runs and
+  // the just-recorded payment appears in the panel immediately.
   useEffect(() => {
     if (!appt?.id || appt?.preview) { setPaymentsLoading(false); return; }
     let alive = true;
@@ -1849,7 +1853,7 @@ function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled, show
       }
     })();
     return () => { alive = false; };
-  }, [appt?.id, appt?.clientId, appt?.preview]);
+  }, [appt?.id, appt?.clientId, appt?.preview, paymentsRefreshTick]);
 
   // Refresh payments after a successful checkout / mark-as-paid
   async function refreshPayments() {
@@ -2152,6 +2156,18 @@ function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled, show
   // We pull this from the appt row's service.price field, threaded via the
   // booking page. If unavailable, leave it blank for the therapist to type.
   const defaultAmountCents = appt?.service_price_cents || 0;
+
+  // Phase 1 (HK May 31 2026): open checkout at the root level. We capture
+  // a snapshot of the data needed at this exact moment so the modal flow
+  // is decoupled from anything that re-renders in this panel afterwards.
+  const openCheckout = () => {
+    if (typeof onRequestCheckout !== 'function') return;
+    onRequestCheckout({
+      appt: displayAppt,
+      client: clientRow,
+      defaultAmountCents,
+    });
+  };
 
   async function saveEndTime() {
     setSavingTime(true);
@@ -4464,7 +4480,7 @@ function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled, show
                         Done: real button shapes with sage-green outline,
                         equal sizing, side by side. Discoverable peers. */}
                     <div style={{display:'flex',gap:8,marginTop:6,marginLeft:38}}>
-                      <button onClick={()=>setShowCheckout(true)}
+                      <button onClick={openCheckout}
                         style={{
                           flex:1,
                           background:'#fff',
@@ -4534,7 +4550,7 @@ function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled, show
                     flexDirection:'column',
                     gap:8,
                   }}>
-                    <button onClick={()=>setShowCheckout(true)}
+                    <button onClick={openCheckout}
                       style={{
                         width:'100%',
                         background:'linear-gradient(135deg, #2A5741 0%, #1F4030 100%)',
@@ -4687,40 +4703,11 @@ function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled, show
           }}
         />
       )}
-      {showCheckout && (
-        <CheckoutModal
-          appt={displayAppt}
-          therapist={therapist}
-          client={clientRow}
-          defaultAmountCents={defaultAmountCents}
-          onClose={() => setShowCheckout(false)}
-          onPaid={(paidCents) => {
-            // HK May 29 2026: soft-confirm toast so the therapist
-            // knows the payment was recorded. Also tell the parent
-            // so the timeline can refresh and show the paid pill.
-            const amount = typeof paidCents === 'number' ? ` $${(paidCents / 100).toFixed(2)}` : '';
-            notify(`Payment recorded${amount}`);
-            refreshPayments();
-            if (typeof onCancelled === 'function') onCancelled();
-          }}
-          onClientLinked={(picked) => {
-            // HK May 24 2026 (Phase 13.12b): the inline ClientPicker
-            // updated bookings.client_id + client_name + client_email
-            // + client_phone in the DB. Patch our local displayAppt
-            // so the slide-over header re-renders with the picked
-            // client's name immediately. The schedule grid still has
-            // the old name cached in its dayAppts state; it refreshes
-            // on the next interaction or full reload.
-            setDisplayAppt(prev => ({
-              ...prev,
-              clientId: picked.id,
-              client: picked.name || prev.client,
-              email: picked.email || prev.email,
-              phone: picked.phone || prev.phone,
-            }));
-          }}
-        />
-      )}
+      {/* Phase 1 (HK May 31 2026): CheckoutModal removed from DetailPanel.
+          Now rendered at ScheduleDashboard root via onRequestCheckout.
+          The Charge buttons above call openCheckout() which dispatches
+          to the parent. CheckoutModal survives any re-render of this
+          panel because it lives outside it. */}
       {refundTarget && (
         <RefundModal
           payment={refundTarget}
@@ -4794,7 +4781,7 @@ function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled, show
   );
 }
 
-function TimelineView({ therapist, allAppts, dayOffset, setDayOffset, today, onReschedule, onRefresh, blockedDays = [], onCreateBlock, onScheduleAtTime, selectedBookingId = '', setSelectedBookingId }) {
+function TimelineView({ therapist, allAppts, dayOffset, setDayOffset, today, onReschedule, onRefresh, blockedDays = [], onCreateBlock, onScheduleAtTime, selectedBookingId = '', setSelectedBookingId, onRequestCheckout, paymentsRefreshTick = 0 }) {
   const { toast: tlToast, showToast: tlShowToast } = useToast();
 
   // HK May 31 2026: selected booking is DERIVED from selectedBookingId
@@ -5504,13 +5491,13 @@ function TimelineView({ therapist, allAppts, dayOffset, setDayOffset, today, onR
         </>
       )}
 
-      {selected&&<DetailPanel appt={selected} therapist={therapist} onClose={()=>setSelected(null)} onReschedule={a=>{onReschedule&&onReschedule(a);}} onCancelled={()=>{if(typeof onRefresh==='function')onRefresh();}} showToast={tlShowToast}/>}
+      {selected&&<DetailPanel appt={selected} therapist={therapist} onClose={()=>setSelected(null)} onReschedule={a=>{onReschedule&&onReschedule(a);}} onCancelled={()=>{if(typeof onRefresh==='function')onRefresh();}} showToast={tlShowToast} onRequestCheckout={onRequestCheckout} paymentsRefreshTick={paymentsRefreshTick}/>}
       {tlToast}
     </div>
   );
 }
 
-function WeeklyView({ therapist, appointments, today, onReschedule, onRefresh, blockedDays = [], selectedBookingId = '', setSelectedBookingId }) {
+function WeeklyView({ therapist, appointments, today, onReschedule, onRefresh, blockedDays = [], selectedBookingId = '', setSelectedBookingId, onRequestCheckout, paymentsRefreshTick = 0 }) {
   const { toast: wkToast, showToast: wkShowToast } = useToast();
   const APPTS=appointments||[];
   const weekStartsOn = therapist?.week_starts_on ?? 0;
@@ -6158,12 +6145,12 @@ function WeeklyView({ therapist, appointments, today, onReschedule, onRefresh, b
         })()
       )}
       {wkToast}
-      {selected&&<DetailPanel appt={selected} therapist={therapist} onClose={()=>setSelected(null)} onReschedule={a=>{onReschedule&&onReschedule(a);}} onCancelled={()=>{if(typeof onRefresh==='function')onRefresh();}} showToast={wkShowToast}/>}
+      {selected&&<DetailPanel appt={selected} therapist={therapist} onClose={()=>setSelected(null)} onReschedule={a=>{onReschedule&&onReschedule(a);}} onCancelled={()=>{if(typeof onRefresh==='function')onRefresh();}} showToast={wkShowToast} onRequestCheckout={onRequestCheckout} paymentsRefreshTick={paymentsRefreshTick}/>}
     </div>
   );
 }
 
-function MonthlyView({ therapist, appointments, today, onReschedule, onRefresh, blockedDays = [], selectedBookingId = '', setSelectedBookingId }) {
+function MonthlyView({ therapist, appointments, today, onReschedule, onRefresh, blockedDays = [], selectedBookingId = '', setSelectedBookingId, onRequestCheckout, paymentsRefreshTick = 0 }) {
   const { toast: moToast, showToast: moShowToast } = useToast();
   const APPTS=appointments||[];
   const weekStartsOn = therapist?.week_starts_on ?? 0; // 0 = Sunday, 1 = Monday
@@ -6370,7 +6357,7 @@ function MonthlyView({ therapist, appointments, today, onReschedule, onRefresh, 
           })}
         </div>
       }
-      {selected&&<DetailPanel appt={selected} therapist={therapist} onClose={()=>setSelected(null)} onReschedule={a=>{onReschedule&&onReschedule(a);}} onCancelled={()=>{if(typeof onRefresh==='function')onRefresh();}} showToast={moShowToast}/>}
+      {selected&&<DetailPanel appt={selected} therapist={therapist} onClose={()=>setSelected(null)} onReschedule={a=>{onReschedule&&onReschedule(a);}} onCancelled={()=>{if(typeof onRefresh==='function')onRefresh();}} showToast={moShowToast} onRequestCheckout={onRequestCheckout} paymentsRefreshTick={paymentsRefreshTick}/>}
       {moToast}
     </div>
   );
@@ -7664,6 +7651,26 @@ export default function ScheduleDashboard({ therapist }) {
   // onScheduleAtTime callback to hand control here.
   const [pendingBookingTime, setPendingBookingTime] = useState(null);  // {date, startTime}
 
+  // Phase 1 (HK May 31 2026 9:30am CT): checkout context lifted to
+  // ScheduleDashboard root. Previously CheckoutModal was rendered
+  // inside DetailPanel, which meant any data refetch that briefly
+  // nulled `selected` would unmount DetailPanel and take CheckoutModal
+  // with it. Customer-blocking: every time init-card-setup upserted
+  // the clients row, it triggered realtime -> scheduleRefresh ->
+  // fetchBookings -> DetailPanel re-render -> CheckoutModal lost.
+  //
+  // Now: CheckoutModal renders at this level. DetailPanel calls
+  // onRequestCheckout(payload) to open it. The modal stays alive
+  // regardless of what happens in DetailPanel / the views below.
+  // checkoutContext = { appt, client, defaultAmountCents } captured
+  // at the moment of opening. The modal does NOT react to fetchBookings
+  // refreshes (intentionally: stable snapshot through the payment flow).
+  // After checkout completes, fetchBookings refreshes the schedule
+  // and paymentsRefreshTick is bumped so DetailPanel reloads payments.
+  const [checkoutContext, setCheckoutContext] = useState(null);
+  const [paymentsRefreshTick, setPaymentsRefreshTick] = useState(0);
+  const requestCheckout = (payload) => setCheckoutContext(payload);
+
   // Preview-data toggle (HK May 18 2026, simplified per HK May 18
   // feedback): one boolean. Therapist taps to flip. Persists to
   // therapists.show_preview_data. Does NOT auto-sync from the
@@ -8835,15 +8842,51 @@ export default function ScheduleDashboard({ therapist }) {
 
             {/* RIGHT PANE: tab-selected calendar/insights view. */}
             <div style={{ minWidth: 0 }}>
-              {subView==='today'   &&<TimelineView therapist={therapist} allAppts={allAppts} dayOffset={dayOffset} setDayOffset={setDayOffset} today={today} onReschedule={setRescheduleAppt} onRefresh={fetchBookings} blockedDays={blockedDays} onCreateBlock={addBlockedDay} onScheduleAtTime={setPendingBookingTime} selectedBookingId={selectedBookingId} setSelectedBookingId={setSelectedBookingId}/>}
-              {subView==='weekly'  &&<WeeklyView therapist={therapist} appointments={allAppts} today={today} onReschedule={setRescheduleAppt} onRefresh={fetchBookings} blockedDays={blockedDays} selectedBookingId={selectedBookingId} setSelectedBookingId={setSelectedBookingId}/>}
-              {subView==='monthly' &&<MonthlyView therapist={therapist} appointments={allAppts} today={today} onReschedule={setRescheduleAppt} onRefresh={fetchBookings} blockedDays={blockedDays} selectedBookingId={selectedBookingId} setSelectedBookingId={setSelectedBookingId}/>}
+              {subView==='today'   &&<TimelineView therapist={therapist} allAppts={allAppts} dayOffset={dayOffset} setDayOffset={setDayOffset} today={today} onReschedule={setRescheduleAppt} onRefresh={fetchBookings} blockedDays={blockedDays} onCreateBlock={addBlockedDay} onScheduleAtTime={setPendingBookingTime} selectedBookingId={selectedBookingId} setSelectedBookingId={setSelectedBookingId} onRequestCheckout={requestCheckout} paymentsRefreshTick={paymentsRefreshTick}/>}
+              {subView==='weekly'  &&<WeeklyView therapist={therapist} appointments={allAppts} today={today} onReschedule={setRescheduleAppt} onRefresh={fetchBookings} blockedDays={blockedDays} selectedBookingId={selectedBookingId} setSelectedBookingId={setSelectedBookingId} onRequestCheckout={requestCheckout} paymentsRefreshTick={paymentsRefreshTick}/>}
+              {subView==='monthly' &&<MonthlyView therapist={therapist} appointments={allAppts} today={today} onReschedule={setRescheduleAppt} onRefresh={fetchBookings} blockedDays={blockedDays} selectedBookingId={selectedBookingId} setSelectedBookingId={setSelectedBookingId} onRequestCheckout={requestCheckout} paymentsRefreshTick={paymentsRefreshTick}/>}
               {subView==='yearly'  &&<YearlyView therapist={therapist} appointments={allAppts} today={today} blockedDays={blockedDays}/>}
               {subView==='insights'&&<InsightsView appointments={allAppts}/>}
             </div>
           </div>
         )
       }
+
+      {/* Phase 1 (HK May 31 2026): CheckoutModal lives at root,
+          not inside DetailPanel. Survives any DetailPanel remount.
+          Captured a snapshot of {appt, client, defaultAmountCents}
+          at the moment "Charge" was tapped. The modal flow continues
+          with that snapshot. fetchBookings refreshes after onPaid
+          so the schedule + payment pills update. */}
+      {checkoutContext && (
+        <CheckoutModal
+          appt={checkoutContext.appt}
+          therapist={therapist}
+          client={checkoutContext.client}
+          defaultAmountCents={checkoutContext.defaultAmountCents}
+          onClose={() => setCheckoutContext(null)}
+          onPaid={(paidCents) => {
+            const amount = typeof paidCents === 'number' ? ` $${(paidCents / 100).toFixed(2)}` : '';
+            showScheduleToast(`Payment recorded${amount}`);
+            setPaymentsRefreshTick((n) => n + 1);
+            fetchBookings();
+          }}
+          onClientLinked={(picked) => {
+            // Patch the snapshot so the modal header re-renders with
+            // the linked client's name while still open.
+            setCheckoutContext((prev) => prev ? ({
+              ...prev,
+              appt: {
+                ...prev.appt,
+                clientId: picked.id,
+                client: picked.name || prev.appt.client,
+                email: picked.email || prev.appt.email,
+                phone: picked.phone || prev.appt.phone,
+              },
+            }) : null);
+          }}
+        />
+      )}
     </div>
   );
 }
