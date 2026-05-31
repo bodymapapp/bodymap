@@ -72,7 +72,13 @@ serve(async (req) => {
     const payData = await payRes.json();
     if (!payRes.ok) return respond({ error: payData.errors?.[0]?.detail || 'Payment failed' }, 400);
 
-    return respond({ success: true, payment_id: payData.payment?.id, amount: total, status: payData.payment?.status });
+    return respond({
+      success: true,
+      payment_id: payData.payment?.id,
+      order_id: payData.payment?.order_id || null,
+      amount: total,
+      status: payData.payment?.status,
+    });
 
   } catch (e) {
     return respond({ error: String(e) }, 500);

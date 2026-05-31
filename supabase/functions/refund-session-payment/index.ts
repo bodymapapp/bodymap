@@ -52,16 +52,21 @@ serve(async (req) => {
 
     // Phase 14.3b (HK May 17 2026): offline_only allows refunding
     // cash/Venmo/Zelle/check payments by just flipping the local
-    // row. No Stripe call needed in that path, so we don't require
-    // STRIPE_SECRET_KEY for offline refunds.
-    if (!offline_only && !STRIPE_SECRET_KEY) return respond({ error: 'stripe_not_configured' }, 500);
+    // row. No Stripe call needed in that path.
+    // HK May 31 2026 (Square Parity v1): Square refunds also do not
+    // need STRIPE_SECRET_KEY. The Stripe key check is now done lazily
+    // inside the Stripe branch below, so a Square-only environment
+    // can refund Square payments without Stripe credentials.
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
 
     // Load the session_payments row. Verify therapist ownership.
+    // HK May 31 2026 (Square Parity v1): added square_payment_id to the
+    // select so the Square refund branch can call /v2/refunds with the
+    // right id. Stripe selection unchanged.
     const { data: row, error: rErr } = await supabase
       .from('session_payments')
-      .select('id, therapist_id, amount_cents, tip_cents, status, stripe_payment_intent_id, payment_method')
+      .select('id, therapist_id, amount_cents, tip_cents, status, stripe_payment_intent_id, square_payment_id, payment_method')
       .eq('id', session_payment_id)
       .single();
     if (rErr || !row) return respond({ error: 'payment_not_found' }, 404);
@@ -125,7 +130,110 @@ serve(async (req) => {
       });
     }
 
+    // ─── Square branch (HK May 31 2026, Square Parity v1) ────────────
+    // Routes Square charges through the provider abstraction's
+    // refund() instead of failing with "not_a_stripe_payment". The
+    // Square refund implementation lives in providers/square/v1.ts
+    // and calls /v2/refunds with the payment_id we now persist.
+    //
+    // Note: this branch is BEFORE the "From here, this is the Stripe
+    // path" sentinel so Stripe code below is unchanged in behavior.
+    const isSquarePayment = row.payment_method && row.payment_method.startsWith('square_');
+    if (isSquarePayment) {
+      if (!row.square_payment_id) {
+        // Pre-schema-fix Square charges have no payment id stored.
+        // The therapist can refund directly in their Square dashboard
+        // and then use offline_only=true to mark this row refunded.
+        return respond({
+          error: 'no_square_payment_id',
+          detail: 'This Square payment predates the refund support and has no payment id on file. Refund it from your Square dashboard, then re-run with offline_only=true to mark it refunded here.',
+        }, 400);
+      }
+
+      // Load therapist with Square credentials for the provider helper.
+      const { data: therapist } = await supabase
+        .from('therapists')
+        .select('id, square_access_token, square_location_id, square_merchant_id, square_connected')
+        .eq('id', therapist_id)
+        .single();
+      if (!therapist?.square_access_token || !therapist.square_connected) {
+        return respond({ error: 'square_not_connected_for_therapist' }, 400);
+      }
+
+      // Load the Square provider. Use the v1 strategy via the public
+      // facade so future strategy bumps don't touch this code.
+      const { SquareProvider } = await import('../_shared/providers/square.ts');
+      const provider = new SquareProvider(therapist as any);
+
+      // Issue the refund. Idempotency key is bounded to 45 chars by
+      // the provider helper's safeSquareIdempotencyKey wrapper.
+      let refundResult;
+      try {
+        refundResult = await provider.refund({
+          therapist: therapist as any,
+          paymentRefId: row.square_payment_id,
+          amountCents: finalRefundCents,
+          idempotencyKey: `refund_${session_payment_id}_${finalRefundCents}`,
+          reason: 'requested_by_customer',
+        });
+      } catch (refundErr: any) {
+        console.error('[refund-session-payment] Square refund error', refundErr?.code, refundErr?.message);
+        return respond({
+          error: refundErr?.message || 'square_refund_failed',
+          code: refundErr?.code,
+        }, 400);
+      }
+
+      if (!refundResult?.refunded) {
+        return respond({
+          error: 'square_refund_not_completed',
+          detail: 'Square accepted the request but did not mark it COMPLETED or PENDING. Check the Square dashboard.',
+        }, 400);
+      }
+
+      // Update local row. Same shape as Stripe path: flip to refunded.
+      const { error: updErr } = await supabase
+        .from('session_payments')
+        .update({ status: 'refunded' })
+        .eq('id', session_payment_id);
+      if (updErr) {
+        console.error('[refund-session-payment] Square refund succeeded but local update failed', updErr);
+        return respond({
+          success: true,
+          refund_id: refundResult.refundId,
+          amount_refunded_cents: refundResult.amountCents || finalRefundCents,
+          warning: 'square_refund_succeeded_but_local_row_update_failed',
+        });
+      }
+
+      // Fire notification (fire-and-forget; the notify function is
+      // idempotent at the audience level).
+      try {
+        const SUPABASE_URL_NOTIFY = Deno.env.get('SUPABASE_URL') || '';
+        const SUPABASE_SERVICE_KEY_NOTIFY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
+        await fetch(`${SUPABASE_URL_NOTIFY}/functions/v1/notify-refund-event`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${SUPABASE_SERVICE_KEY_NOTIFY}`,
+            'apikey': SUPABASE_SERVICE_KEY_NOTIFY,
+          },
+          body: JSON.stringify({ session_payment_id, source: 'in_app_square' }),
+        });
+      } catch (e) {
+        console.warn('[refund-session-payment] notify fire failed (Square)', e);
+      }
+
+      return respond({
+        success: true,
+        refund_id: refundResult.refundId,
+        amount_refunded_cents: refundResult.amountCents || finalRefundCents,
+        status: 'refunded',
+      });
+    }
+
     // From here, this is the Stripe path.
+    if (!STRIPE_SECRET_KEY) return respond({ error: 'stripe_not_configured' }, 500);
     const isStripe = row.payment_method && row.payment_method.startsWith('stripe_');
     if (!isStripe) {
       return respond({

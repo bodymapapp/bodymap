@@ -1,8 +1,36 @@
 # Billing Strategy and Architecture
 
-**Last updated:** May 7, 2026
+**Last updated:** May 31, 2026
 **Audience:** HK and any future engineer who works on the payment system. Read before touching `_shared/payment-provider.ts` or any payment-touching edge function.
-**Status:** Stripe + Square parity shipped May 6-7, 2026. Square activation completed May 7 evening (HK confirmed first payment received in production). Stripe wallet methods (Apple Pay, Google Pay, Cash App Pay, Link, Amazon Pay, Klarna) enabled at platform level and Phase 1 wallet button shipped on booking page deposit flow May 7 night. Phase 3 (FedNow when ready) still future. ACH dropped per HK decision May 7.
+**Status:** **Square Parity v1 shipped May 31, 2026.** Closed gaps where the May 6-7 "parity" declaration was actually half-built. What was real on May 7: provider abstraction, deposit + cart + package flows. What was missing until today: Square refunds (no `square_payment_id` column existed), Square payment links (Stripe-only by hard-code), Square cancellation fee links (Stripe-only), Square booking-approval deposit charge (Stripe-inline), Square method labels in notifications (showed "Other"). All closed in this push. Stripe wallet methods (Apple Pay, Google Pay, Cash App Pay, Link, Amazon Pay, Klarna) enabled at platform level. Phase 3 (FedNow when ready) still future. ACH dropped per HK decision May 7.
+
+---
+
+## What changed May 31, 2026 (Square Parity v1)
+
+### Schema additions (additive, no Stripe changes)
+- `session_payments.square_payment_id` (text) — Square Payments API id, required by `/v2/refunds`
+- `session_payments.square_order_id` (text) — Square Orders API id, for reconciliation against the Square dashboard
+- `package_purchases.square_payment_id`
+- `event_registrations.square_payment_id`
+- `cancellation_charges.square_order_id` + `square_payment_id`
+- Partial index `session_payments_square_payment_id_idx`
+
+### Edge functions
+- `refund-session-payment` — Square branch via `provider.refund()` before the Stripe code. Stripe path identical to before. `STRIPE_SECRET_KEY` check moved into Stripe branch so Square-only therapists can refund without Stripe credentials.
+- `create-payment-link` — Square branch via `provider.createCheckoutLink`. Therapist on Square gets a Square Checkout URL to send to client. Pending session_payments row tracks `square_order_id`.
+- `create-cancellation-fee-link` — same pattern for cancellation fees.
+- `booking-approval` — Square branch via `provider.chargeSavedCard` for the approve-and-charge deposit flow. Triggered when `card_on_file_square_customer_id` is set on the booking.
+- `notify-payment-event` + `notify-refund-event` — Square method labels (`square_card_on_file`, `square_card_new`, `square_payment_link`) so receipts say "Square card on file" instead of "Other".
+- `verify-payment-link` (new) — post-payment redirect handler for Square pay links. Lands on `/pay-thanks?sp=<id>` after client pays on Square's hosted page; calls `provider.verifyCheckout`, flips row to `succeeded`, fires notification.
+
+### Frontend
+- `CheckoutModal` persists `square_payment_id` + `square_order_id` on both Square charge paths (chargeNewCardSquare for new-card, chargeCardOnFile for card-on-file).
+- `/pay-thanks` page (new) — post-Square-checkout landing.
+- `BookingDetailPage` (new, at `/dashboard/schedule/booking/<id>`) — full-page surface for deep booking work. Slide-over remains primary for quick context (Side panel A).
+
+### Known v1 trade-off
+Square pay-links use the redirect-back-to-our-domain pattern instead of server-side webhooks. If the client closes Square's hosted tab without returning to `/pay-thanks`, the row stays `pending` until the therapist marks it paid manually. A server-side Square webhook (`square-payment-link-webhook`) is queued for v1.1 to close this gap fully.
 
 ---
 

@@ -10,6 +10,7 @@ import SessionList from '../components/SessionList';
 import ClientProfile from '../components/ClientProfile';
 import SessionDetail from '../components/SessionDetail';
 import ScheduleDashboard from '../components/ScheduleDashboard';
+import BookingDetailPage from './BookingDetailPage';
 import BillingDashboard from '../components/BillingDashboard';
 import AIDashboard from '../components/AIDashboard';
 import NotificationsBell from '../components/NotificationsBell';
@@ -6293,6 +6294,9 @@ export default function Dashboard({ view }) {
           )}
           {view === 'schedule' && (
             <><ScheduleDashboard therapist={therapist} />{isMobile && <PageEnd />}</>
+          )}
+          {view === 'booking-detail' && (
+            <><BookingDetailPage therapist={therapist} />{isMobile && <PageEnd />}</>
           )}
           {view === 'billing' && (
             <><BillingDashboard therapist={therapist} />{isMobile && <PageEnd />}</>

@@ -1540,7 +1540,9 @@ function RecapEditor({ session, parsedSoap, therapist, allSessions, onSaved, onR
   );
 }
 
-function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled, showToast, onRequestCheckout, paymentsRefreshTick = 0 }) {
+// HK May 31 2026 (Side panel A): DetailPanel exported so BookingDetailPage
+// can render it in mode='page' as a full-page route.
+export function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled, showToast, onRequestCheckout, paymentsRefreshTick = 0, mode = 'slide' }) {
   const notify = showToast || (() => {});
   // Mobile detection for paddingBottom that clears the mobile bottom nav
   // (74px) so the Cancel button doesn't get cut off. HK reported May 25
@@ -2976,10 +2978,16 @@ function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled, show
           practical issue. Guard: only close if the tap target is the
           backdrop itself (e.target === e.currentTarget), so nested
           event bubbling from the panel doesn't trigger this. */}
-      <div
-        onPointerUp={onClose}
-        style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.3)',zIndex:300,backdropFilter:'blur(2px)',cursor:'pointer'}}
-      />
+      {/* HK May 31 2026: when mode='page', this DetailPanel is rendered
+          as a full-page route (see BookingDetailPage). Skip the backdrop
+          and the slide-over chrome so the same internals work in both
+          contexts. */}
+      {mode === 'slide' && (
+        <div
+          onPointerUp={onClose}
+          style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.3)',zIndex:300,backdropFilter:'blur(2px)',cursor:'pointer'}}
+        />
+      )}
       {/* HK May 25 2026 (Phase 24c): definitive scroll fix.
           The previous fix put paddingBottom on the OUTER scroll
           container. WebKit has a long-standing bug where padding
@@ -2994,7 +3002,19 @@ function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled, show
           overscroll-behavior:contain stops scroll chaining so when
           the user hits top/bottom of the panel, the main page doesn't
           scroll behind it. */}
-      <div style={{
+      <div style={mode === 'page' ? {
+        // HK May 31 2026 (Side panel A): full-page container for the
+        // booking detail route. Same internals as the slide-over.
+        // Inline flow, max-width comfortable, no fixed positioning.
+        width: '100%',
+        maxWidth: 720,
+        margin: '0 auto',
+        background: '#fff',
+        borderRadius: 14,
+        border: '1px solid #F3F4F6',
+        overflow: 'visible',
+        paddingTop: 'env(safe-area-inset-top, 0px)',
+      } : {
         position:'fixed',
         top:0, right:0, bottom:0,
         // HK May 30 2026: width keeps the left strip exposed
@@ -3093,13 +3113,27 @@ function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled, show
                 </div>
               </>
             )}
+            {/* HK May 31 2026 (Side panel A): "Open as page" link in
+                slide mode so therapists can switch to the full-page
+                surface for deep work. Hidden in mode='page' (already
+                there) and on previews (no real route). */}
+            {mode === 'slide' && !appt.preview && (
+              <a
+                href={`/dashboard/schedule/booking/${appt.id}`}
+                title="Open this booking as a full page"
+                style={{
+                  fontSize: 11, fontWeight: 600, color: SO.forest,
+                  textDecoration: 'none', whiteSpace: 'nowrap',
+                  padding: '6px 10px', borderRadius: 999,
+                  border: '1px solid #D6E0D4', background: '#fff',
+                  marginRight: 6, flexShrink: 0,
+                }}
+              >
+                Open as page ↗
+              </a>
+            )}
             <CloseButton onClick={onClose} label="Close" />
           </div>
-          {/* Time + status row. HK May 25 2026 (Phase 21 F1):
-              edit-time button moved INLINE next to the time text so
-              it's unambiguous what it edits. The previous top-right
-              ✏️ Edit was confusing once the slide-over filled with
-              many panels (looked like it might edit the whole record). */}
           <div style={{background:'#F9FAFB',borderRadius:10,padding:'10px 14px'}}>
             <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:8,flexWrap:'wrap'}}>
               <div style={{flex:1,minWidth:0}}>

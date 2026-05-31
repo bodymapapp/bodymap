@@ -93,6 +93,10 @@ serve(async (req) => {
       payment.payment_method === 'stripe_card_on_file' ? (payment.payment_method_detail || 'Card on file')
       : payment.payment_method === 'stripe_card_new' ? (payment.payment_method_detail || 'Card')
       : payment.payment_method === 'stripe_payment_link' ? 'Payment link'
+      // HK May 31 2026 (Square Parity v1)
+      : payment.payment_method === 'square_card_on_file' ? (payment.payment_method_detail || 'Square card on file')
+      : payment.payment_method === 'square_card_new' ? (payment.payment_method_detail || 'Square card')
+      : payment.payment_method === 'square_payment_link' ? 'Square payment link'
       : payment.payment_method === 'cash' ? 'Cash'
       : payment.payment_method === 'venmo' ? 'Venmo'
       : payment.payment_method === 'zelle' ? 'Zelle'

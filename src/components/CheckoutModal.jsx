@@ -769,7 +769,12 @@ export default function CheckoutModal({
       // HK May 31 2026: see chargeNewCardSquare comment block. Same
       // audit-gap fix here. Card on file path serves both Stripe and
       // Square; either provider charged the card before this insert.
+      // HK May 31 2026 (Square Parity v1): persist square_payment_id +
+      // square_order_id when this is a Square card-on-file charge.
+      // Refunds and reconciliation need them; without these columns
+      // the Square refund path has nothing to call /v2/refunds with.
       const providerPaymentId = data.payment_id || data.payment_intent_id || null;
+      const squareOrderId = isSquareCard ? (data.order_id || null) : null;
       const { data: insertedPayment, error: insertErr } = await supabase
         .from('session_payments')
         .insert({
@@ -781,6 +786,8 @@ export default function CheckoutModal({
           payment_method: isSquareCard ? 'square_card_on_file' : 'stripe_card_on_file',
           payment_method_detail: `${cardOnFile.brand} ${cardOnFile.last4}`,
           stripe_payment_intent_id: isSquareCard ? null : (data.payment_intent_id || null),
+          square_payment_id: isSquareCard ? providerPaymentId : null,
+          square_order_id: squareOrderId,
           status: 'succeeded',
           paid_at: new Date().toISOString(),
           created_by_therapist_id: therapist.id,
@@ -1149,7 +1156,12 @@ export default function CheckoutModal({
       // for ANY reason (RLS, FK, column mismatch), the user saw the
       // success state but no record existed. Customer-blocking audit
       // bug. Now we destructure both and act on errors explicitly.
+      // HK May 31 2026 (Square Parity v1): persist square_payment_id +
+      // square_order_id alongside the row. Refunds via /v2/refunds need
+      // the payment id; reconciliation against Square's dashboard uses
+      // the order id. Without these the refund path has nothing to call.
       const squarePaymentId = chargeData.payment_id || null;
+      const squareOrderId = chargeData.order_id || null;
       const { data: insertedPayment, error: insertErr } = await supabase
         .from('session_payments')
         .insert({
@@ -1160,6 +1172,8 @@ export default function CheckoutModal({
           tip_cents: tipCents,
           payment_method: 'square_card_new',
           payment_method_detail: cardDetail,
+          square_payment_id: squarePaymentId,
+          square_order_id: squareOrderId,
           status: 'succeeded',
           paid_at: new Date().toISOString(),
           created_by_therapist_id: therapist.id,

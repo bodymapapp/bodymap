@@ -57,20 +57,26 @@ serve(async (req) => {
     const SUPABASE_SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const STRIPE_SECRET_KEY = Deno.env.get('STRIPE_SECRET_KEY');
 
-    if (!STRIPE_SECRET_KEY) return respond({ error: 'stripe_not_configured' }, 500);
-
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
 
-    // Load therapist for Stripe Connect account id.
+    // Load therapist for Stripe Connect + Square credentials.
+    // HK May 31 2026 (Square Parity v1): pulls Square fields so the
+    // Square branch below can route to Square Checkout when the
+    // therapist is on Square instead of Stripe.
     const { data: therapist, error: tErr } = await supabase
       .from('therapists')
-      .select('id, stripe_account_id, stripe_account_connected, full_name, business_name')
+      .select('id, stripe_account_id, stripe_account_connected, square_access_token, square_location_id, square_merchant_id, square_connected, full_name, business_name, custom_url')
       .eq('id', therapist_id)
       .single();
     if (tErr || !therapist) return respond({ error: 'therapist_not_found' }, 404);
-    if (!therapist.stripe_account_id || !therapist.stripe_account_connected) {
-      return respond({ error: 'stripe_not_connected_for_therapist' }, 400);
+
+    const hasStripe = !!(therapist.stripe_account_id && therapist.stripe_account_connected);
+    const hasSquare = !!(therapist.square_access_token && therapist.square_connected);
+    if (!hasStripe && !hasSquare) {
+      return respond({ error: 'no_payment_processor_connected' }, 400);
     }
+    const useStripe = hasStripe;
+    const useSquare = !hasStripe && hasSquare;
 
     // Confirm booking belongs to this therapist.
     const { data: booking, error: bErr } = await supabase
@@ -123,12 +129,74 @@ serve(async (req) => {
       return respond({ error: 'failed_to_insert_charge_row' }, 500);
     }
 
-    // Build the Stripe Payment Link via direct API.
     const triggerLabel = trigger_event === 'no_show'
       ? 'No-show fee'
       : trigger_event === 'reschedule'
         ? 'Reschedule fee'
         : 'Cancellation fee';
+
+    // ─── Square branch (HK May 31 2026, Square Parity v1) ────────────
+    if (useSquare) {
+      const { SquareProvider } = await import('../_shared/providers/square.ts');
+      const squareProvider = new SquareProvider(therapist as any);
+
+      const redirectUrl = `https://mybodymap.app/pay-thanks?cc=${chargeRow.id}`;
+
+      try {
+        const checkoutResult = await squareProvider.createCheckoutLink({
+          therapist: therapist as any,
+          items: [{
+            itemId: `cancel-fee-${chargeRow.id}`,
+            name: triggerLabel,
+            amountCents: amount_cents,
+            quantity: 1,
+            metadata: {
+              cancellation_charge_id: chargeRow.id,
+              booking_id,
+              therapist_id,
+              kind: 'cancellation_fee',
+            },
+          }],
+          customer: { email: booking.client_email || '' },
+          redirectUrl,
+          metadata: {
+            cancellation_charge_id: chargeRow.id,
+            therapist_id,
+            kind: 'cancellation_fee',
+          },
+          mode: 'payment',
+        });
+
+        // Save the Square order id on the pending row for reconciliation.
+        await supabase
+          .from('cancellation_charges')
+          .update({
+            processor: 'square',
+            square_order_id: checkoutResult.paymentRefId,
+          })
+          .eq('id', chargeRow.id);
+
+        return respond({
+          success: true,
+          payment_link_url: checkoutResult.url,
+          payment_link_id: checkoutResult.providerSessionId,
+          cancellation_charge_id: chargeRow.id,
+          provider: 'square',
+        });
+      } catch (squareErr: any) {
+        console.error('[create-cancellation-fee-link] Square error', squareErr?.code, squareErr?.message);
+        await supabase.from('cancellation_charges').delete().eq('id', chargeRow.id);
+        return respond({
+          error: squareErr?.message || 'square_payment_link_failed',
+          code: squareErr?.code,
+        }, 400);
+      }
+    }
+
+    // ─── Stripe path (untouched) ─────────────────────────────────────
+    if (!STRIPE_SECRET_KEY) return respond({ error: 'stripe_not_configured' }, 500);
+
+    // Build the Stripe Payment Link via direct API.
 
     const params = new URLSearchParams();
     params.append('line_items[0][price_data][currency]', 'usd');

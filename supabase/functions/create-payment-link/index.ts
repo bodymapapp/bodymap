@@ -63,19 +63,25 @@ serve(async (req) => {
     const SUPABASE_SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const STRIPE_SECRET_KEY = Deno.env.get('STRIPE_SECRET_KEY');
 
-    if (!STRIPE_SECRET_KEY) return respond({ error: 'stripe_not_configured' }, 500);
-
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
 
     // Load therapist for stripe_account_id (Stripe Connect)
+    // HK May 31 2026 (Square Parity v1): also load Square credentials
+    // so we can route to Square Checkout when the therapist is on
+    // Square instead of Stripe. Auto-policy: prefer Stripe when both
+    // are connected, fall back to Square. Identical to the deposit
+    // flow.
     const { data: therapist, error: tErr } = await supabase
       .from('therapists')
-      .select('id, stripe_account_id, stripe_account_connected, full_name, business_name')
+      .select('id, stripe_account_id, stripe_account_connected, square_access_token, square_location_id, square_merchant_id, square_connected, full_name, business_name, custom_url')
       .eq('id', therapist_id)
       .single();
     if (tErr || !therapist) return respond({ error: 'therapist_not_found' }, 404);
-    if (!therapist.stripe_account_id || !therapist.stripe_account_connected) {
-      return respond({ error: 'stripe_not_connected_for_therapist' }, 400);
+
+    const hasStripe = !!(therapist.stripe_account_id && therapist.stripe_account_connected);
+    const hasSquare = !!(therapist.square_access_token && therapist.square_connected);
+    if (!hasStripe && !hasSquare) {
+      return respond({ error: 'no_payment_processor_connected' }, 400);
     }
 
     // Booking mode: load booking row for client info + ownership check.
@@ -108,11 +114,17 @@ serve(async (req) => {
       clientId = booking.client_id;
     }
 
+    // Pick the provider. Prefer Stripe when both are connected so the
+    // existing Stripe path runs unchanged. Square is only used when
+    // Stripe is not connected.
+    const useStripe = hasStripe;
+    const useSquare = !hasStripe && hasSquare;
+
     // Create the pending session_payments row FIRST. We need its id
-    // for the Stripe metadata so the webhook can find this row when
-    // the client pays. The booking_id XOR member_subscription_id
-    // constraint enforced by the migration means exactly one of the
-    // two FK columns is set.
+    // for the provider metadata so the webhook or verify step can find
+    // this row when the client pays. The booking_id XOR
+    // member_subscription_id constraint enforced by the migration
+    // means exactly one of the two FK columns is set.
     const { data: paymentRow, error: pErr } = await supabase
       .from('session_payments')
       .insert({
@@ -123,7 +135,7 @@ serve(async (req) => {
         client_id: clientId,
         amount_cents,
         tip_cents,
-        payment_method: 'stripe_payment_link',
+        payment_method: useStripe ? 'stripe_payment_link' : 'square_payment_link',
         status: 'pending',
         paid_at: null,
         created_by_therapist_id: therapist_id,
@@ -134,6 +146,87 @@ serve(async (req) => {
       console.error('[create-payment-link] failed to insert payment row', pErr);
       return respond({ error: 'failed_to_insert_payment_row' }, 500);
     }
+
+    // ─── Square branch (HK May 31 2026, Square Parity v1) ────────────
+    // Square Checkout API. Same shape outcome as Stripe Payment Link:
+    // the therapist gets a URL to send to the client; the client pays
+    // on Square's hosted page; the row stays pending until either the
+    // client returns to the thanks redirect (verify-payment-link
+    // confirms and flips the row) OR the therapist manually marks
+    // paid. Webhook-driven auto-confirmation is a future enhancement.
+    if (useSquare) {
+      const { SquareProvider } = await import('../_shared/providers/square.ts');
+      const squareProvider = new SquareProvider(therapist as any);
+
+      const totalCents = amount_cents + tip_cents;
+      const redirectUrl = `https://mybodymap.app/pay-thanks?sp=${paymentRow.id}`;
+
+      try {
+        const checkoutResult = await squareProvider.createCheckoutLink({
+          therapist: therapist as any,
+          items: [
+            {
+              itemId: `pay-link-${paymentRow.id}`,
+              name: chargeContextLabel,
+              amountCents: amount_cents,
+              quantity: 1,
+              metadata: {
+                session_payment_id: paymentRow.id,
+                booking_id: booking_id || '',
+                member_subscription_id: member_subscription_id || '',
+                therapist_id,
+              },
+            },
+            ...(tip_cents > 0 ? [{
+              itemId: `pay-link-tip-${paymentRow.id}`,
+              name: 'Tip',
+              amountCents: tip_cents,
+              quantity: 1,
+              metadata: { session_payment_id: paymentRow.id, kind: 'tip' },
+            }] : []),
+          ],
+          customer: {
+            email: client_email || '',
+          },
+          redirectUrl,
+          metadata: {
+            session_payment_id: paymentRow.id,
+            therapist_id,
+          },
+          mode: 'payment',
+        });
+
+        // Save the Square link/order ids on the pending row so
+        // verify-payment-link can look up by either, and the receipt
+        // can show the Square dashboard order on reconciliation.
+        await supabase
+          .from('session_payments')
+          .update({
+            square_order_id: checkoutResult.paymentRefId,
+            payment_method_detail: checkoutResult.url,
+          })
+          .eq('id', paymentRow.id);
+
+        return respond({
+          success: true,
+          payment_link_url: checkoutResult.url,
+          payment_link_id: checkoutResult.providerSessionId,
+          session_payment_id: paymentRow.id,
+          provider: 'square',
+        });
+      } catch (squareErr: any) {
+        console.error('[create-payment-link] Square error', squareErr?.code, squareErr?.message);
+        // Roll back the pending row so we don't leave an orphan
+        await supabase.from('session_payments').delete().eq('id', paymentRow.id);
+        return respond({
+          error: squareErr?.message || 'square_payment_link_failed',
+          code: squareErr?.code,
+        }, 400);
+      }
+    }
+
+    // ─── Stripe path (untouched) ─────────────────────────────────────
+    if (!STRIPE_SECRET_KEY) return respond({ error: 'stripe_not_configured' }, 500);
 
     // Build Stripe Payment Link via direct API call (no SDK).
     // Two line items: the session amount and the tip (if any), each

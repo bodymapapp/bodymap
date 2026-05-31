@@ -45,6 +45,7 @@ import BookingPage from './pages/BookingPage';
 import BookingManage from './pages/BookingManage';
 import GiftLandingPage from './pages/GiftLandingPage';
 import DepositSuccess from './pages/DepositSuccess';
+import PayThanks from './pages/PayThanks';
 import ThankYou from './pages/ThankYou';
 import Feedback from './pages/Feedback';
 import CareSummary from './pages/CareSummary';
@@ -129,6 +130,10 @@ function App() {
               strings. The bare /dashboard/schedule route stays as
               backward-compat and "today" entry point. */}
           <Route path="/dashboard/schedule/:scheduleDate" element={<ProtectedRoute><Dashboard view="schedule" /></ProtectedRoute>} />
+          {/* HK May 31 2026 (Side panel A): full-page booking view. The
+              slide-over on /dashboard/schedule remains the primary
+              surface; this route is the deep-work alternative. */}
+          <Route path="/dashboard/schedule/booking/:bookingId" element={<ProtectedRoute><Dashboard view="booking-detail" /></ProtectedRoute>} />
           <Route path="/dashboard/billing" element={<ProtectedRoute><Dashboard view="billing" /></ProtectedRoute>} />
           <Route path="/dashboard/ai" element={<ProtectedRoute><Dashboard view="ai" /></ProtectedRoute>} />
           <Route path="/dashboard/clients/:clientId" element={<ProtectedRoute><Dashboard view="sessions" /></ProtectedRoute>} />
@@ -151,6 +156,7 @@ function App() {
           <Route path="/demo" element={<Demo />} />
           <Route path="/why-bodymap" element={<WhyBodyMap />} />
           <Route path="/deposit-success" element={<DepositSuccess />} />
+          <Route path="/pay-thanks" element={<PayThanks />} />
           <Route path="/admin" element={<ProtectedRoute><FounderDashboard /></ProtectedRoute>} />
           <Route path="/admin/emails" element={<ProtectedRoute><EmailReview /></ProtectedRoute>} />
           <Route path="/unsubscribe" element={<Unsubscribe />} />

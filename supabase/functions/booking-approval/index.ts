@@ -101,11 +101,16 @@ serve(async (req) => {
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
 
     // Load booking + therapist + service.
+    // HK May 31 2026 (Square Parity v1): pull Square credentials too so
+    // the approval-deposit charge can route through Square when the
+    // booking's card_on_file was saved via Square. Detection uses the
+    // booking.card_on_file_square_customer_id field (set at booking
+    // time when the client paid via Square's Web Payments SDK).
     const { data: booking } = await supabase
       .from('bookings')
       .select(`
         *,
-        therapists(id, full_name, business_name, custom_url, email, stripe_account_id, deposit_percent),
+        therapists(id, full_name, business_name, custom_url, email, stripe_account_id, square_access_token, square_location_id, square_merchant_id, square_connected, deposit_percent),
         services(name, duration, price)
       `)
       .eq('id', booking_id)
@@ -156,10 +161,103 @@ serve(async (req) => {
     // 'pending-deposit' (recovery path), not 'confirmed' (which would
     // leave the client thinking they're booked while the deposit silently
     // never landed). On success status becomes 'confirmed'.
+    //
+    // HK May 31 2026 (Square Parity v1): detect whether the card on file
+    // was saved via Square (card_on_file_square_customer_id present) or
+    // Stripe. Square path uses provider.chargeSavedCard via the
+    // abstraction. Stripe path stays inline and untouched.
+    const isSquareCardOnFile = !!booking.card_on_file_square_customer_id;
+
     if (isApproveDepositCase) {
-      const stripeAccountId = therapist?.stripe_account_id;
-      const STRIPE_SECRET = Deno.env.get('STRIPE_SECRET_KEY');
       const amountCents = Number(booking.deposit_amount);
+
+      // ─── Square branch ────────────────────────────────────────────
+      if (isSquareCardOnFile) {
+        if (!therapist?.square_access_token || !therapist.square_connected) {
+          chargeOutcome = 'failed';
+          chargeError = 'Square not configured on therapist account';
+        } else {
+          // Write the pending row (mirrors Stripe path shape).
+          try {
+            const { data: pendingRow } = await supabase
+              .from('session_payments')
+              .insert({
+                booking_id,
+                therapist_id: therapist.id,
+                client_id: booking.client_id,
+                amount_cents: amountCents,
+                tip_cents: 0,
+                payment_method: 'square_card_on_file',
+                payment_method_detail: 'Off-session deposit charge on approval',
+                status: 'pending',
+                created_by_therapist_id: therapist.id,
+              })
+              .select('id')
+              .single();
+            sessionPaymentId = pendingRow?.id || null;
+          } catch (e) {
+            console.warn('[booking-approval] failed to insert pending session_payments (Square)', e);
+          }
+
+          try {
+            const { SquareProvider } = await import('../_shared/providers/square.ts');
+            const squareProvider = new SquareProvider(therapist as any);
+            const idempotencyKey = `approve-deposit-${booking_id}`;
+
+            const chargeResult = await squareProvider.chargeSavedCard({
+              therapist: therapist as any,
+              providerCustomerId: booking.card_on_file_square_customer_id,
+              providerCardId: booking.card_on_file_payment_method_id,
+              amountCents,
+              idempotencyKey,
+              description: `Deposit on approval, ${service?.name || 'session'} with ${therapistName}`,
+              receiptEmail: booking.client_email || undefined,
+            });
+
+            if (chargeResult.paid) {
+              chargeOutcome = 'succeeded';
+              chargePaymentIntentId = chargeResult.paymentRefId;
+              if (sessionPaymentId) {
+                await supabase
+                  .from('session_payments')
+                  .update({
+                    status: 'succeeded',
+                    paid_at: new Date().toISOString(),
+                    square_payment_id: chargeResult.paymentRefId,
+                  })
+                  .eq('id', sessionPaymentId);
+              }
+            } else {
+              chargeOutcome = 'failed';
+              chargeError = 'Square charge did not complete (status not COMPLETED).';
+              if (sessionPaymentId) {
+                await supabase
+                  .from('session_payments')
+                  .update({
+                    status: 'failed',
+                    payment_method_detail: `Square off-session deposit failed`,
+                  })
+                  .eq('id', sessionPaymentId);
+              }
+            }
+          } catch (squareErr: any) {
+            chargeOutcome = 'failed';
+            chargeError = squareErr?.message || String(squareErr);
+            if (sessionPaymentId) {
+              await supabase
+                .from('session_payments')
+                .update({
+                  status: 'failed',
+                  payment_method_detail: `Square off-session deposit error: ${String(chargeError).slice(0, 400)}`,
+                })
+                .eq('id', sessionPaymentId);
+            }
+          }
+        }
+      } else {
+        // ─── Stripe path (untouched) ───────────────────────────────
+        const stripeAccountId = therapist?.stripe_account_id;
+        const STRIPE_SECRET = Deno.env.get('STRIPE_SECRET_KEY');
 
       if (!stripeAccountId || !STRIPE_SECRET) {
         chargeOutcome = 'failed';
@@ -263,6 +361,7 @@ serve(async (req) => {
           }
         }
       }
+      } // end of if (isSquareCardOnFile) / else (Stripe) branch
     }
 
     // ─── Decide final status ──────────────────────────────────────
