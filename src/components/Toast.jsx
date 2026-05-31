@@ -46,10 +46,14 @@ function ToastView({ message, tone = 'success', onDone, duration = 2600 }) {
       role="status"
       aria-live="polite"
       style={{
+        // HK May 31 2026: moved from bottom-center to top-center.
+        // Top placement is the convention for transient confirmations
+        // (Slack, Linear, GitHub, Notion all use top). Bottom-center
+        // conflicted with the mobile bottom nav and got missed.
         position: 'fixed',
         left: '50%',
-        bottom: 'calc(env(safe-area-inset-bottom, 0px) + 92px)',
-        transform: `translateX(-50%) translateY(${visible ? '0' : '10px'})`,
+        top: 'calc(env(safe-area-inset-top, 0px) + 18px)',
+        transform: `translateX(-50%) translateY(${visible ? '0' : '-10px'})`,
         opacity: visible ? 1 : 0,
         transition: 'opacity 0.3s ease, transform 0.3s ease',
         background: t.bg,

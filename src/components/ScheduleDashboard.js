@@ -4772,34 +4772,35 @@ function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled, show
   );
 }
 
-function TimelineView({ therapist, allAppts, dayOffset, setDayOffset, today, onReschedule, onRefresh, blockedDays = [], onCreateBlock, onScheduleAtTime }) {
+function TimelineView({ therapist, allAppts, dayOffset, setDayOffset, today, onReschedule, onRefresh, blockedDays = [], onCreateBlock, onScheduleAtTime, selectedBookingId = '', setSelectedBookingId }) {
   const { toast: tlToast, showToast: tlShowToast } = useToast();
-  const [selected,setSelected] = useState(null);
 
-  // HK May 31 2026: when allAppts refreshes (wake from background,
-  // realtime event, post-save refetch), the previously-selected booking
-  // may have a different shape (status changed, time changed, etc) or
-  // may no longer exist (cancelled, filtered out). If we keep rendering
-  // the panel against the stale `selected` object, sub-components see
-  // mismatched data and the panel appears to crash.
+  // HK May 31 2026: selected booking is DERIVED from selectedBookingId
+  // (URL-backed in parent). Single source of truth. The panel only
+  // closes when the user explicitly closes it via setSelectedBookingId('').
   //
-  // Sync the panel's `selected` to the fresh booking from allAppts on
-  // every refresh. If the booking is gone, close the panel cleanly.
-  // The "crash + lands on today" pattern reported was very likely this:
-  // sms: handler put PWA in background, realtime woke it, fetchBookings
-  // ran, selected pointed at stale data, sub-component threw.
-  useEffect(() => {
-    if (!selected) return;
-    const fresh = allAppts.find(a => a.id === selected.id);
-    if (!fresh) {
-      setSelected(null);
-      return;
-    }
-    if (fresh !== selected) {
-      setSelected(fresh);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [allAppts]);
+  // Why this matters: previously each view had its own local
+  // useState(null) for selected. A useEffect tried to "guard" against
+  // stale data by closing the panel when the booking wasn't in the
+  // current appointments array : but the panel was closing on every
+  // refetch race, every realtime event, every PWA wake. HK reported
+  // crashes and date-snaps that were really just panel-state-loss.
+  //
+  // Fix: panel state lives in the URL. Refetches don't touch URL.
+  // Realtime events don't touch URL. Wake/restore reads URL. Panel
+  // persists across all of these.
+  //
+  // If the URL has a booking ID but the booking isn't in current
+  // allAppts (e.g. cancelled, filtered to a different day), the
+  // panel stays HIDDEN (selected = undefined) but the URL keeps
+  // the id, so navigating back to that day surfaces it again.
+  const setSelected = (next) => {
+    const value = typeof next === 'function' ? next(null) : next;
+    if (setSelectedBookingId) setSelectedBookingId(value ? value.id : '');
+  };
+  const selected = selectedBookingId
+    ? allAppts.find(a => a.id === selectedBookingId) || null
+    : null;
   const [showLegend,setShowLegend] = useState(false);
   // Phase 9.2 long-press → create block. Tracking the active press and
   // the resulting draft block being confirmed in a sheet.
@@ -5485,21 +5486,20 @@ function TimelineView({ therapist, allAppts, dayOffset, setDayOffset, today, onR
   );
 }
 
-function WeeklyView({ therapist, appointments, today, onReschedule, onRefresh, blockedDays = [] }) {
+function WeeklyView({ therapist, appointments, today, onReschedule, onRefresh, blockedDays = [], selectedBookingId = '', setSelectedBookingId }) {
   const { toast: wkToast, showToast: wkShowToast } = useToast();
   const APPTS=appointments||[];
   const weekStartsOn = therapist?.week_starts_on ?? 0;
   const [weekOffset,setWeekOffset]=useState(0);
-  const [selected,setSelected]=useState(null);
 
-  // HK May 31 2026: panel stale-data guard. See TimelineView for why.
-  useEffect(() => {
-    if (!selected) return;
-    const fresh = APPTS.find(a => a.id === selected.id);
-    if (!fresh) { setSelected(null); return; }
-    if (fresh !== selected) setSelected(fresh);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [appointments]);
+  // HK May 31 2026: see TimelineView for why selected is URL-derived.
+  const setSelected = (next) => {
+    const value = typeof next === 'function' ? next(null) : next;
+    if (setSelectedBookingId) setSelectedBookingId(value ? value.id : '');
+  };
+  const selected = selectedBookingId
+    ? APPTS.find(a => a.id === selectedBookingId) || null
+    : null;
 
   const [showLegend,setShowLegend]=useState(false);
   const isMobile=window.innerWidth<640;
@@ -6130,22 +6130,21 @@ function WeeklyView({ therapist, appointments, today, onReschedule, onRefresh, b
   );
 }
 
-function MonthlyView({ therapist, appointments, today, onReschedule, onRefresh, blockedDays = [] }) {
+function MonthlyView({ therapist, appointments, today, onReschedule, onRefresh, blockedDays = [], selectedBookingId = '', setSelectedBookingId }) {
   const { toast: moToast, showToast: moShowToast } = useToast();
   const APPTS=appointments||[];
   const weekStartsOn = therapist?.week_starts_on ?? 0; // 0 = Sunday, 1 = Monday
   const [monthOffset,setMonthOffset]=useState(0);
   const [selDate,setSelDate]=useState(today);
-  const [selected,setSelected]=useState(null);
 
-  // HK May 31 2026: panel stale-data guard. See TimelineView for why.
-  useEffect(() => {
-    if (!selected) return;
-    const fresh = (appointments || []).find(a => a.id === selected.id);
-    if (!fresh) { setSelected(null); return; }
-    if (fresh !== selected) setSelected(fresh);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [appointments]);
+  // HK May 31 2026: see TimelineView for why selected is URL-derived.
+  const setSelected = (next) => {
+    const value = typeof next === 'function' ? next(null) : next;
+    if (setSelectedBookingId) setSelectedBookingId(value ? value.id : '');
+  };
+  const selected = selectedBookingId
+    ? APPTS.find(a => a.id === selectedBookingId) || null
+    : null;
 
   const viewMonth=new Date(today.getFullYear(),today.getMonth()+monthOffset,1);
   const daysInMonth=new Date(viewMonth.getFullYear(),viewMonth.getMonth()+1,0).getDate();
@@ -7420,16 +7419,17 @@ export default function ScheduleDashboard({ therapist }) {
   };
 
   const initialState = (() => {
+    const bookingIdFromQuery = searchParams.get('b') || '';
     // 1. Path param wins
     const fromPath = dateStringToOffset(routeParams.scheduleDate);
     const viewParam = searchParams.get('view');
     if (fromPath !== null) {
-      return { dayOffset: fromPath, subView: viewParam || 'today' };
+      return { dayOffset: fromPath, subView: viewParam || 'today', bookingId: bookingIdFromQuery };
     }
     // 2. Legacy ?d= query param
     const fromQuery = dateStringToOffset(searchParams.get('d'));
     if (fromQuery !== null) {
-      return { dayOffset: fromQuery, subView: viewParam || 'today' };
+      return { dayOffset: fromQuery, subView: viewParam || 'today', bookingId: bookingIdFromQuery };
     }
     // 3. sessionStorage backup
     try {
@@ -7441,37 +7441,64 @@ export default function ScheduleDashboard({ therapist }) {
           return {
             dayOffset: stored.dayOffset,
             subView: stored.subView || 'today',
+            bookingId: bookingIdFromQuery || stored.bookingId || '',
           };
         }
       }
     } catch (_) {}
-    return { dayOffset: 0, subView: 'today' };
+    return { dayOffset: 0, subView: 'today', bookingId: searchParams.get('b') || '' };
   })();
 
   const [subView, setSubViewRaw] = useState(initialState.subView);
   const [dayOffset, setDayOffsetRaw] = useState(initialState.dayOffset);
 
+  // HK May 31 2026: top-level selectedBookingId state : single source
+  // of truth for "which booking is open in the side panel." The actual
+  // panel state in TimelineView/WeeklyView/MonthlyView is now derived
+  // from this. URL-backed via ?b= param. Survives every remount.
+  // Empty string = no booking selected (panel closed).
+  const [selectedBookingId, setSelectedBookingIdRaw] = useState(initialState.bookingId || '');
+
+  // Refs mirror current state for use inside stable callbacks. Avoids
+  // stale closures that captured an old value at setter-definition
+  // time. Critical when setDayOffset is called from a useEffect that
+  // depended on appointments : the closure was made when subView was
+  // 'today' and dayOffset was 0, even though current state is different.
+  const subViewRef = useRef(subView);
+  const dayOffsetRef = useRef(dayOffset);
+  const selectedBookingIdRef = useRef(selectedBookingId);
+  useEffect(() => { subViewRef.current = subView; }, [subView]);
+  useEffect(() => { dayOffsetRef.current = dayOffset; }, [dayOffset]);
+  useEffect(() => { selectedBookingIdRef.current = selectedBookingId; }, [selectedBookingId]);
+
   // Single source of truth writer: navigates to the canonical path
-  // form and updates sessionStorage. Used by both setDayOffset and
-  // setSubView so they stay in lockstep.
-  const persistState = (offset, view) => {
-    const basePath = '/dashboard/schedule';
-    const pathWithDate = offset === 0
-      ? basePath
-      : `${basePath}/${offsetToDateString(offset)}`;
+  // form and updates sessionStorage. Used by setDayOffset, setSubView,
+  // and setSelected so they stay in lockstep.
+  //
+  // HK May 31 2026: ALWAYS include the date in the path, even for
+  // today's date. React Router 6 treats /dashboard/schedule and
+  // /dashboard/schedule/:scheduleDate as DIFFERENT route matches,
+  // and remounts the component tree when transitioning between them.
+  // The remount re-reads URL on initialState and the missing date
+  // param defaulted to today, snapping the user out of June and
+  // back to May. By always using the date-path form, the matched
+  // route is stable - no remount on Today button, no remount on
+  // date changes within the same route shape.
+  const persistState = (offset, view, bookingId) => {
+    const dateStr = offsetToDateString(offset);
+    const pathWithDate = `/dashboard/schedule/${dateStr}`;
     const sp = new URLSearchParams();
     if (view !== 'today') sp.set('view', view);
+    if (bookingId) sp.set('b', bookingId);
     const search = sp.toString() ? `?${sp.toString()}` : '';
     const target = pathWithDate + search;
 
-    // Only navigate if the URL would actually change. Avoids extra
-    // history entries during initial sync.
     if (routeLocation.pathname + routeLocation.search !== target) {
       routeNavigate(target, { replace: true });
     }
     try {
       sessionStorage.setItem(STORAGE_KEY, JSON.stringify({
-        dayOffset: offset, subView: view, at: Date.now(),
+        dayOffset: offset, subView: view, bookingId: bookingId || null, at: Date.now(),
       }));
     } catch (_) {}
   };
@@ -7479,7 +7506,9 @@ export default function ScheduleDashboard({ therapist }) {
   const setDayOffset = (next) => {
     setDayOffsetRaw((prev) => {
       const value = typeof next === 'function' ? next(prev) : next;
-      persistState(value, subView);
+      // Use refs to read CURRENT subView and bookingId, not the captured
+      // closure values. Prevents the URL from overwriting with stale state.
+      persistState(value, subViewRef.current, selectedBookingIdRef.current);
       return value;
     });
   };
@@ -7487,39 +7516,56 @@ export default function ScheduleDashboard({ therapist }) {
   const setSubView = (next) => {
     setSubViewRaw((prev) => {
       const value = typeof next === 'function' ? next(prev) : next;
-      persistState(dayOffset, value);
+      persistState(dayOffsetRef.current, value, selectedBookingIdRef.current);
       return value;
     });
   };
 
-  // On mount: if path didn't have the date but we restored from
-  // sessionStorage or legacy ?d=, write the canonical path so the
-  // URL bar reflects truth and the next refresh starts from a
-  // good place.
+  const setSelectedBookingId = (next) => {
+    setSelectedBookingIdRaw((prev) => {
+      const value = typeof next === 'function' ? next(prev) : next;
+      persistState(dayOffsetRef.current, subViewRef.current, value || '');
+      return value;
+    });
+  };
+
+  // On mount: canonicalize URL to /dashboard/schedule/<date>?b=<id>
+  // form. Without this, arriving via the bare /dashboard/schedule
+  // path stays bare until first action, and React Router treats that
+  // bare path as a different route from the date-in-path version,
+  // causing a remount when the first action writes the date URL.
   useEffect(() => {
     const fromPath = dateStringToOffset(routeParams.scheduleDate);
-    if (fromPath === null && initialState.dayOffset !== 0) {
-      persistState(initialState.dayOffset, initialState.subView);
+    if (fromPath === null) {
+      // No date in path. Write the canonical form using either the
+      // restored sessionStorage offset or today.
+      persistState(initialState.dayOffset, initialState.subView, initialState.bookingId || '');
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Sync state back from URL if it changes externally (browser back/
-  // forward, deep-link from a notification, etc). Path is the
-  // authority here.
+  // forward, deep-link from a notification, etc). Path + ?b= are the
+  // authority here. State follows.
   useEffect(() => {
     const fromPath = dateStringToOffset(routeParams.scheduleDate);
     const target = fromPath !== null ? fromPath : 0;
     if (target !== dayOffset) {
       setDayOffsetRaw(target);
-      try {
-        sessionStorage.setItem(STORAGE_KEY, JSON.stringify({
-          dayOffset: target, subView, at: Date.now(),
-        }));
-      } catch (_) {}
+      dayOffsetRef.current = target;
     }
+    const urlBookingId = searchParams.get('b') || '';
+    if (urlBookingId !== selectedBookingId) {
+      setSelectedBookingIdRaw(urlBookingId);
+      selectedBookingIdRef.current = urlBookingId;
+    }
+    try {
+      sessionStorage.setItem(STORAGE_KEY, JSON.stringify({
+        dayOffset: target, subView, bookingId: urlBookingId || null, at: Date.now(),
+      }));
+    } catch (_) {}
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [routeParams.scheduleDate]);
+  }, [routeParams.scheduleDate, searchParams]);
 
   const [realBookings,setRealBookings]=useState(null);
   const [pendingApprovalBookings,setPendingApprovalBookings]=useState([]);
@@ -8712,9 +8758,9 @@ export default function ScheduleDashboard({ therapist }) {
 
             {/* RIGHT PANE: tab-selected calendar/insights view. */}
             <div style={{ minWidth: 0 }}>
-              {subView==='today'   &&<TimelineView therapist={therapist} allAppts={allAppts} dayOffset={dayOffset} setDayOffset={setDayOffset} today={today} onReschedule={setRescheduleAppt} onRefresh={fetchBookings} blockedDays={blockedDays} onCreateBlock={addBlockedDay} onScheduleAtTime={setPendingBookingTime}/>}
-              {subView==='weekly'  &&<WeeklyView therapist={therapist} appointments={allAppts} today={today} onReschedule={setRescheduleAppt} onRefresh={fetchBookings} blockedDays={blockedDays}/>}
-              {subView==='monthly' &&<MonthlyView therapist={therapist} appointments={allAppts} today={today} onReschedule={setRescheduleAppt} onRefresh={fetchBookings} blockedDays={blockedDays}/>}
+              {subView==='today'   &&<TimelineView therapist={therapist} allAppts={allAppts} dayOffset={dayOffset} setDayOffset={setDayOffset} today={today} onReschedule={setRescheduleAppt} onRefresh={fetchBookings} blockedDays={blockedDays} onCreateBlock={addBlockedDay} onScheduleAtTime={setPendingBookingTime} selectedBookingId={selectedBookingId} setSelectedBookingId={setSelectedBookingId}/>}
+              {subView==='weekly'  &&<WeeklyView therapist={therapist} appointments={allAppts} today={today} onReschedule={setRescheduleAppt} onRefresh={fetchBookings} blockedDays={blockedDays} selectedBookingId={selectedBookingId} setSelectedBookingId={setSelectedBookingId}/>}
+              {subView==='monthly' &&<MonthlyView therapist={therapist} appointments={allAppts} today={today} onReschedule={setRescheduleAppt} onRefresh={fetchBookings} blockedDays={blockedDays} selectedBookingId={selectedBookingId} setSelectedBookingId={setSelectedBookingId}/>}
               {subView==='yearly'  &&<YearlyView therapist={therapist} appointments={allAppts} today={today} blockedDays={blockedDays}/>}
               {subView==='insights'&&<InsightsView appointments={allAppts}/>}
             </div>
