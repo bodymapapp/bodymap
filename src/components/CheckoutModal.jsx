@@ -766,24 +766,48 @@ export default function CheckoutModal({
       // this, payments via Checkout produced zero notifications because
       // charge-card doesn't notify (it's a pure provider call) and
       // the client-side insert was fire-and-forget.
-      const { data: insertedPayment } = await supabase.from('session_payments').insert({
-        ...buildPaymentContext(packageRow?.id || null),
-        therapist_id: therapist.id,
-        client_id: client.id,
-        amount_cents: amountCents,
-        tip_cents: tipCents,
-        payment_method: isSquareCard ? 'square_card_on_file' : 'stripe_card_on_file',
-        payment_method_detail: `${cardOnFile.brand} ${cardOnFile.last4}`,
-        stripe_payment_intent_id: isSquareCard ? null : (data.payment_intent_id || null),
-        status: 'succeeded',
-        paid_at: new Date().toISOString(),
-        created_by_therapist_id: therapist.id,
-      }).select('id').single();
+      // HK May 31 2026: see chargeNewCardSquare comment block. Same
+      // audit-gap fix here. Card on file path serves both Stripe and
+      // Square; either provider charged the card before this insert.
+      const providerPaymentId = data.payment_id || data.payment_intent_id || null;
+      const { data: insertedPayment, error: insertErr } = await supabase
+        .from('session_payments')
+        .insert({
+          ...buildPaymentContext(packageRow?.id || null),
+          therapist_id: therapist.id,
+          client_id: client.id,
+          amount_cents: amountCents,
+          tip_cents: tipCents,
+          payment_method: isSquareCard ? 'square_card_on_file' : 'stripe_card_on_file',
+          payment_method_detail: `${cardOnFile.brand} ${cardOnFile.last4}`,
+          stripe_payment_intent_id: isSquareCard ? null : (data.payment_intent_id || null),
+          status: 'succeeded',
+          paid_at: new Date().toISOString(),
+          created_by_therapist_id: therapist.id,
+        })
+        .select('id')
+        .single();
 
-      if (insertedPayment?.id) {
-        firePaymentNotification(insertedPayment.id);
-        await resolveRenewalAsPaid(insertedPayment.id);
+      if (insertErr || !insertedPayment?.id) {
+        // eslint-disable-next-line no-console
+        console.error('[CheckoutModal] session_payments INSERT failed after card-on-file charge succeeded.', {
+          providerPaymentId,
+          provider: isSquareCard ? 'square' : 'stripe',
+          insertErr,
+          therapist_id: therapist.id,
+          client_id: client.id,
+          booking_id: appt?.id,
+          amount_cents: amountCents,
+        });
+        const msg = insertErr?.message || 'unknown';
+        const ref = providerPaymentId ? ` Provider payment ID: ${providerPaymentId}.` : '';
+        throw new Error(
+          `Card was charged but the payment record could not be saved (${msg}).${ref} Please contact support.`
+        );
       }
+
+      firePaymentNotification(insertedPayment.id);
+      await resolveRenewalAsPaid(insertedPayment.id);
       if (packageRow && onPackageCreated) {
         onPackageCreated(packageRow);
       }
@@ -939,24 +963,47 @@ export default function CheckoutModal({
       // since this is the 'entered fresh at checkout' code path even
       // though the card was also saved for future use.
       // Phase 15.2: capture id, fire payment_received notification.
-      const { data: insertedPayment } = await supabase.from('session_payments').insert({
-        ...buildPaymentContext(packageRow?.id || null),
-        therapist_id: therapist.id,
-        client_id: client.id,
-        amount_cents: amountCents,
-        tip_cents: tipCents,
-        payment_method: 'stripe_card_new',
-        payment_method_detail: cardDetail,
-        stripe_payment_intent_id: chargeData.payment_intent_id || null,
-        status: 'succeeded',
-        paid_at: new Date().toISOString(),
-        created_by_therapist_id: therapist.id,
-      }).select('id').single();
+      // HK May 31 2026: same audit-gap fix. If insert fails after the
+      // Stripe charge already succeeded, surface that clearly so the
+      // therapist can reconcile manually with the Stripe payment intent.
+      const stripePaymentIntentId = chargeData.payment_intent_id || null;
+      const { data: insertedPayment, error: insertErr } = await supabase
+        .from('session_payments')
+        .insert({
+          ...buildPaymentContext(packageRow?.id || null),
+          therapist_id: therapist.id,
+          client_id: client.id,
+          amount_cents: amountCents,
+          tip_cents: tipCents,
+          payment_method: 'stripe_card_new',
+          payment_method_detail: cardDetail,
+          stripe_payment_intent_id: stripePaymentIntentId,
+          status: 'succeeded',
+          paid_at: new Date().toISOString(),
+          created_by_therapist_id: therapist.id,
+        })
+        .select('id')
+        .single();
 
-      if (insertedPayment?.id) {
-        firePaymentNotification(insertedPayment.id);
-        await resolveRenewalAsPaid(insertedPayment.id);
+      if (insertErr || !insertedPayment?.id) {
+        // eslint-disable-next-line no-console
+        console.error('[CheckoutModal] session_payments INSERT failed after Stripe charge succeeded.', {
+          stripePaymentIntentId,
+          insertErr,
+          therapist_id: therapist.id,
+          client_id: client.id,
+          booking_id: appt?.id,
+          amount_cents: amountCents,
+        });
+        const msg = insertErr?.message || 'unknown';
+        const ref = stripePaymentIntentId ? ` Stripe payment intent: ${stripePaymentIntentId}.` : '';
+        throw new Error(
+          `Card was charged but the payment record could not be saved (${msg}).${ref} Please contact support.`
+        );
       }
+
+      firePaymentNotification(insertedPayment.id);
+      await resolveRenewalAsPaid(insertedPayment.id);
       if (packageRow && onPackageCreated) {
         onPackageCreated(packageRow);
       }
@@ -1092,27 +1139,57 @@ export default function CheckoutModal({
         packageRow = await createPackagePurchaseRow();
       }
 
-      const { data: insertedPayment } = await supabase.from('session_payments').insert({
-        ...buildPaymentContext(packageRow?.id || null),
-        therapist_id: therapist.id,
-        client_id: client.id,
-        amount_cents: amountCents,
-        tip_cents: tipCents,
-        payment_method: 'square_card_new',
-        payment_method_detail: cardDetail,
-        // Note: session_payments.square_payment_id column doesn't exist
-        // yet. The Square payment_id from chargeData.payment_id IS in
-        // Square's dashboard for reconciliation; we'll add a column to
-        // store it locally in a followup migration so reports can join.
-        status: 'succeeded',
-        paid_at: new Date().toISOString(),
-        created_by_therapist_id: therapist.id,
-      }).select('id').single();
+      // Insert the session_payments record. Critical: if this fails
+      // after Square already charged, we have an audit gap: money out
+      // of the client, no local record. We must surface that clearly
+      // so the therapist can manually reconcile. The Square payment_id
+      // is included in the toast and console for evidence.
+      // HK May 31 2026: previously this code destructured `{ data }`
+      // only and silently ignored `error`. Result: when insert failed
+      // for ANY reason (RLS, FK, column mismatch), the user saw the
+      // success state but no record existed. Customer-blocking audit
+      // bug. Now we destructure both and act on errors explicitly.
+      const squarePaymentId = chargeData.payment_id || null;
+      const { data: insertedPayment, error: insertErr } = await supabase
+        .from('session_payments')
+        .insert({
+          ...buildPaymentContext(packageRow?.id || null),
+          therapist_id: therapist.id,
+          client_id: client.id,
+          amount_cents: amountCents,
+          tip_cents: tipCents,
+          payment_method: 'square_card_new',
+          payment_method_detail: cardDetail,
+          status: 'succeeded',
+          paid_at: new Date().toISOString(),
+          created_by_therapist_id: therapist.id,
+        })
+        .select('id')
+        .single();
 
-      if (insertedPayment?.id) {
-        firePaymentNotification(insertedPayment.id);
-        await resolveRenewalAsPaid(insertedPayment.id);
+      if (insertErr || !insertedPayment?.id) {
+        // eslint-disable-next-line no-console
+        console.error('[CheckoutModal] session_payments INSERT failed after Square charge succeeded.', {
+          squarePaymentId,
+          insertErr,
+          therapist_id: therapist.id,
+          client_id: client.id,
+          booking_id: appt?.id,
+          amount_cents: amountCents,
+          payment_method: 'square_card_new',
+        });
+        const msg = insertErr?.message || 'unknown';
+        const ref = squarePaymentId ? ` Square payment ID: ${squarePaymentId}.` : '';
+        // Throw so we land in the catch and show error to user, NOT
+        // success. The Square charge stands; the therapist can manually
+        // record via Mark as paid using the Square payment ID.
+        throw new Error(
+          `Card was charged but the payment record could not be saved (${msg}).${ref} Please contact support.`
+        );
       }
+
+      firePaymentNotification(insertedPayment.id);
+      await resolveRenewalAsPaid(insertedPayment.id);
       if (packageRow && onPackageCreated) {
         onPackageCreated(packageRow);
       }
