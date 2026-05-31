@@ -3277,6 +3277,13 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
   // SettingsPanel self-contained without threading stats props in.
   // HK May 23 2026: dual-placement decision, checklist renders both
   // here (above 'How I practice') and on the home tab.
+
+  // HK May 31 2026: two-step inline confirm for disconnecting Stripe.
+  // First click flips to true. Second click runs the disconnect.
+  // 4s timeout reverts to false so an armed button doesn't sit waiting
+  // if the therapist navigates away or changes their mind.
+  const [stripeDisconnectArmed, setStripeDisconnectArmed] = React.useState(false);
+
   const [onboardingState, setOnboardingState] = React.useState({
     services: [],
     availability: [],
@@ -4855,18 +4862,61 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
                     <div style={{ fontSize:'11px', color:'#6B7280' }}>Deposits, packages, memberships, cards on file all enabled</div>
                   </div>
                 </div>
-                <a
-                  href="https://dashboard.stripe.com/"
-                  target="_blank"
-                  rel="noreferrer"
-                  style={{ background:'transparent', border:'1px solid #BBF7D0', color:'#065F46', borderRadius:8, padding:'5px 12px', fontSize:'12px', fontWeight:'600', cursor:'pointer', textDecoration:'none', whiteSpace:'nowrap' }}
-                  title="Open your Stripe dashboard in a new tab"
-                >
-                  Manage in Stripe →
-                </a>
+                <div style={{ display:'flex', alignItems:'center', gap:6 }}>
+                  <a
+                    href="https://dashboard.stripe.com/"
+                    target="_blank"
+                    rel="noreferrer"
+                    style={{ background:'transparent', border:'1px solid #BBF7D0', color:'#065F46', borderRadius:8, padding:'5px 12px', fontSize:'12px', fontWeight:'600', cursor:'pointer', textDecoration:'none', whiteSpace:'nowrap' }}
+                    title="Open your Stripe dashboard in a new tab"
+                  >
+                    Manage in Stripe →
+                  </a>
+                  {/* HK May 31 2026: Disconnect Stripe was previously
+                      hidden to prevent accidental disconnects. But there
+                      is no way for a therapist to switch processors
+                      (e.g. Stripe -> Square) without contacting support.
+                      Two-button pattern: primary green Manage stays
+                      where the eye lands; muted gray Disconnect is
+                      visually demoted but available.
+                      Inline two-step confirm (no window.confirm, no
+                      browser popup). First click flips the button into
+                      an explicit "Yes, disconnect" state. Second click
+                      runs the disconnect. Click outside or wait 4s and
+                      the button reverts. */}
+                  {stripeDisconnectArmed ? (
+                    <button
+                      onClick={async () => {
+                        await updateProfile({
+                          stripe_account_id: null,
+                          stripe_account_connected: false,
+                          stripe_charges_enabled: false,
+                          stripe_payouts_enabled: false,
+                        });
+                        setStripeDisconnectArmed(false);
+                      }}
+                      style={{ background:'#B91C1C', color:'#fff', border:'none', borderRadius:8, padding:'5px 12px', fontSize:'12px', fontWeight:'700', cursor:'pointer', whiteSpace:'nowrap' }}
+                      title="This will not affect your Stripe account itself. It only unlinks it from MyBodyMap. You can reconnect anytime."
+                    >
+                      Yes, disconnect
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => {
+                        setStripeDisconnectArmed(true);
+                        // Auto-revert if not confirmed within 4s
+                        setTimeout(() => setStripeDisconnectArmed(false), 4000);
+                      }}
+                      style={{ background:'transparent', border:'1px solid #D1D5DB', color:'#6B7280', borderRadius:8, padding:'5px 12px', fontSize:'12px', fontWeight:'600', cursor:'pointer', whiteSpace:'nowrap' }}
+                      title="Unlink Stripe from MyBodyMap. Does not delete your Stripe account."
+                    >
+                      Disconnect
+                    </button>
+                  )}
+                </div>
               </div>
               <div style={{ marginTop:8, fontSize:10.5, color:'#6B7280', lineHeight:1.55 }}>
-                To change your payout bank or update business info, manage your account directly in Stripe. To switch to a different Stripe account, contact us at hello@mybodymap.app.
+                To change your payout bank or update business info, manage your account directly in Stripe. Disconnecting only unlinks Stripe from MyBodyMap, it does not delete your Stripe account or any transaction history.
               </div>
             </div>
           ) : therapist?.stripe_account_id ? (
