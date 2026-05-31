@@ -101,27 +101,24 @@ serve(async (req) => {
     square_connected: true,
   }).eq('id', therapistId);
 
-  // HK May 31 2026: success response is INVISIBLE. Previously this
-  // rendered a "Square Connected" card with a green checkmark + "All
-  // set" copy + auto-close after 800-1200ms. Two problems HK called
-  // out:
-  //   1. Checkmark glyph (U+2713) rendered as mojibake "âœ"" in some
-  //      browsers regardless of charset header + meta tag.
-  //   2. Just SEEING the page after the Square allow screen is bad CX.
-  //      It interrupts the flow. The user expects: tap Connect, see
-  //      Square allow, done. Not: tap Connect, see Square allow, see
-  //      another success page they have to dismiss or wait through.
+  // HK May 31 2026: page must be invisible (no checkmark glyph
+  // to mojibake, no copy to render). Previous version gated the
+  // redirect behind the "is this a popup?" check, which left
+  // tab/redirect flows stranded when window.close() silently
+  // failed on a tab not opened via window.open.
   //
-  // New behavior: empty cream backdrop (matches app, no jarring white),
-  // INSTANT postMessage+close for popup case, INSTANT redirect for
-  // non-popup case via meta refresh AND location.replace as belt-and-
-  // suspenders. No checkmark, no copy, no delay. Total visible time:
-  // a single paint cycle, imperceptible.
+  // New behavior: ALWAYS redirect. The script attempts postMessage
+  // and close for the popup case (the receiver listener on the
+  // dashboard side handles "this was a popup so I should refresh
+  // myself"), and unconditionally calls location.replace
+  // afterward so the current window navigates to the dashboard
+  // regardless. Meta refresh content="0" is the no-JS safety
+  // net. Three independent paths, all aiming at the dashboard.
   //
-  // Fallback for stuck cases (popup blocker reset window.opener AND
-  // location.replace blocked): the meta refresh at content="0" still
-  // navigates the page to the dashboard. Therapist may briefly see a
-  // blank cream screen but never gets stuck.
+  // Visible time on this page: one paint cycle in the popup case
+  // (window.close succeeds before paint), or one paint cycle
+  // followed by redirect in the tab case. Imperceptible either
+  // way.
   const dashboardUrl = 'https://mybodymap.app/dashboard?square=connected';
   return new Response(`<!DOCTYPE html>
 <html lang="en">
@@ -134,16 +131,19 @@ serve(async (req) => {
 <body>
 <script>
 (function(){
+  var url = ${JSON.stringify(dashboardUrl)};
+  // Popup case: tell opener and try to close. Best effort.
   try {
     if (window.opener && !window.opener.closed) {
       window.opener.postMessage({type:'square-oauth-success'}, '*');
       window.close();
-    } else {
-      window.location.replace(${JSON.stringify(dashboardUrl)});
     }
-  } catch(_e) {
-    window.location.replace(${JSON.stringify(dashboardUrl)});
-  }
+  } catch(_e) {}
+  // Always redirect this window. If close() succeeded above, this
+  // is a no-op on a closed window. If it failed (tab flow or
+  // browser blocked close), this is the redirect that actually
+  // moves the user forward.
+  try { window.location.replace(url); } catch(_e) { window.location.href = url; }
 })();
 </script>
 </body>
