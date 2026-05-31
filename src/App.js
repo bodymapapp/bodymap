@@ -21,6 +21,7 @@ import Dashboard from './pages/Dashboard';
 import IntakeEditor from './pages/IntakeEditor';
 import PracticeAgreementPrint from './pages/PracticeAgreementPrint';
 import AgreementSign from './pages/AgreementSign';
+import IntakeRedirect from './pages/IntakeRedirect';
 import CalConnect from './pages/CalConnect';
 import StripeConnect from './pages/StripeConnect';
 import StripeConnectStandard from './pages/StripeConnectStandard';
@@ -114,6 +115,11 @@ function App() {
           <Route path="/dashboard/practice-agreement/print" element={<ProtectedRoute><PracticeAgreementPrint /></ProtectedRoute>} />
           <Route path="/agreement-sign/:token" element={<AgreementSign />} />
           <Route path="/s/:code" element={<AgreementSign />} />
+          {/* HK May 31 2026: short link for intake forms. Mirrors /s/
+              for agreements. Redirects to /<therapist-slug>?name=...&
+              email=...&booking_id=... so the in-message link reads
+              clean instead of a 200-char monster. */}
+          <Route path="/i/:code" element={<IntakeRedirect />} />
           <Route path="/dashboard/gifts" element={<ProtectedRoute><Dashboard view="gifts" /></ProtectedRoute>} />
           <Route path="/dashboard/outreach" element={<ProtectedRoute><Dashboard view="outreach" /></ProtectedRoute>} />
           <Route path="/dashboard/schedule" element={<ProtectedRoute><Dashboard view="schedule" /></ProtectedRoute>} />

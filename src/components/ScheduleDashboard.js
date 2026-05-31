@@ -1699,17 +1699,36 @@ function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled, show
       const link = `${window.location.origin}/s/${req.short_code || shortCode}`;
       if (channel === 'email') {
         if (clientRow.email) {
-          supabase.functions.invoke('send-agreement-email', {
-            body: {
-              short_code: req.short_code || shortCode,
-              therapist_id: therapist.id,
-              client_email: clientRow.email,
-              client_name: clientRow.name || null,
-              link,
-            },
-          }).catch(() => { /* non-blocking */ });
+          // HK May 31 2026: previously this was fire-and-forget with
+          // .catch(()=>{}) which silently hid every failure. Toast
+          // showed "sent" whether the email went out or not. The
+          // edge function returns ok: true / false in the body, so
+          // we await and check.
+          try {
+            const { data: fnData, error: fnErr } = await supabase.functions.invoke('send-agreement-email', {
+              body: {
+                short_code: req.short_code || shortCode,
+                therapist_id: therapist.id,
+                client_email: clientRow.email,
+                client_name: clientRow.name || null,
+                link,
+              },
+            });
+            if (fnErr || !fnData?.ok) {
+              const detail = fnErr?.message || fnData?.error || 'email delivery failed';
+              console.error('[sendAgreement email]', detail);
+              try { await navigator.clipboard.writeText(link); } catch (_) {}
+              notify('Email did not send. Link copied so you can paste it.');
+              return;
+            }
+          } catch (e) {
+            console.error('[sendAgreement email] threw:', e);
+            try { await navigator.clipboard.writeText(link); } catch (_) {}
+            notify('Email did not send. Link copied so you can paste it.');
+            return;
+          }
         }
-        try { await navigator.clipboard.writeText(link); } catch (_e) { /* clipboard may be blocked */ }
+        try { await navigator.clipboard.writeText(link); } catch (_e) {}
         notify('Agreement email sent and link copied');
       } else if (channel === 'sms') {
         // Open the sms: handler with the link prefilled. The therapist
@@ -1723,6 +1742,70 @@ function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled, show
       notify('Could not send agreement, try again');
     } finally {
       setSendingAgreement(false);
+    }
+  }
+
+  // HK May 31 2026: short-link intake delivery.
+  //
+  // Previously the SMS and Email pills put a raw 200+ char URL in the
+  // message body (intakeLink with name/email/booking_id stuffed as
+  // query params). HK called this 'horrible' and 'unprofessional.'
+  //
+  // Now we create an intake_send_requests row with a 7-char short_code,
+  // and the message body says https://mybodymap.app/i/<code>. When the
+  // client opens the short URL, IntakeRedirect.jsx looks up the row
+  // and redirects them to the actual intake form with name/email/
+  // booking_id prefilled. Mirrors the sendAgreement pattern.
+  const [sendingIntake, setSendingIntake] = useState(false);
+  async function sendIntake(channel) {
+    if (sendingIntake) return;
+    if (!clientRow?.id || !therapist?.id) {
+      notify('Open this booking again after the client record loads');
+      return;
+    }
+    setSendingIntake(channel);
+    try {
+      const alphabet = 'abcdefghjkmnpqrstuvwxyz23456789';
+      const codeBytes = crypto.getRandomValues(new Uint8Array(7));
+      const shortCode = Array.from(codeBytes)
+        .map(b => alphabet[b % alphabet.length])
+        .join('');
+      const { data: req, error: insErr } = await supabase
+        .from('intake_send_requests')
+        .insert({
+          short_code: shortCode,
+          therapist_id: therapist.id,
+          therapist_slug: therapist.custom_url,
+          client_id: clientRow.id,
+          client_name: clientRow.name || null,
+          client_email: clientRow.email || null,
+          client_phone: clientRow.phone || null,
+          booking_id: appt.id,
+        })
+        .select('short_code')
+        .single();
+      if (insErr) throw insErr;
+      const link = `${window.location.origin}/i/${req.short_code || shortCode}`;
+      const firstNameLocal = (clientRow.name || appt.client || '').split(' ')[0] || 'there';
+      const messageBody = `Hi ${firstNameLocal}! Please fill your intake form before your session: ${link}`;
+      if (channel === 'email') {
+        if (clientRow.email) {
+          const subj = encodeURIComponent('Your intake form');
+          const body = encodeURIComponent(messageBody);
+          window.location.href = `mailto:${clientRow.email}?subject=${subj}&body=${body}`;
+        }
+        try { await navigator.clipboard.writeText(link); } catch (_e) {}
+        notify('Intake link copied');
+      } else if (channel === 'sms') {
+        const phone = clientRow.phone || '';
+        const body = encodeURIComponent(messageBody);
+        window.location.href = `sms:${phone}&body=${body}`;
+      }
+    } catch (e) {
+      console.error('[sendIntake]', e);
+      notify('Could not create intake link, try again');
+    } finally {
+      setSendingIntake(false);
     }
   }
 
@@ -2984,8 +3067,8 @@ function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled, show
                       <span style={{ fontSize: 11, color: '#9CA3AF', fontStyle: 'italic' }}>No contact on file</span>
                     ) : (
                       <div style={pillRow}>
-                        {pill('Email', '📧', hasEmail ? `mailto:${clientEmail}?subject=${intakeMailtoSubject}&body=${intakeMailtoBody}` : null, null, !hasEmail)}
-                        {pill('SMS', '💬', hasPhone ? `sms:${clientPhone}&body=${intakeSmsBody}` : null, null, !hasPhone)}
+                        {pill('Email', '📧', null, hasEmail ? () => sendIntake('email') : null, !hasEmail || !!sendingIntake)}
+                        {pill('SMS', '💬', null, hasPhone ? () => sendIntake('sms') : null, !hasPhone || !!sendingIntake)}
                       </div>
                     )}
                   </div>
