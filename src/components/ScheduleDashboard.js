@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { supabase, db } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import BookingModal from './BookingModal';
@@ -2137,6 +2138,9 @@ function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled, show
     }
     setSavingTime(false);
     setEditTime(false);
+    if (Object.keys(updates).length) {
+      notify('Saved');
+    }
     onCancelled?.();
   }
 
@@ -2428,6 +2432,7 @@ function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled, show
 
     setSavingService(false);
     setEditService(false);
+    notify('Saved');
     onCancelled?.();
   }
 
@@ -2494,6 +2499,7 @@ function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled, show
       }
 
       setShowPackageLinkPanel(false);
+      notify('Package linked');
       onCancelled?.();
     } catch (err) {
       console.error('linkBookingToPackage failed:', err);
@@ -2559,6 +2565,7 @@ function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled, show
       }
 
       setShowPackageLinkPanel(false);
+      notify('Package unlinked');
       onCancelled?.();
     } catch (err) {
       console.error('unlinkBookingFromPackage failed:', err);
@@ -3930,6 +3937,8 @@ function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled, show
                               console.error('[intake-waive] booking update failed:');
                               console.error('  code:', bkErr.code);
                               console.error('  message:', bkErr.message);
+                            } else {
+                              notify('Intake skipped for this session');
                             }
                           }}
                           style={{ cursor: 'pointer', accentColor: SO.forest }}
@@ -3990,6 +3999,7 @@ function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled, show
                             .from('bookings')
                             .update({ intake_waived_at: null })
                             .eq('id', appt.id);
+                          notify('Intake required again');
                         }}
                         style={{
                           background: 'transparent',
@@ -7285,15 +7295,82 @@ export default function ScheduleDashboard({ therapist }) {
   // wkShowToast/moShowToast handle cancel/no-show; this one handles
   // the BookingModal reschedule flow at the top of the tree.
   const { toast: scheduleToast, showToast: showScheduleToast } = useToast();
-  const [subView,setSubView]=useState('today');
-  const [dayOffset,setDayOffset]=useState(0);
+
+  // HK May 31 2026: dayOffset and subView are now URL-backed so the
+  // therapist's place in the schedule survives:
+  //   - saves inside the DetailPanel (which previously caused a
+  //     re-render that appeared to "land on today" - was actually a
+  //     state-loss symptom)
+  //   - back/forward browser navigation
+  //   - page refresh
+  //   - opening a session detail and clicking Back
+  //
+  // URL shape: /dashboard/schedule?d=2026-06-04&view=today
+  //   - d:    ISO date YYYY-MM-DD of the viewed day (omitted = today)
+  //   - view: today | weekly | monthly | yearly | insights (default today)
+  //
+  // We use replace() not push() because navigating between days isn't
+  // a meaningful "back" target. The therapist taps Next/Prev many
+  // times - browser back should pop them out of /schedule, not walk
+  // them back through every day.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [today] = useState(getToday);
+
+  // Parse URL once on mount. After that, state is the source of truth
+  // and we write to URL on change.
+  const initialDayOffset = (() => {
+    const dParam = searchParams.get('d');
+    if (!dParam) return 0;
+    const parsed = new Date(dParam + 'T00:00:00');
+    if (isNaN(parsed.getTime())) return 0;
+    const diffMs = parsed.getTime() - today.getTime();
+    return Math.round(diffMs / (1000 * 60 * 60 * 24));
+  })();
+  const initialSubView = searchParams.get('view') || 'today';
+
+  const [subView, setSubViewRaw] = useState(initialSubView);
+  const [dayOffset, setDayOffsetRaw] = useState(initialDayOffset);
+
+  // Wrapped setters that also update URL. Both accept either a value
+  // or an updater fn (matches useState API so existing call sites work).
+  const setDayOffset = (next) => {
+    setDayOffsetRaw((prev) => {
+      const value = typeof next === 'function' ? next(prev) : next;
+      const newParams = new URLSearchParams(searchParams);
+      if (value === 0) {
+        newParams.delete('d');
+      } else {
+        const targetDate = addDays(today, value);
+        const yyyy = targetDate.getFullYear();
+        const mm = String(targetDate.getMonth() + 1).padStart(2, '0');
+        const dd = String(targetDate.getDate()).padStart(2, '0');
+        newParams.set('d', `${yyyy}-${mm}-${dd}`);
+      }
+      setSearchParams(newParams, { replace: true });
+      return value;
+    });
+  };
+
+  const setSubView = (next) => {
+    setSubViewRaw((prev) => {
+      const value = typeof next === 'function' ? next(prev) : next;
+      const newParams = new URLSearchParams(searchParams);
+      if (value === 'today') {
+        newParams.delete('view');
+      } else {
+        newParams.set('view', value);
+      }
+      setSearchParams(newParams, { replace: true });
+      return value;
+    });
+  };
+
   const [realBookings,setRealBookings]=useState(null);
   const [pendingApprovalBookings,setPendingApprovalBookings]=useState([]);
   const [actioningId,setActioningId]=useState(null);
   const [declineFor,setDeclineFor]=useState(null); // booking id we're collecting decline reason for
   const [declineReason,setDeclineReason]=useState('');
   const [loading,setLoading]=useState(true);
-  const [today] = useState(getToday);
   const SAMPLE = makeSample(today);
   const [showCreate, setShowCreate] = useState(false);
   // HK May 29 2026: top-level "Block time" modal so the therapist can
