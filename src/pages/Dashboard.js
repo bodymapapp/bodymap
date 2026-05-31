@@ -5061,35 +5061,44 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
                   connection is healthy without having to test a
                   payment to find out. */}
               {!therapist?.square_location_id && (
-                <div style={{ background:'#FFFBEB', border:'1.5px solid #F59E0B', borderRadius:10, padding:'12px 14px', marginTop:8 }}>
+                <div style={{ background:'#F0F7F0', border:'1.5px solid #B7CFB1', borderRadius:10, padding:'12px 14px', marginTop:8 }}>
                   <div style={{ display:'flex', alignItems:'flex-start', gap:10 }}>
-                    <span style={{ fontSize:16 }}>⚠️</span>
                     <div style={{ flex:1, minWidth:0 }}>
-                      <div style={{ fontSize:'12px', fontWeight:'700', color:'#92400E' }}>Square location missing</div>
-                      <div style={{ fontSize:'11px', color:'#78350F', marginTop:2, lineHeight:1.5 }}>
-                        Your Square account is connected but the location ID is not stored. Deposits and package purchases will fail. Tap Repair to fetch it from Square.
+                      <div style={{ fontSize:'13px', fontWeight:'700', color:'#2A5741' }}>One quick step left</div>
+                      <div style={{ fontSize:'12px', color:'#4B6E5A', marginTop:3, lineHeight:1.5 }}>
+                        Square is connected. To finish enabling payments, give us a quick re-confirmation from Square. Takes 10 seconds.
                       </div>
                       <button onClick={async () => {
+                        // HK May 30 2026: was scary "Repair connection" button that
+                        // called square-repair-location, which fails for therapists
+                        // who connected before MERCHANT_PROFILE_READ scope was added
+                        // (Puro Glow, Somatic Shift hit this). Re-running OAuth grants
+                        // any newly-added scopes silently and also captures the
+                        // location. Same flow as initial connect, friendly framing.
                         const anonKey = process.env.REACT_APP_SUPABASE_ANON_KEY;
-                        const res = await fetch('https://rmnqfrljoknmellbnpiy.supabase.co/functions/v1/square-repair-location', {
+                        const res = await fetch('https://rmnqfrljoknmellbnpiy.supabase.co/functions/v1/square-oauth', {
                           method: 'POST',
                           headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${anonKey}`, 'apikey': anonKey },
                           body: JSON.stringify({ therapist_id: therapist.id }),
                         });
                         const data = await res.json();
-                        if (data?.ok) {
-                          alert(`Square location set: ${data.location_name || data.location_id}`);
-                          window.location.reload();
-                        } else {
-                          alert('Repair failed: ' + (data?.error || JSON.stringify(data)));
+                        if (data?.url) {
+                          const popup = window.open(data.url, 'square-oauth', 'width=600,height=700');
+                          window.addEventListener('message', (e) => {
+                            if (e.data?.type === 'square-oauth-success') {
+                              try { popup?.close(); } catch (_) {}
+                              window.location.reload();
+                            }
+                          });
                         }
                       }} style={{
-                        marginTop: 8,
-                        background: '#F59E0B', color: '#fff',
-                        border: 'none', borderRadius: 8,
-                        padding: '6px 14px', fontSize: 12, fontWeight: 700,
+                        marginTop: 10,
+                        background: '#2A5741', color: '#fff',
+                        border: 'none', borderRadius: 10,
+                        padding: '10px 18px', fontSize: 13, fontWeight: 700,
                         cursor: 'pointer',
-                      }}>Repair connection</button>
+                        minHeight: 44,
+                      }}>Finish Square setup</button>
                     </div>
                   </div>
                 </div>

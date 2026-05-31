@@ -63,55 +63,33 @@ serve(async (req) => {
     });
   }
 
-  // Get merchant locations. HK May 30 2026: previously this fetched
-  // locations and if anything went wrong (API error, empty array,
-  // network blip) the code fell back to locationId = '' and STILL
-  // wrote square_connected: true to the DB. Two real customers
-  // (Puro Glow, Somatic Shift) ended up in this broken-but-thinks-
-  // it-is-connected state. Square charges fail downstream because
-  // square-create-deposit needs a real location_id.
+  // Get merchant locations. HK May 30 2026: this used to error out if
+  // location lookup failed, which gave the customer a scary error
+  // page. Per HK: "I don't want an error. Why would someone sign up
+  // with us if there are errors in CX to begin with."
   //
-  // Two production rules now:
-  //   1. If the locations API fails or returns no ACTIVE locations,
-  //      DO NOT write square_connected: true. Show a real error page
-  //      so the therapist knows to fix the issue (most likely: they
-  //      have not finished onboarding their Square account yet, or
-  //      they granted the OAuth without MERCHANT_PROFILE_READ scope).
-  //   2. Prefer the ACTIVE location over the first one. Matches the
-  //      square-repair-location function (which exists exactly because
-  //      this callback was broken before).
-  const locRes = await fetch(`${apiHost}/v2/locations`, {
-    headers: { 'Authorization': `Bearer ${tokenData.access_token}`, 'Square-Version': '2024-01-18' }
-  });
-  const locData = await locRes.json();
-
-  const locs = locData?.locations || [];
-  const activeLoc = locs.find((l: any) => l.status === 'ACTIVE') || locs[0];
-  const locationId = activeLoc?.id || '';
-
-  if (!locRes.ok || !locationId) {
-    // Real failure path. Render a real error page so the therapist
-    // does not think they are connected. Do NOT write to the
-    // therapists table (no token, no square_connected flag) so the
-    // UI continues to show "Not connected" and they can retry.
-    const errorDetail = locData?.errors?.[0]?.detail
-      || (locs.length === 0 ? 'No Square locations found on this account. Please finish your Square onboarding (set up at least one business location) and try connecting again.' : 'Could not read your Square account details. Please try again.');
-    return new Response(`<!DOCTYPE html>
-<html lang="en">
-  <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Square connection issue</title>
-  </head>
-  <body style="margin:0;padding:40px 20px;font-family:system-ui,sans-serif;background:#FAF5EE;min-height:100vh;display:flex;align-items:center;justify-content:center;">
-    <div style="max-width:380px;width:100%;background:#fff;border-radius:14px;padding:28px 24px;box-shadow:0 4px 20px rgba(0,0,0,0.06);text-align:center;">
-      <div style="width:56px;height:56px;border-radius:50%;background:#FEF3C7;display:flex;align-items:center;justify-content:center;margin:0 auto 14px;font-size:32px;color:#D97706;">!</div>
-      <h2 style="margin:0 0 10px;color:#2A5741;font-size:18px;font-weight:700;font-family:Georgia,serif;">Square needs a location</h2>
-      <p style="margin:0 0 20px;color:#6B7280;font-size:13px;line-height:1.55;">${errorDetail}</p>
-      <a href="https://mybodymap.app/dashboard?square=needs_location" style="display:inline-block;background:#2A5741;color:#fff;text-decoration:none;border-radius:10px;padding:11px 22px;font-size:13px;font-weight:700;">Back to Dashboard</a>
-    </div>
-  </body>
-</html>`, { headers: { 'Content-Type': 'text/html; charset=utf-8' } });
+  // New policy: always succeed gracefully. Save the token + merchant
+  // id no matter what. If we can grab a location, great. If we can't
+  // (insufficient scope from a pre-MERCHANT_PROFILE_READ connect,
+  // network blip, empty account), leave square_location_id empty and
+  // let the in-app dashboard banner handle it gently with a one-tap
+  // reconnect. NO ERROR PAGES, EVER, IN THE OAUTH FLOW.
+  //
+  // Prefer ACTIVE location over the first one. Matches the
+  // square-repair-location helper.
+  let locationId = '';
+  try {
+    const locRes = await fetch(`${apiHost}/v2/locations`, {
+      headers: { 'Authorization': `Bearer ${tokenData.access_token}`, 'Square-Version': '2024-01-18' }
+    });
+    if (locRes.ok) {
+      const locData = await locRes.json();
+      const locs = locData?.locations || [];
+      const activeLoc = locs.find((l: any) => l.status === 'ACTIVE') || locs[0];
+      locationId = activeLoc?.id || '';
+    }
+  } catch (_e) {
+    // Network or parse error: leave locationId empty, handled in-app.
   }
 
   // Save to therapist record
