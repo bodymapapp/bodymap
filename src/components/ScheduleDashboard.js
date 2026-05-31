@@ -43,10 +43,21 @@ const t2m = t => { if(!t) return 0; const m=t.match(/(\d+):(\d+)\s*(AM|PM)/i); i
 const getToday = () => { const d = new Date(); d.setHours(0,0,0,0); return d; };
 
 const STATUS = {
-  'intake-done':    {label:'Brief Ready',  bg:'#DCFCE7', color:'#16A34A', dot:'#16A34A', icon:'🧭'},
-  'pending-intake': {label:'No Intake',    bg:'#FEF3C7', color:'#D97706', dot:'#F59E0B', icon:'📋'},
-  'complete':       {label:'Complete',     bg:'#F3F4F6', color:'#6B7280', dot:'#9CA3AF', icon:'✓'},
-  'external':       {label:'From Google',  bg:'#EFEAFD', color:'#5B4DC8', dot:'#7F77DD', icon:'📅'},
+  // HK May 31 2026: status taxonomy revised.
+  //   paid (new):    green, takes precedence over complete/intake-done when
+  //                  any session_payment row is succeeded. Money received is
+  //                  the strongest positive signal for the therapist.
+  //   intake-done:   relabeled "Intake Received", recolored blue. Was green
+  //                  but green is now reserved for paid (money in hand).
+  //   complete:      recolored slate. Was gray, indistinct from background.
+  //                  Means session happened but no payment recorded yet (the
+  //                  paid branch wins when payment exists). Slate = neutral
+  //                  end state, not green (paid wins), not red (refunded wins).
+  'paid':           {label:'Paid',            bg:'#DCFCE7', color:'#15803D', dot:'#16A34A', icon:'✓'},
+  'intake-done':    {label:'Intake Received', bg:'#DBEAFE', color:'#1E40AF', dot:'#3B82F6', icon:'📋'},
+  'pending-intake': {label:'No Intake',       bg:'#FEF3C7', color:'#D97706', dot:'#F59E0B', icon:'📋'},
+  'complete':       {label:'Complete',        bg:'#E2E8F0', color:'#475569', dot:'#64748B', icon:'✓'},
+  'external':       {label:'From Google',     bg:'#EFEAFD', color:'#5B4DC8', dot:'#7F77DD', icon:'📅'},
   // HK May 29 2026: trace patterns for actions taken on a booking. Each
   // entry stays at its original time slot in the timeline but visually
   // de-emphasised, so the therapist can see what HAPPENED at 9am even
@@ -58,6 +69,19 @@ const STATUS = {
   'refunded':       {label:'Refunded',     bg:'#EDE9FE', color:'#6D28D9', dot:'#7C3AED', icon:'↩'},
   'rescheduled':    {label:'Rescheduled',  bg:'#E0F2FE', color:'#0369A1', dot:'#0284C7', icon:'↻'},
 };
+
+// HK May 31 2026: legend was hardcoded inline at 3 sites (timeline,
+// monthly, weekly views) and drifted from STATUS over time. Extracted
+// to one constant so any future taxonomy change is one edit, not three.
+// Trace states (cancelled / no-show / rescheduled / refunded) are shown
+// only via the annotation line under the time slot, not in the legend.
+const LEGEND_ITEMS = [
+  {color:'#15803D', bg:'#DCFCE7', label:'Paid'},
+  {color:'#1E40AF', bg:'#DBEAFE', label:'Intake received'},
+  {color:'#D97706', bg:'#FEF3C7', label:'No intake yet'},
+  {color:'#475569', bg:'#E2E8F0', label:'Complete'},
+  {color:'#5B4DC8', bg:'#EFEAFD', label:'From Google'},
+];
 
 // HK May 29 2026: build the human-readable annotation line that sits
 // under an appt's time on the timeline. Returns a short string like
@@ -5085,7 +5109,7 @@ function TimelineView({ therapist, allAppts, dayOffset, setDayOffset, today, onR
         </button>
         {showLegend && (
           <div style={{display:'flex',gap:10,flexWrap:'wrap',alignItems:'center',padding:'6px 10px',background:'#fff',borderRadius:8,border:'1px solid #F3F4F6',flex:1,minWidth:0}}>
-            {[{color:'#16A34A',bg:'#DCFCE7',label:'Brief ready'},{color:'#D97706',bg:'#FEF3C7',label:'No intake yet'},{color:'#6B7280',bg:'#F3F4F6',label:'Complete'},{color:'#7F77DD',bg:'#EFEAFD',label:'From Google'}].map(({color,bg,label})=>(
+            {LEGEND_ITEMS.map(({color,bg,label})=>(
               <div key={label} style={{display:'flex',alignItems:'center',gap:4}}>
                 <div style={{width:10,height:10,borderRadius:3,background:bg,border:`1.5px solid ${color}`}}/>
                 <span style={{fontSize:11,color:'#6B7280'}}>{label}</span>
@@ -5295,9 +5319,9 @@ function TimelineView({ therapist, allAppts, dayOffset, setDayOffset, today, onR
               return (
                 <div key={appt.id} data-appt-card="1" onClick={()=>setSelected(appt)}
                   style={{position:'absolute',top:y,left:2,right:2,height:bh,
-                    background:appt.preview?'#F9FAFB':(appt.paid?'#F0F6EE':appt.status==='intake-done'?'#DCFCE7':appt.status==='complete'?'#F3F4F6':appt.status==='cancelled'?'#FEF2F2':appt.status==='no_show'?'#FFFBEB':appt.status==='refunded'?'#F5F3FF':appt.status==='rescheduled'?'#F0F9FF':'#FEF3C7'),
-                    border:`1.5px ${appt.preview?'dashed':'solid'} ${appt.preview?'#D1D5DB':appt.paid?'#B7D1AB':st.dot}`,
-                    borderLeft:`4px solid ${appt.preview?'#CBD5E1':appt.paid?'#2A5741':st.dot}`,
+                    background:appt.preview?'#F9FAFB':st.bg,
+                    border:`1.5px ${appt.preview?'dashed':'solid'} ${appt.preview?'#D1D5DB':st.dot}`,
+                    borderLeft:`4px solid ${appt.preview?'#CBD5E1':st.dot}`,
                     borderRadius:10,cursor:'pointer',overflow:'hidden',
                     opacity:appt.preview?0.5:isPast?Math.min(0.6, ts.opacity):ts.opacity,
                     boxShadow:isSel?'0 4px 20px rgba(0,0,0,0.15)':appt.preview?'none':'0 2px 8px rgba(0,0,0,0.07)',
@@ -5326,7 +5350,7 @@ function TimelineView({ therapist, allAppts, dayOffset, setDayOffset, today, onR
                         <div style={{background:appt.preview?'transparent':st.dot+'22',color:appt.preview?'#C4C4C4':st.color,borderRadius:20,padding:'2px 8px',fontSize:10,fontWeight:700}}>{st.icon} {appt.preview?'Preview':st.label}</div>
                         {!appt.preview&&appt.paid&&appt.status!=='refunded'&&<div style={{fontSize:10,fontWeight:700,color:'#15803D',background:'#DCFCE7',borderRadius:20,padding:'2px 8px',display:'flex',alignItems:'center',gap:3}}>✓ Paid ${(appt.paid_cents/100).toFixed(0)}</div>}
                         {!appt.preview&&!appt.paid&&appt.deposit_required&&!appt.deposit_paid&&<div style={{fontSize:9,fontWeight:700,color:'#D97706',background:'#FEF3C7',borderRadius:20,padding:'2px 8px'}}>💳 Deposit due</div>}
-                        {!appt.preview&&appt.status==='intake-done'&&<div style={{fontSize:10,fontWeight:700,color:'#2A5741',background:'#DCFCE7',borderRadius:20,padding:'2px 8px'}}>Brief ready →</div>}
+                        {!appt.preview&&appt.status==='intake-done'&&<div style={{fontSize:10,fontWeight:700,color:'#1E40AF',background:'#DBEAFE',borderRadius:20,padding:'2px 8px'}}>Intake received →</div>}
                       </div>
                     )}
                   </div>
@@ -5573,7 +5597,7 @@ function WeeklyView({ therapist, appointments, today, onReschedule, onRefresh, b
         </button>
         {showLegend && (
           <div style={{display:'flex',gap:10,flexWrap:'wrap',alignItems:'center',padding:'6px 10px',background:'#fff',borderRadius:8,border:'1px solid #F3F4F6',flex:1,minWidth:0}}>
-            {[{color:'#16A34A',bg:'#DCFCE7',label:'Brief ready'},{color:'#D97706',bg:'#FEF3C7',label:'No intake yet'},{color:'#6B7280',bg:'#F3F4F6',label:'Complete'},{color:'#7F77DD',bg:'#EFEAFD',label:'From Google'}].map(({color,bg,label})=>(
+            {LEGEND_ITEMS.map(({color,bg,label})=>(
               <div key={label} style={{display:'flex',alignItems:'center',gap:4}}>
                 <div style={{width:10,height:10,borderRadius:3,background:bg,border:`1.5px solid ${color}`}}/>
                 <span style={{fontSize:11,color:'#6B7280'}}>{label}</span>
@@ -6203,7 +6227,7 @@ function MonthlyView({ therapist, appointments, today, onReschedule, onRefresh, 
       {/* Legend */}
       <div style={{display:'flex',gap:10,flexWrap:'wrap',marginBottom:16,padding:'10px 14px',background:'#fff',borderRadius:10,border:'1px solid #F3F4F6',alignItems:'center'}}>
         <span style={{fontSize:11,fontWeight:700,color:'#374151'}}>HOW TO READ:</span>
-        {[{color:'#16A34A',bg:'#DCFCE7',label:'Brief ready'},{color:'#D97706',bg:'#FEF3C7',label:'No intake yet'},{color:'#6B7280',bg:'#F3F4F6',label:'Complete'},{color:'#7F77DD',bg:'#EFEAFD',label:'From Google'}].map(({color,bg,label})=>(
+        {LEGEND_ITEMS.map(({color,bg,label})=>(
           <div key={label} style={{display:'flex',alignItems:'center',gap:4}}>
             <div style={{width:12,height:12,borderRadius:3,background:bg,border:`2px solid ${color}`}}/>
             <span style={{fontSize:11,color:'#6B7280'}}>{label}</span>
@@ -6320,8 +6344,9 @@ function MonthlyView({ therapist, appointments, today, onReschedule, onRefresh, 
                 <div style={{fontSize:10,fontWeight:600,color:'#92400E',marginTop:2}}>Off</div>
               )}
               <div style={{display:'flex',gap:2,marginTop:2}}>
-                {da.filter(a=>!a.preview&&a.status==='intake-done').length>0&&<div style={{width:5,height:5,borderRadius:'50%',background:'#16A34A'}}/>}
-                {da.filter(a=>!a.preview&&a.status==='pending-intake').length>0&&<div style={{width:5,height:5,borderRadius:'50%',background:'#F59E0B'}}/>}
+                {da.filter(a=>!a.preview&&a.status==='paid').length>0&&<div style={{width:5,height:5,borderRadius:'50%',background:'#16A34A'}} title="Paid"/>}
+                {da.filter(a=>!a.preview&&a.status==='intake-done').length>0&&<div style={{width:5,height:5,borderRadius:'50%',background:'#3B82F6'}} title="Intake received"/>}
+                {da.filter(a=>!a.preview&&a.status==='pending-intake').length>0&&<div style={{width:5,height:5,borderRadius:'50%',background:'#F59E0B'}} title="No intake"/>}
                 {block.partial && !block.fullDay && <div style={{width:5,height:5,borderRadius:'50%',background:'#6B9E80'}} title="Partial block"/>}
               </div>
             </div>
@@ -8260,6 +8285,10 @@ export default function ScheduleDashboard({ therapist }) {
         else if (b.status === 'no_show')           status = 'no_show';
         else if (b.status === 'rescheduled')       status = 'rescheduled';
         else if ((refundedMap[b.id] || 0) > 0)     status = 'refunded';
+        // HK May 31 2026: paid is its own status, takes precedence over
+        // complete/intake-done/pending-intake when any succeeded payment
+        // exists. Refunded still wins (refund overrides paid trace).
+        else if ((paidMap[b.id] || 0) > 0)         status = 'paid';
         else if (b.status === 'completed')         status = 'complete';
         else if (sessionId)                        status = 'intake-done';
         else                                       status = 'pending-intake';
@@ -8742,8 +8771,9 @@ export default function ScheduleDashboard({ therapist }) {
       }}>
         {[
           {val:allAppts.filter(a=>sameDay(a.date,today)&&!a.preview).length,label:'Today',color:'#1F4131'},
-          {val:allAppts.filter(a=>sameDay(a.date,today)&&!a.preview&&a.status==='intake-done').length,label:'Brief ready',color:'#16A34A'},
-          {val:allAppts.filter(a=>sameDay(a.date,today)&&!a.preview&&a.status==='pending-intake').length,label:'Need intake',color:'#854F0B'},
+          {val:allAppts.filter(a=>sameDay(a.date,today)&&!a.preview&&a.status==='paid').length,label:'Paid',color:'#15803D'},
+          {val:allAppts.filter(a=>sameDay(a.date,today)&&!a.preview&&a.status==='intake-done').length,label:'Intake received',color:'#1E40AF'},
+          {val:allAppts.filter(a=>sameDay(a.date,today)&&!a.preview&&a.status==='pending-intake').length,label:'Need intake',color:'#D97706'},
           {val:allAppts.filter(a=>!a.preview&&a.date>=today&&a.date<=addDays(today,7)).length,label:'This week',color:'#6B9E80'},
         ].map((s,idx,arr)=>(
           <React.Fragment key={s.label}>
