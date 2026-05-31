@@ -41,7 +41,7 @@ serve(async (req) => {
           given_name: client_name?.split(' ')[0] || '',
           family_name: client_name?.split(' ').slice(1).join(' ') || '',
           email_address: client_email || '',
-          idempotency_key: `${therapist_id}-${client_id}-${Date.now()}`,
+          idempotency_key: crypto.randomUUID(),
         }),
       });
       const custData = await custRes.json();
@@ -58,7 +58,7 @@ serve(async (req) => {
       method: 'POST',
       headers,
       body: JSON.stringify({
-        idempotency_key: `card-${client_id}-${Date.now()}`,
+        idempotency_key: crypto.randomUUID(),
         source_id: card_nonce,
         card: { customer_id: customerId },
       }),

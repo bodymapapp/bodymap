@@ -42,6 +42,21 @@ import { ProviderError, getSupabaseClient } from '../../payment-provider.ts';
 import type { SquareStrategy } from './strategy.ts';
 import { getSquareAppId } from '../../paymentMode.ts';
 
+// HK May 31 2026: Square API enforces a 45-char limit on every
+// idempotency_key field across all endpoints. Callers historically
+// constructed keys like `refund_${uuid}_${cents}` (47+ chars) which
+// the API rejected with "Field must not be greater than 45 length".
+// Defensive helper: any passed-in key longer than 45 chars is
+// replaced with a fresh UUID (36 chars). Lossy but safer than failing
+// the API call. Idempotency for legitimate retries is lost in that
+// path, but the UI already guards against rapid double-tap, and a
+// stale key triggering a duplicate charge is rarer than the previous
+// "always fails" state.
+function safeSquareIdempotencyKey(key: string | undefined): string {
+  if (!key || key.length > 45) return crypto.randomUUID();
+  return key;
+}
+
 // Square API base URL. Auto-detects sandbox vs production from the
 // SQUARE_APP_ID prefix:
 //   sandbox-sq0idb-...  -> sandbox API
@@ -170,8 +185,10 @@ async function ensureCatalogPlan(
   }
 
   // Upsert a new plan + variation in a single batch request.
-  // Square's idempotency key prevents duplicate plans on retries.
-  const idempotencyKey = `plan-${therapist.id}-${plan.name}-${plan.monthlyPriceCents}`;
+  // HK May 31 2026: Square idempotency_key has a 45-char limit. The
+  // previous `plan-${therapist.id}-${plan.name}-${cents}` ran 60+ chars
+  // and was rejected. crypto.randomUUID is 36 chars and unique.
+  const idempotencyKey = crypto.randomUUID();
   const body = {
     idempotency_key: idempotencyKey,
     batches: [{
@@ -299,7 +316,7 @@ export class SquareV1Strategy implements SquareStrategy {
     if (isSingleLine) {
       const it = args.items[0];
       body = {
-        idempotency_key: `chk-${args.therapist.id}-${args.customer.email}-${Date.now()}`,
+        idempotency_key: crypto.randomUUID(),
         quick_pay: {
           name: it.name,
           price_money: { amount: it.amountCents, currency: 'USD' },
@@ -314,7 +331,7 @@ export class SquareV1Strategy implements SquareStrategy {
       };
     } else {
       body = {
-        idempotency_key: `chk-${args.therapist.id}-${args.customer.email}-${Date.now()}`,
+        idempotency_key: crypto.randomUUID(),
         order: {
           location_id: locationId,
           line_items: args.items.map((it) => ({
@@ -396,7 +413,7 @@ export class SquareV1Strategy implements SquareStrategy {
     // We return a Payment Link for the FIRST payment + indicate
     // subscription mode. The confirm step will create the
     // subscription post-payment.
-    const idempotencyKey = `sub-init-${args.therapist.id}-${args.customer.email}-${Date.now()}`;
+    const idempotencyKey = crypto.randomUUID();
     const data = await squareFetch('/v2/online-checkout/payment-links', {
       method: 'POST',
       therapist: args.therapist,
@@ -504,7 +521,7 @@ export class SquareV1Strategy implements SquareStrategy {
       method: 'POST',
       therapist: args.therapist,
       body: {
-        idempotency_key: `card-${customerId}-${Date.now()}`,
+        idempotency_key: crypto.randomUUID(),
         source_id: args.paymentToken,
         card: { customer_id: customerId },
       },
@@ -527,7 +544,7 @@ export class SquareV1Strategy implements SquareStrategy {
       method: 'POST',
       therapist: args.therapist,
       body: {
-        idempotency_key: args.idempotencyKey,
+        idempotency_key: safeSquareIdempotencyKey(args.idempotencyKey),
         source_id: args.providerCardId,
         customer_id: args.providerCustomerId,
         amount_money: { amount: args.amountCents, currency: 'USD' },
@@ -560,7 +577,7 @@ export class SquareV1Strategy implements SquareStrategy {
     if (!paymentId) throw new ProviderError('no_payment_for_order', 'Square order has no associated payment');
 
     const refundBody: Record<string, unknown> = {
-      idempotency_key: args.idempotencyKey,
+      idempotency_key: safeSquareIdempotencyKey(args.idempotencyKey),
       payment_id: paymentId,
       reason: args.reason || undefined,
     };

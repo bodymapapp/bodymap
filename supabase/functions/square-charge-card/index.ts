@@ -52,7 +52,13 @@ serve(async (req) => {
       method: 'POST',
       headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json', 'Square-Version': '2024-01-18' },
       body: JSON.stringify({
-        idempotency_key: `pay-${therapist_id}-${Date.now()}`,
+        // HK May 31 2026: Square idempotency_key has a 45-char limit.
+        // Previously `pay-${therapist_id}-${Date.now()}` was 54 chars
+        // and Square rejected with "Field must not be greater than 45
+        // length". crypto.randomUUID is exactly 36 chars and globally
+        // unique. Double-tap protection is at the UI layer (button
+        // disabled during processing) so per-call uniqueness is fine.
+        idempotency_key: crypto.randomUUID(),
         source_id: square_card_id,
         customer_id: square_customer_id,
         amount_money: { amount: total, currency: 'USD' },
