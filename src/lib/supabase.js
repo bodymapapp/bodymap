@@ -1,11 +1,83 @@
 // src/lib/supabase.js
 import { createClient } from '@supabase/supabase-js';
 import { daysSinceDateOnly, todayLocalIso } from './dateHelpers';
+import { toast as globalToast } from './globalToast';
 
 const supabaseUrl = process.env.REACT_APP_SUPABASE_URL;
 const supabaseAnonKey = process.env.REACT_APP_SUPABASE_ANON_KEY;
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+const rawSupabase = createClient(supabaseUrl, supabaseAnonKey);
+
+// HK May 31 2026: auto-toast on every supabase write across the app.
+//
+// Problem this solves: handlers add showToast() inconsistently.
+// Therapists save a session, edit a price, mark no-show, etc. and
+// half the time get no visible confirmation. UX is fatally broken
+// because the gap is the default. HK has asked for soft confirmations
+// for a month and they keep slipping through.
+//
+// Solution: wrap .from() so any successful .update/.insert/.delete
+// fires "Saved" automatically. Read queries are untouched.
+//
+// SILENT_TABLES skip the toast. These are bookkeeping writes that
+// happen as side effects of user actions: notification logs, perf
+// metrics, debug rows. The user did not initiate them; toasting
+// them is noise.
+//
+// Handlers that want a CUSTOM message (e.g. "Appointment cancelled"
+// instead of "Saved") can call globalToast('Custom message') after
+// the write and the dedupe window in globalToast.js will collapse
+// the two into the custom one if it fires within 700ms.
+const SILENT_TABLES = new Set([
+  'notification_log',
+  'audit_log',
+  'session_intelligence',
+  'sessions', // auto-created session drafts on panel open; noisy
+  'cron_runs',
+  'feature_flags',
+  'realtime',
+]);
+
+const VERB_MESSAGES = {
+  update: 'Saved',
+  insert: 'Saved',
+  delete: 'Removed',
+  upsert: 'Saved',
+};
+
+function wrapFrom(client) {
+  const originalFrom = client.from.bind(client);
+  client.from = function (table) {
+    const query = originalFrom(table);
+    if (SILENT_TABLES.has(table)) return query;
+    ['update', 'insert', 'delete', 'upsert'].forEach((verb) => {
+      const original = query[verb]?.bind(query);
+      if (!original) return;
+      query[verb] = function (...args) {
+        const builder = original(...args);
+        const message = VERB_MESSAGES[verb] || 'Saved';
+        // Patch .then so we toast only on success. Builder is a
+        // thenable - awaiting it triggers the request.
+        const originalThen = builder.then?.bind(builder);
+        if (originalThen) {
+          builder.then = function (onFulfilled, onRejected) {
+            return originalThen((result) => {
+              if (result && !result.error) {
+                try { globalToast(message); } catch (_) {}
+              }
+              return onFulfilled ? onFulfilled(result) : result;
+            }, onRejected);
+          };
+        }
+        return builder;
+      };
+    });
+    return query;
+  };
+  return client;
+}
+
+export const supabase = wrapFrom(rawSupabase);
 
 export const db = {
   async getTherapistByUrl(customUrl) {

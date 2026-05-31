@@ -685,16 +685,25 @@ export default function SmartBookingRail({ isMobile = false, therapist, allAppts
       if (!therapist?.id) return;
       const clientIds = Array.from(new Set(upcomingBookings.map(b => b.clientId).filter(Boolean)));
       if (!clientIds.length) { setIntelByClient({}); return; }
+      // HK May 31 2026: dropped .in('client_id', clientIds) which built
+      // a 30KB+ URL for therapists with many unique clients. Same root
+      // cause as the side-panel crash fixed in 3a9e2f83 (PostgREST 400s
+      // on URLs over the gateway limit, returns rows=0 silently, panel
+      // renders broken state). therapist_id is the real security filter
+      // via RLS; the .in() was an over-narrow defensive filter that
+      // wasn't actually saving us anything. We post-filter in JS to
+      // the clients in this view.
+      const wantedClients = new Set(clientIds);
       const { data, error } = await supabase
         .from('session_intelligence')
         .select('client_id, extracted, extracted_at')
         .eq('therapist_id', therapist.id)
-        .in('client_id', clientIds)
         .order('extracted_at', { ascending: false });
       if (cancelled) return;
       if (error || !data) { setIntelByClient({}); return; }
       const byClient = {};
       data.forEach(row => {
+        if (!wantedClients.has(row.client_id)) return;
         if (!byClient[row.client_id]) byClient[row.client_id] = row.extracted;
       });
       setIntelByClient(byClient);

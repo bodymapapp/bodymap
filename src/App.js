@@ -33,6 +33,7 @@ import PaymentEvolutionMockup from './components/mockups/PaymentEvolutionMockup'
 import ScheduleDashboard from './components/ScheduleDashboard';
 import BillingDashboard from './components/BillingDashboard';
 import AIDashboard from './components/AIDashboard';
+import GlobalToastHost from './components/GlobalToastHost';
 import ClientIntake from './pages/ClientIntake';
 import Demo from './pages/Demo';
 import WhyBodyMap from './pages/WhyBodyMap';
@@ -70,6 +71,7 @@ function App() {
       <Router>
       <ScrollToTop />
       <TestModeBanner />
+      <GlobalToastHost />
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/features" element={<FeaturesV2 />} />
