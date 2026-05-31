@@ -24,7 +24,7 @@ export function subscribeToToasts(fn) {
   return () => listeners.delete(fn);
 }
 
-export function toast(message, tone = 'success', duration = 2200) {
+export function toast(message, tone = 'success', duration = 3500) {
   // Dedupe rapid-fire identical messages (within 700ms) so a save flow
   // that triggers multiple writes still only shows one "Saved" toast.
   const now = Date.now();

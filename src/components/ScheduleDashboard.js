@@ -1729,7 +1729,7 @@ function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled, show
           }
         }
         try { await navigator.clipboard.writeText(link); } catch (_e) {}
-        notify('Agreement email sent and link copied');
+        notify(`Agreement sent to ${clientRow.email}`);
       } else if (channel === 'sms') {
         // Open the sms: handler with the link prefilled. The therapist
         // taps Send in their default messaging app.
@@ -1795,7 +1795,7 @@ function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled, show
           window.location.href = `mailto:${clientRow.email}?subject=${subj}&body=${body}`;
         }
         try { await navigator.clipboard.writeText(link); } catch (_e) {}
-        notify('Intake link copied');
+        notify(`Intake link ready for ${clientRow.email}`);
       } else if (channel === 'sms') {
         const phone = clientRow.phone || '';
         const body = encodeURIComponent(messageBody);

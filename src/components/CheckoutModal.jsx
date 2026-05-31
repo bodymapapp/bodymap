@@ -764,6 +764,16 @@ export default function CheckoutModal({
   //   5. Write session_payments row.
   async function chargeNewCard() {
     if (!validAmount) { setErrorMsg('Enter a valid amount.'); return; }
+    // HK May 31 2026: honest message for Square-only therapists.
+    // CheckoutModal's new-card-entry path is Stripe-only today
+    // (uses Stripe Elements). Square equivalent requires Square Web
+    // Payments SDK and is a multi-hour rebuild (Risk Register #5).
+    // Until then, show what actually works for these therapists
+    // instead of a misleading "No Stripe account connected" error.
+    if (!therapist?.stripe_account_id && therapist?.square_connected) {
+      setErrorMsg('Card entry through MyBodyMap is coming for Square. For now, please use Mark as Paid for cash, check, or Zelle, or send a payment link.');
+      return;
+    }
     if (!stripeRef.current || !cardElRef.current) { setErrorMsg('Card form not ready.'); return; }
     setProcessing(true);
     setErrorMsg(null);
