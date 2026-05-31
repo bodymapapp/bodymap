@@ -6,78 +6,98 @@ import { toast as globalToast } from './globalToast';
 const supabaseUrl = process.env.REACT_APP_SUPABASE_URL;
 const supabaseAnonKey = process.env.REACT_APP_SUPABASE_ANON_KEY;
 
-const rawSupabase = createClient(supabaseUrl, supabaseAnonKey);
-
 // HK May 31 2026: auto-toast on every supabase write across the app.
 //
-// Problem this solves: handlers add showToast() inconsistently.
-// Therapists save a session, edit a price, mark no-show, etc. and
-// half the time get no visible confirmation. UX is fatally broken
-// because the gap is the default. HK has asked for soft confirmations
-// for a month and they keep slipping through.
+// Problem: handlers add showToast() inconsistently. Half the time
+// therapists save something and get zero confirmation. HK has asked
+// for soft confirmations for a month and handler-by-handler patches
+// keep slipping.
 //
-// Solution: wrap .from() so any successful .update/.insert/.delete
-// fires "Saved" automatically. Read queries are untouched.
+// First attempt (d64568a6) wrapped supabase.from() and patched .then
+// on the returned builder. That broke because chained methods like
+// .eq().select().single() each return a NEW builder, dropping the
+// patched .then. updateProfile()'s update().eq().select().single()
+// chain never fired the toast as a result.
+//
+// This version intercepts at the fetch layer. supabase client accepts
+// a custom fetch; we wrap window.fetch so EVERY HTTP request the
+// client makes goes through us. PATCH/POST/DELETE responses with 2xx
+// fire a success toast. 4xx/5xx and network errors fire a failure
+// toast. Works for every supabase call across the app, no matter how
+// deeply chained.
 //
 // SILENT_TABLES skip the toast. These are bookkeeping writes that
-// happen as side effects of user actions: notification logs, perf
-// metrics, debug rows. The user did not initiate them; toasting
-// them is noise.
+// happen as side effects of user actions: notification logs, debug
+// rows. The user did not initiate them; toasting them is noise.
 //
-// Handlers that want a CUSTOM message (e.g. "Appointment cancelled"
-// instead of "Saved") can call globalToast('Custom message') after
-// the write and the dedupe window in globalToast.js will collapse
-// the two into the custom one if it fires within 700ms.
+// Handlers wanting a CUSTOM message (e.g. "Payment recorded $50")
+// call globalToast(...) themselves. The 700ms dedupe in globalToast
+// collapses the generic "Saved" into the custom one when both fire.
 const SILENT_TABLES = new Set([
   'notification_log',
   'audit_log',
   'session_intelligence',
-  'sessions', // auto-created session drafts on panel open; noisy
+  'sessions', // auto-created session drafts on panel open are noisy
   'cron_runs',
   'feature_flags',
   'realtime',
 ]);
 
-const VERB_MESSAGES = {
-  update: 'Saved',
-  insert: 'Saved',
-  delete: 'Removed',
-  upsert: 'Saved',
-};
-
-function wrapFrom(client) {
-  const originalFrom = client.from.bind(client);
-  client.from = function (table) {
-    const query = originalFrom(table);
-    if (SILENT_TABLES.has(table)) return query;
-    ['update', 'insert', 'delete', 'upsert'].forEach((verb) => {
-      const original = query[verb]?.bind(query);
-      if (!original) return;
-      query[verb] = function (...args) {
-        const builder = original(...args);
-        const message = VERB_MESSAGES[verb] || 'Saved';
-        // Patch .then so we toast only on success. Builder is a
-        // thenable - awaiting it triggers the request.
-        const originalThen = builder.then?.bind(builder);
-        if (originalThen) {
-          builder.then = function (onFulfilled, onRejected) {
-            return originalThen((result) => {
-              if (result && !result.error) {
-                try { globalToast(message); } catch (_) {}
-              }
-              return onFulfilled ? onFulfilled(result) : result;
-            }, onRejected);
-          };
-        }
-        return builder;
-      };
-    });
-    return query;
-  };
-  return client;
+// Try to extract a table name from /rest/v1/{table}?... URLs.
+// Returns null if the request isn't a PostgREST table call.
+function extractTable(url) {
+  try {
+    const u = new URL(url, supabaseUrl || 'https://placeholder');
+    const m = u.pathname.match(/\/rest\/v1\/([^/?]+)/);
+    return m ? m[1] : null;
+  } catch {
+    return null;
+  }
 }
 
-export const supabase = wrapFrom(rawSupabase);
+const VERB_MESSAGES = {
+  PATCH:  'Saved',   // .update()
+  POST:   'Saved',   // .insert() or .upsert()
+  DELETE: 'Removed', // .delete()
+};
+const VERB_ERROR_MESSAGES = {
+  PATCH:  'Could not save',
+  POST:   'Could not save',
+  DELETE: 'Could not remove',
+};
+
+async function instrumentedFetch(input, init) {
+  const method = (init?.method || 'GET').toUpperCase();
+  const url = typeof input === 'string' ? input : input?.url;
+  const isWrite = method === 'PATCH' || method === 'POST' || method === 'DELETE';
+  const table = isWrite ? extractTable(url) : null;
+  // Skip RPC calls (POST to /rest/v1/rpc/*); they may or may not be
+  // "saves" depending on the function.
+  const isRpc = method === 'POST' && url && url.includes('/rest/v1/rpc/');
+  const shouldToast = isWrite && table && !SILENT_TABLES.has(table) && !isRpc;
+
+  try {
+    const response = await window.fetch(input, init);
+    if (shouldToast) {
+      if (response.ok) {
+        try { globalToast(VERB_MESSAGES[method] || 'Saved'); } catch (_) {}
+      } else {
+        try { globalToast(VERB_ERROR_MESSAGES[method] || 'Save failed', 'error'); } catch (_) {}
+      }
+    }
+    return response;
+  } catch (err) {
+    if (shouldToast) {
+      try { globalToast(VERB_ERROR_MESSAGES[method] || 'Save failed', 'error'); } catch (_) {}
+    }
+    throw err;
+  }
+}
+
+export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+  global: { fetch: instrumentedFetch },
+});
+
 
 export const db = {
   async getTherapistByUrl(customUrl) {

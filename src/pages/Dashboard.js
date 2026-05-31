@@ -4890,8 +4890,8 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
                         await updateProfile({
                           stripe_account_id: null,
                           stripe_account_connected: false,
-                          stripe_charges_enabled: false,
-                          stripe_payouts_enabled: false,
+                          stripe_account_ready_at: null,
+                          stripe_account_type: null,
                         });
                         setStripeDisconnectArmed(false);
                       }}
