@@ -35,17 +35,20 @@ serve(async (req) => {
   });
 
   try {
-    const { booking_id, event_type, fee_amount_cents, fee_charged, payment_link_url, initiated_by, reschedule_prev, reason } = await req.json();
+    const { booking_id, event_type, fee_amount_cents, fee_charged, payment_link_url, initiated_by, reschedule_prev, reason, changes } = await req.json();
     if (!booking_id) return respond({ error: 'booking_id required' }, 400);
     // Accepted event_types (expanded May 26 2026 for notification batch):
     //   booking_cancelled  - any path that flips status to cancelled
     //   no_show_recorded   - any path that flips status to no_show
     //   reschedule         - booking date/time changed but still active
+    //   booking_updated    - HK May 31 2026: service/location/partner/addon
+    //                        changed (time unchanged). Lists the deltas.
     // fee_amount_cents + fee_charged together describe the fee outcome
     // payment_link_url is the Stripe-hosted link for the C12 path
     // initiated_by is 'therapist' or 'client'; gates whether C7 or C8/C9 fires
     // reschedule_prev is { prev_date, prev_time } for the C10 path
-    if (event_type !== 'booking_cancelled' && event_type !== 'no_show_recorded' && event_type !== 'reschedule') {
+    // changes is string[] for booking_updated (e.g. ['service', 'location'])
+    if (event_type !== 'booking_cancelled' && event_type !== 'no_show_recorded' && event_type !== 'reschedule' && event_type !== 'booking_updated') {
       return respond({ error: 'event_type must be booking_cancelled, no_show_recorded, or reschedule' }, 400);
     }
 
@@ -95,6 +98,7 @@ serve(async (req) => {
     const isNoShow = event_type === 'no_show_recorded';
     const isReschedule = event_type === 'reschedule';
     const isCancel = event_type === 'booking_cancelled';
+    const isUpdate = event_type === 'booking_updated';
     const clientName = (booking.client_name || 'Client').toString();
     const firstName = clientName.split(' ')[0];
 
@@ -124,6 +128,20 @@ serve(async (req) => {
       bannerColor = '#0369A1';
       smsText = `MyBodyMap: ${firstName} rescheduled${whenStr ? ' to ' + whenStr : ''}.`;
       mailFootline = '"Booking rescheduled"';
+    } else if (isUpdate) {
+      // HK May 31 2026: booking_updated covers service / duration /
+      // location / partner / addon changes. The therapist made the
+      // change; this notification is their receipt that the client
+      // was informed.
+      const changedList = Array.isArray((options as any).changes) && (options as any).changes.length
+        ? (options as any).changes.join(', ')
+        : 'some details';
+      title = `${firstName}'s booking was updated`;
+      summary = `${clientName}'s ${whenStr ? whenStr + ' ' : ''}session had its ${changedList} changed.`;
+      banner = '✏️ Booking updated';
+      bannerColor = '#0369A1';
+      smsText = `MyBodyMap: ${firstName}'s booking was updated (${changedList}).`;
+      mailFootline = '"Booking updated"';
     } else if (isNoShow) {
       title = `${firstName} marked no-show`;
       summary = `${clientName} did not show up${whenStr ? ' for their ' + whenStr + ' session' : ''}.`;
@@ -155,17 +173,23 @@ serve(async (req) => {
     const nowStr = new Date().toLocaleString('en-US', { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZoneName: 'short' });
     const reasonClean = (reason && String(reason).trim()) ? String(reason).trim() : null;
 
-    const actionLabel = isReschedule ? 'Rescheduled by' : (isNoShow ? 'Recorded by' : 'Cancelled by');
-    const timestampLabel = isReschedule ? 'Rescheduled at' : (isNoShow ? 'Recorded at' : 'Cancelled at');
+    const actionLabel = isReschedule ? 'Rescheduled by' : isUpdate ? 'Updated by' : (isNoShow ? 'Recorded by' : 'Cancelled by');
+    const timestampLabel = isReschedule ? 'Rescheduled at' : isUpdate ? 'Updated at' : (isNoShow ? 'Recorded at' : 'Cancelled at');
 
     const detailRows: Array<[string, string] | null> = [
       ['Client', clientName],
       ['Service', serviceName],
       // For reschedule: show "From" and "To". For cancel/no-show: just "Session was".
+      // For update: show "Scheduled for" (unchanged time) + the changes list.
       isReschedule && prevWhenStr ? ['Previously', prevWhenStr] : null,
       isReschedule
         ? (whenStr ? ['Now scheduled for', whenStr] : null)
-        : (whenStr ? ['Session was', whenStr] : null),
+        : isUpdate
+          ? (whenStr ? ['Scheduled for', whenStr] : null)
+          : (whenStr ? ['Session was', whenStr] : null),
+      isUpdate && Array.isArray((options as any).changes) && (options as any).changes.length
+        ? ['Changed', (options as any).changes.join(', ')]
+        : null,
       [actionLabel, whoCancelled],
       reasonClean ? ['Reason', reasonClean] : null,
       showFeeRow ? ['Fee', feeLine] : null,
@@ -214,7 +238,7 @@ serve(async (req) => {
       eventType: event_type,
       title,
       body: summary,
-      icon: isReschedule ? '↻' : (isNoShow ? '🚫' : '🗑'),
+      icon: isReschedule ? '↻' : isUpdate ? '✏️' : (isNoShow ? '🚫' : '🗑'),
       linkUrl: '/dashboard',
       payload: {
         booking_id,
@@ -321,6 +345,7 @@ serve(async (req) => {
           paymentLinkUrl: payment_link_url,
           reschedulePrev: reschedule_prev,
           reason: reason,
+          changes: changes,
         },
       );
     } catch (e) {
@@ -383,6 +408,7 @@ async function fireDownstreamForBookingEvent(
     paymentLinkUrl?: string,
     reschedulePrev?: { prev_date?: string, prev_time?: string },
     reason?: string,
+    changes?: string[],
   } = {},
 ) {
   const supabase = createClient(supabaseUrl, serviceKey);
@@ -527,6 +553,38 @@ function clientEmailContentFor(eventType: string, ctx: {
         prefName: 'Booking rescheduled',
       }, `Your session is now ${whenStr}.`),
       smsText: `${businessName}: your ${serviceName} has been moved to ${whenStr}. Reply if this does not work.`,
+    };
+  }
+
+  // HK May 31 2026: booking_updated covers non-time changes (service,
+  // location, partner, addons). When the THERAPIST changes any of
+  // these on an existing booking, both client and therapist receive a
+  // confirmation so nobody arrives expecting the old details.
+  // options.changes is a string[] of which fields changed.
+  if (eventType === 'booking_updated') {
+    const subject = `Your ${serviceName} on ${whenDate} was updated`;
+    const changedList = Array.isArray(options.changes) && options.changes.length
+      ? options.changes.join(', ')
+      : 'some details';
+    return {
+      notificationType: 'booking_updated',
+      subject,
+      html: renderClientEmailDoc(subject, {
+        therapist,
+        toneEyebrow: 'Booking updated',
+        toneEyebrowKind: 'gold',
+        title: `Your booking has new details`,
+        opener: `Hi ${clientFirst}, ${therapistFirst} updated your booking. The ${changedList} changed. Same date and time. Here are the latest details.`,
+        serviceName,
+        bookingDate: booking.booking_date,
+        startTime: booking.start_time,
+        durationMin: serviceDuration,
+        locationAddress: locationAddr,
+        primaryCta: null,
+        closingLine: `If anything looks wrong, reply to this email and ${therapistFirst} will sort it out.`,
+        prefName: 'Booking updated',
+      }, `Your booking details were updated.`),
+      smsText: `${businessName}: ${serviceName} on ${whenDate} was updated (${changedList}). Reply if anything looks off.`,
     };
   }
 

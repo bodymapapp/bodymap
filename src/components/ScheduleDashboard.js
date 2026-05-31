@@ -42,6 +42,25 @@ const ac = n => COLORS[(n?.charCodeAt(0)||0)%COLORS.length];
 const t2m = t => { if(!t) return 0; const m=t.match(/(\d+):(\d+)\s*(AM|PM)/i); if(!m) return 0; let h=parseInt(m[1]),mn=parseInt(m[2]); if(m[3].toUpperCase()==='PM'&&h!==12)h+=12; if(m[3].toUpperCase()==='AM'&&h===12)h=0; return h*60+mn; };
 const getToday = () => { const d = new Date(); d.setHours(0,0,0,0); return d; };
 
+// HK May 31 2026: compute a booking's real duration from its start_time
+// + end_time on the row. Was previously reading services.duration which
+// is just the DEFAULT for that service; when a therapist edited a
+// booking to a custom duration (60→90), the bookings.end_time was
+// correctly updated but services.duration stayed at 60, so the UI
+// showed the old number after refresh. Source of truth is the booking
+// row, not the service template.
+function durationFromBooking(b) {
+  if (!b) return 60;
+  if (b.start_time && b.end_time) {
+    const [sh, sm] = String(b.start_time).slice(0,5).split(':').map(Number);
+    const [eh, em] = String(b.end_time).slice(0,5).split(':').map(Number);
+    let mins = (eh*60 + em) - (sh*60 + sm);
+    if (mins < 0) mins += 24*60; // safety for malformed overnight
+    if (mins > 0) return mins;
+  }
+  return b.services?.duration || 60;
+}
+
 const STATUS = {
   // HK May 31 2026: status taxonomy revised.
   //   paid (new):    green, takes precedence over complete/intake-done when
@@ -2618,13 +2637,17 @@ export function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelle
       console.warn('booking_history insert failed:', auditErr);
     }
 
-    // Notify reschedule if duration changed (same as time-edit path).
-    // Service-only changes do not fire the C10 reschedule email
-    // because the client's calendar entry doesn't shift.
+    // HK May 31 2026: notification fan-out for booking edits.
+    //   Duration change → reschedule (existing C10 template). The
+    //     client's end time shifts, calendar entry changes.
+    //   Service / location / partner / addon change → booking_updated.
+    //     Same date and time, but other details changed. Both client
+    //     and therapist get notified (therapist gets a receipt that
+    //     the client was told). Non-blocking on both paths.
+    const supabaseUrl = process.env.REACT_APP_SUPABASE_URL;
+    const anonKey = process.env.REACT_APP_SUPABASE_ANON_KEY;
     if (durationChanged) {
       try {
-        const supabaseUrl = process.env.REACT_APP_SUPABASE_URL;
-        const anonKey = process.env.REACT_APP_SUPABASE_ANON_KEY;
         fetch(`${supabaseUrl}/functions/v1/notify-booking-event`, {
           method: 'POST',
           headers: {
@@ -2636,6 +2659,23 @@ export function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelle
             booking_id: appt.id,
             event_type: 'reschedule',
             reschedule_prev: { prev_date: appt.booking_date, prev_time: startTimeStr },
+          }),
+        }).catch(() => {});
+      } catch (_) {}
+    } else if (changes.length > 0) {
+      // Service / location / partner / addon only. Time didn't shift.
+      try {
+        fetch(`${supabaseUrl}/functions/v1/notify-booking-event`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${anonKey}`,
+            'apikey': anonKey,
+          },
+          body: JSON.stringify({
+            booking_id: appt.id,
+            event_type: 'booking_updated',
+            changes,
           }),
         }).catch(() => {});
       } catch (_) {}
@@ -3137,6 +3177,15 @@ export function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelle
           <div style={{background:'#F9FAFB',borderRadius:10,padding:'10px 14px'}}>
             <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:8,flexWrap:'wrap'}}>
               <div style={{flex:1,minWidth:0}}>
+                {/* HK May 31 2026: booking date shown explicitly above
+                    the time so therapists do not have to navigate back
+                    to the schedule view to see WHICH day this booking
+                    is on. Time + duration stay on their own line below. */}
+                {appt.date && (
+                  <div style={{fontSize:12,fontWeight:600,color:'#6B7280',marginBottom:2,letterSpacing:'0.01em'}}>
+                    {appt.date.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
+                  </div>
+                )}
                 <div style={{display:'flex',alignItems:'center',gap:8,flexWrap:'wrap'}}>
                   <div style={{fontSize:15,fontWeight:700,color:'#1F2937'}}>{appt.time} · {appt.duration} min</div>
                   {!appt.preview && (
@@ -8263,7 +8312,7 @@ export default function ScheduleDashboard({ therapist }) {
         time: b.start_time ? fmt12(b.start_time.slice(0,5)) : '',
         startTime: (b.start_time || '').slice(0,5),
         service: b.services?.name || 'Session',
-        duration: b.services?.duration || 60,
+        duration: durationFromBooking(b),
         price: b.services?.price || 0,
         sms_opted_in: !!b.sms_opted_in,
         created_at: b.created_at,
@@ -8371,7 +8420,7 @@ export default function ScheduleDashboard({ therapist }) {
           client: b.client_name,
           email: (b.client_email || '').toLowerCase().trim(),
           time: fmt12(`${h}:${m}`),
-          duration: b.services?.duration || 60,
+          duration: durationFromBooking(b),
           date: bd,
           status,
           sessionId,

@@ -90,12 +90,24 @@ export default function BookingDetailPage({ therapist }) {
     bd.setHours(0, 0, 0, 0);
     const [h, m] = (b.start_time || '00:00').slice(0, 5).split(':').map(Number);
 
+    // HK May 31 2026: same fix as ScheduleDashboard.durationFromBooking.
+    // Read duration from the booking's own end_time-start_time so custom
+    // durations (60→90 edits) display correctly. services.duration is
+    // only the default; the booking row is the source of truth.
+    let computedDuration = b.services?.duration || 60;
+    if (b.start_time && b.end_time) {
+      const [eh, em] = String(b.end_time).slice(0, 5).split(':').map(Number);
+      let mins = (eh * 60 + em) - (h * 60 + m);
+      if (mins < 0) mins += 24 * 60;
+      if (mins > 0) computedDuration = mins;
+    }
+
     setAppt({
       id: b.id,
       client: b.client_name,
       email: (b.client_email || '').toLowerCase().trim(),
       time: fmt12(`${h}:${m}`),
-      duration: b.services?.duration || 60,
+      duration: computedDuration,
       date: bd,
       status,
       sessionId: sessionInfo?.id || null,
