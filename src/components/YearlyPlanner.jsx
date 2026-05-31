@@ -16,6 +16,7 @@
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
+import { deleteIn } from '../lib/supabaseBatch';
 import { RoundIconButton } from './ChevronIcon';
 
 const C = {
@@ -152,7 +153,7 @@ export default function YearlyPlanner({ therapist }) {
     const { from, to, reason, originalIds } = blockData;
 
     if (originalIds && originalIds.length > 0) {
-      await supabase.from('blocked_days').delete().in('id', originalIds);
+      await deleteIn(supabase, 'blocked_days', 'id', originalIds);
     }
 
     const datesToInsert = [];
@@ -177,7 +178,7 @@ export default function YearlyPlanner({ therapist }) {
 
   async function deleteBlock(ids) {
     setPending(true);
-    await supabase.from('blocked_days').delete().in('id', ids);
+    await deleteIn(supabase, 'blocked_days', 'id', ids);
     setEditingMonth(null);
     setEditingBlock(null);
     setPending(false);

@@ -18,6 +18,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
+import { selectInFn } from '../lib/supabaseBatch';
 
 const C = {
   cream: '#F9F5EE',
@@ -88,11 +89,14 @@ export default function ClientPackageBalance({ clientId, therapistId }) {
 
       let bookings = [];
       if (purchaseEmails.length > 0) {
-        const { data: bks } = await supabase
-          .from('bookings')
-          .select('client_email, booking_date, status')
-          .eq('therapist_id', therapistId)
-          .in('client_email', purchaseEmails);
+        const { data: bks } = await selectInFn(
+          () => supabase
+            .from('bookings')
+            .select('client_email, booking_date, status')
+            .eq('therapist_id', therapistId),
+          'client_email',
+          purchaseEmails,
+        );
         bookings = bks || [];
       }
 

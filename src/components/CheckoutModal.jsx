@@ -116,6 +116,14 @@ export default function CheckoutModal({
   // Card-on-file state (loaded from client row)
   const [cardOnFile, setCardOnFile] = useState(null);
 
+  // HK May 31 2026: when therapist enters a new card to charge, default
+  // to saving it for future card-on-file charges. Stripe's SetupIntent
+  // flow attaches the card to the customer automatically, so saving is
+  // free; we just persist the IDs to bookings + clients so future
+  // "Charge saved card" works without re-entering. Hidden in the Square
+  // path until square-charge-card supports separate save-card tokenization.
+  const [saveCardForLater, setSaveCardForLater] = useState(true);
+
   // Stripe Elements refs for new-card path
   const stripeRef = useRef(null);
   const elementsRef = useRef(null);
@@ -1015,6 +1023,32 @@ export default function CheckoutModal({
         onPackageCreated(packageRow);
       }
 
+      // HK May 31 2026: save-card-for-later. The SetupIntent flow above
+      // already attached the card to the Stripe customer, so the card is
+      // "in the vault" regardless of this checkbox. Persisting the IDs
+      // to the booking + client row is what makes future "Charge saved
+      // card" work without re-entering. Non-blocking; if these updates
+      // fail the charge still succeeded and the card is still in Stripe.
+      if (saveCardForLater && paymentMethodId && customer_id) {
+        try {
+          if (appt?.id) {
+            await supabase.from('bookings').update({
+              card_on_file_payment_method_id: paymentMethodId,
+              card_on_file_customer_id: customer_id,
+            }).eq('id', appt.id);
+          }
+          if (client?.id) {
+            await supabase.from('clients').update({
+              stripe_customer_id: customer_id,
+              payment_method_id: paymentMethodId,
+            }).eq('id', client.id);
+          }
+        } catch (saveErr) {
+          // eslint-disable-next-line no-console
+          console.warn('[CheckoutModal] save-card-for-later update failed (non-blocking)', saveErr);
+        }
+      }
+
       setSuccessDetail({
         method: 'Card entered',
         detail: cardDetail,
@@ -1573,6 +1607,9 @@ export default function CheckoutModal({
                   squareCardSecret={squareCardSecret}
                   onSquareTokenized={chargeNewCardSquare}
                   errorMsg={errorMsg}
+                  saveCardForLater={saveCardForLater}
+                  setSaveCardForLater={setSaveCardForLater}
+                  clientName={client?.name || appt?.client || 'this client'}
                 />
               )}
 
@@ -2049,6 +2086,8 @@ function NewCardForm({
   cardDivRef, ready, totalCents, onConfirm, onBack, processing,
   // HK May 31 2026: Square dispatch props
   processor, cardSetupLoading, squareCardSecret, onSquareTokenized, errorMsg,
+  // HK May 31 2026: save-card-for-future checkbox (Stripe path only).
+  saveCardForLater, setSaveCardForLater, clientName,
 }) {
   // Loading state while init-card-setup picks a processor for
   // Square / both-connected therapists.
@@ -2125,6 +2164,28 @@ function NewCardForm({
           </div>
         )}
       </div>
+      {/* HK May 31 2026: save-card-for-future checkbox. Default checked
+          so most therapists get the card-on-file benefit without thinking
+          about it. Unchecking is one tap. Stripe path only for now; the
+          Square path will get its own save flow when square-charge-card
+          supports the STORE intent token. */}
+      <label style={{
+        display: 'flex', alignItems: 'center', gap: 10,
+        padding: '12px 14px', marginBottom: 16,
+        background: '#FAFAF7',
+        border: `1px solid ${C.border}`, borderRadius: 10,
+        cursor: 'pointer', userSelect: 'none',
+      }}>
+        <input
+          type="checkbox"
+          checked={!!saveCardForLater}
+          onChange={(e) => setSaveCardForLater && setSaveCardForLater(e.target.checked)}
+          style={{ width: 18, height: 18, accentColor: C.forest, cursor: 'pointer' }}
+        />
+        <span style={{ fontSize: 13, color: C.ink, lineHeight: 1.45 }}>
+          Save this card for {clientName || 'this client'} so you can charge it next time without re-entering.
+        </span>
+      </label>
       <ActionRow onBack={onBack} onConfirm={onConfirm} processing={processing} confirmLabel={`Charge $${(totalCents / 100).toFixed(2)}`} disabled={!ready} />
     </div>
   );

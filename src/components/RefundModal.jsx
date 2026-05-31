@@ -37,11 +37,18 @@ export default function RefundModal({
   const fullAmountCents = (payment?.amount_cents || 0) + (payment?.tip_cents || 0);
   const fullAmountDollars = (fullAmountCents / 100).toFixed(2);
   const clientName = payment?.client_name || 'this client';
-  // Phase 14.3b (HK May 17 2026): branch on Stripe vs offline.
-  // Stripe payments call the refund API; offline (cash/Venmo/Zelle/
-  // check/other/manual) only flip the local row to status='refunded'.
-  // The therapist returns the money outside the app.
+  // HK May 31 2026: branch on online-card vs offline. Online-card =
+  // Stripe OR Square; both have a refund API and the edge function
+  // (refund-session-payment) routes by provider internally. Offline =
+  // cash, venmo, zelle, cashapp, check, other; modal just flips the
+  // local row to status='refunded' and the therapist returns funds
+  // outside the app.
+  // Previously this only recognized stripe_*, so all Square refunds
+  // silently dropped into the offline path and never hit Square's API.
   const isStripe = payment?.payment_method && payment.payment_method.startsWith('stripe_');
+  const isSquare = payment?.payment_method && payment.payment_method.startsWith('square_');
+  const isOnlineCard = isStripe || isSquare;
+  const processorName = isSquare ? 'Square' : 'Stripe';
   const methodLabel = (() => {
     const m = payment?.payment_method;
     if (m === 'cash') return 'Cash';
@@ -67,8 +74,8 @@ export default function RefundModal({
         session_payment_id: payment.id,
         therapist_id: therapist.id,
         // For offline payments, instruct the edge function to skip
-        // the Stripe API call and just update the local row.
-        offline_only: !isStripe,
+        // the Stripe / Square API call and just update the local row.
+        offline_only: !isOnlineCard,
       };
       if (amountCents && amountCents !== fullAmountCents) {
         body.refund_amount_cents = amountCents;
@@ -116,13 +123,13 @@ export default function RefundModal({
                 Refund
               </div>
               <div style={{ fontSize: 18, fontWeight: 700, color: C.forest, fontFamily: 'Georgia, serif' }}>
-                {isStripe
+                {isOnlineCard
                   ? `Refund $${fullAmountDollars} to ${clientName}?`
                   : `Mark $${fullAmountDollars} as refunded?`}
               </div>
               <div style={{ fontSize: 12, color: C.muted, marginTop: 6, lineHeight: 1.5 }}>
-                {isStripe
-                  ? `The full amount returns to the client's card in 5 to 10 business days. This cannot be undone.`
+                {isOnlineCard
+                  ? `${processorName} returns the full amount to the client's card in 5 to 10 business days. This cannot be undone.`
                   : `This was paid via ${methodLabel}. The platform will mark it refunded; you'll need to return the ${methodLabel.toLowerCase()} to ${clientName} separately.`}
               </div>
             </div>
@@ -134,7 +141,7 @@ export default function RefundModal({
                     borderRadius: 10, padding: '14px 18px', fontSize: 15, fontWeight: 700,
                     cursor: 'pointer',
                   }}>
-                  {isStripe ? `Refund full $${fullAmountDollars}` : `Mark $${fullAmountDollars} refunded`}
+                  {isOnlineCard ? `Refund full $${fullAmountDollars}` : `Mark $${fullAmountDollars} refunded`}
                 </button>
                 <button onClick={() => setStep('custom')}
                   style={{
@@ -246,10 +253,10 @@ export default function RefundModal({
               margin: '0 auto 14px', fontSize: 28, color: '#16A34A',
             }}>✓</div>
             <div style={{ fontSize: 16, fontWeight: 700, color: C.forest, fontFamily: 'Georgia, serif', marginBottom: 6 }}>
-              {isStripe ? 'Refund issued' : 'Marked as refunded'}
+              {isOnlineCard ? 'Refund issued' : 'Marked as refunded'}
             </div>
             <div style={{ fontSize: 12, color: C.muted, marginBottom: 18, lineHeight: 1.5 }}>
-              {isStripe
+              {isOnlineCard
                 ? `The refund will appear on the client's card in 5 to 10 business days.`
                 : `Remember to return the ${methodLabel.toLowerCase()} to ${clientName}.`}
             </div>

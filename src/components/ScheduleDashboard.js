@@ -3153,26 +3153,10 @@ export function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelle
                 </div>
               </>
             )}
-            {/* HK May 31 2026 (Side panel A): "Open as page" link in
-                slide mode so therapists can switch to the full-page
-                surface for deep work. Hidden in mode='page' (already
-                there) and on previews (no real route). */}
-            {mode === 'slide' && !appt.preview && (
-              <a
-                href={`/dashboard/schedule/booking/${appt.id}`}
-                title="Open this booking as a full page"
-                style={{
-                  fontSize: 11, fontWeight: 600, color: SO.forest,
-                  textDecoration: 'none', whiteSpace: 'nowrap',
-                  padding: '6px 10px', borderRadius: 999,
-                  border: '1px solid #D6E0D4', background: '#fff',
-                  marginRight: 6, flexShrink: 0,
-                }}
-              >
-                Open as page ↗
-              </a>
-            )}
-            <CloseButton onClick={onClose} label="Close" />
+            {/* HK May 31 2026: Close hidden in mode='page' since the
+                full-page route uses its own back button. Slide mode
+                keeps Close as the dismissal affordance. */}
+            {mode === 'slide' && <CloseButton onClick={onClose} label="Close" />}
           </div>
           <div style={{background:'#F9FAFB',borderRadius:10,padding:'10px 14px'}}>
             <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:8,flexWrap:'wrap'}}>
@@ -3180,10 +3164,27 @@ export function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelle
                 {/* HK May 31 2026: booking date shown explicitly above
                     the time so therapists do not have to navigate back
                     to the schedule view to see WHICH day this booking
-                    is on. Time + duration stay on their own line below. */}
+                    is on. Time + duration stay on their own line below.
+                    Adjacent: small "Open as full page" link, slide mode
+                    only, to switch to the deep-work surface without
+                    crowding the top ribbon. */}
                 {appt.date && (
-                  <div style={{fontSize:12,fontWeight:600,color:'#6B7280',marginBottom:2,letterSpacing:'0.01em'}}>
-                    {appt.date.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
+                  <div style={{display:'flex',alignItems:'baseline',gap:10,flexWrap:'wrap',marginBottom:2}}>
+                    <div style={{fontSize:12,fontWeight:600,color:'#6B7280',letterSpacing:'0.01em'}}>
+                      {appt.date.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
+                    </div>
+                    {mode === 'slide' && !appt.preview && (
+                      <a
+                        href={`/dashboard/schedule/booking/${appt.id}`}
+                        title="Open this booking as a full page"
+                        style={{
+                          fontSize: 11, fontWeight: 500, color: SO.forest,
+                          textDecoration: 'underline', whiteSpace: 'nowrap',
+                        }}
+                      >
+                        Open as full page ↗
+                      </a>
+                    )}
                   </div>
                 )}
                 <div style={{display:'flex',alignItems:'center',gap:8,flexWrap:'wrap'}}>

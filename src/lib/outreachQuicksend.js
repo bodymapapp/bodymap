@@ -27,6 +27,7 @@
 // All queries exclude clients without an email address.
 
 import { supabase } from './supabase';
+import { selectInFn } from './supabaseBatch';
 
 // ─── Starter templates (the 5 defaults seeded per therapist) ────
 
@@ -315,14 +316,15 @@ function normalizeEmails(rows, key = 'client_email') {
 
 // Helper: given a list of normalized emails, return matching client
 // rows for the therapist. Single source of truth for the email->client
-// lookup.
+// lookup. Chunked via selectInFn to survive 1000+ client therapists
+// (URL gateway limit; see supabaseBatch.js).
 async function clientsByEmails(therapistId, emails) {
   if (!emails || emails.length === 0) return [];
-  const { data, error } = await supabase
-    .from('clients')
-    .select('id, name, email')
-    .eq('therapist_id', therapistId)
-    .in('email', emails);
+  const { data, error } = await selectInFn(
+    () => supabase.from('clients').select('id, name, email').eq('therapist_id', therapistId),
+    'email',
+    emails,
+  );
   if (error) {
     console.error('[clientsByEmails]', error);
     return [];
@@ -384,12 +386,15 @@ async function audienceReturningRecent(therapistId) {
 
   // Step 2: count total sessions for each of those emails AND get
   // the latest booking_date per email (for the qualifying label).
-  const { data: allBookings, error: allErr } = await supabase
-    .from('bookings')
-    .select('client_email, booking_date')
-    .eq('therapist_id', therapistId)
-    .neq('status', 'cancelled')
-    .in('client_email', recentEmails);
+  const { data: allBookings, error: allErr } = await selectInFn(
+    () => supabase
+      .from('bookings')
+      .select('client_email, booking_date')
+      .eq('therapist_id', therapistId)
+      .neq('status', 'cancelled'),
+    'client_email',
+    recentEmails,
+  );
 
   if (allErr) {
     console.error('[audience returning_recent] all:', allErr);
@@ -562,11 +567,11 @@ async function audiencePackageHoldersIdle(therapistId) {
   if (packageClientIds.length === 0) return [];
 
   // Step 2: get the emails of those clients (to bridge to bookings)
-  const { data: pkgClients } = await supabase
-    .from('clients')
-    .select('id, email')
-    .eq('therapist_id', therapistId)
-    .in('id', packageClientIds);
+  const { data: pkgClients } = await selectInFn(
+    () => supabase.from('clients').select('id, email').eq('therapist_id', therapistId),
+    'id',
+    packageClientIds,
+  );
 
   const idToEmail = new Map();
   const pkgEmails = [];
@@ -585,13 +590,16 @@ async function audiencePackageHoldersIdle(therapistId) {
   cutoff.setDate(cutoff.getDate() - 14);
 
   // First: emails with recent bookings (these get filtered out)
-  const { data: recentBookings } = await supabase
-    .from('bookings')
-    .select('client_email')
-    .eq('therapist_id', therapistId)
-    .neq('status', 'cancelled')
-    .in('client_email', pkgEmails)
-    .gte('booking_date', cutoff.toISOString().split('T')[0]);
+  const { data: recentBookings } = await selectInFn(
+    () => supabase
+      .from('bookings')
+      .select('client_email')
+      .eq('therapist_id', therapistId)
+      .neq('status', 'cancelled')
+      .gte('booking_date', cutoff.toISOString().split('T')[0]),
+    'client_email',
+    pkgEmails,
+  );
 
   const recentEmails = new Set(normalizeEmails(recentBookings));
   const idleIds = packageClientIds.filter(id => {
@@ -604,12 +612,15 @@ async function audiencePackageHoldersIdle(therapistId) {
 
   // Second: latest booking_date for the idle clients (may be empty
   // if client has package but never booked)
-  const { data: allBookings } = await supabase
-    .from('bookings')
-    .select('client_email, booking_date')
-    .eq('therapist_id', therapistId)
-    .neq('status', 'cancelled')
-    .in('client_email', idleEmails);
+  const { data: allBookings } = await selectInFn(
+    () => supabase
+      .from('bookings')
+      .select('client_email, booking_date')
+      .eq('therapist_id', therapistId)
+      .neq('status', 'cancelled'),
+    'client_email',
+    idleEmails,
+  );
 
   const latestDate = {};
   for (const b of (allBookings || [])) {
@@ -633,11 +644,11 @@ async function audiencePackageHoldersIdle(therapistId) {
     labelMap.set(email, sessionsLabel + visitLabel);
   }
 
-  const { data: clients } = await supabase
-    .from('clients')
-    .select('id, name, email')
-    .eq('therapist_id', therapistId)
-    .in('id', idleIds);
+  const { data: clients } = await selectInFn(
+    () => supabase.from('clients').select('id, name, email').eq('therapist_id', therapistId),
+    'id',
+    idleIds,
+  );
 
   return shapeRecipients(clients, labelMap);
 }

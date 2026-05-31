@@ -24,6 +24,7 @@
 
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { supabase } from '../lib/supabase';
+import { deleteIn } from '../lib/supabaseBatch';
 import { RoundIconButton } from './ChevronIcon';
 
 const C = {

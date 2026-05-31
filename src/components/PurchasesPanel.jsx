@@ -29,6 +29,7 @@
 
 import React, { useEffect, useMemo, useState } from 'react';
 import { supabase } from '../lib/supabase';
+import { selectInFn } from '../lib/supabaseBatch';
 
 const C = {
   forest: '#2A5741',
@@ -359,11 +360,14 @@ export default function PurchasesPanel({ therapistId }) {
 
         let bookings = [];
         if (emails.length > 0) {
-          const { data: bks } = await supabase
-            .from('bookings')
-            .select('client_email, booking_date, status')
-            .eq('therapist_id', therapistId)
-            .in('client_email', emails);
+          const { data: bks } = await selectInFn(
+            () => supabase
+              .from('bookings')
+              .select('client_email, booking_date, status')
+              .eq('therapist_id', therapistId),
+            'client_email',
+            emails,
+          );
           bookings = bks || [];
         }
 
