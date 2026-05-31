@@ -101,69 +101,51 @@ serve(async (req) => {
     square_connected: true,
   }).eq('id', therapistId);
 
-  // Success page. Three end states this page must handle gracefully:
-  //   1. Opened as a popup with window.opener set: post message,
-  //      auto-close. Most desktop OAuth flows.
-  //   2. Opened as a popup but window.opener was lost (cross-origin
-  //      isolation, popup blocker reset, etc): try to close anyway,
-  //      then redirect as fallback.
-  //   3. Opened as a regular tab/redirect: redirect back to dashboard.
+  // HK May 31 2026: success response is INVISIBLE. Previously this
+  // rendered a "Square Connected" card with a green checkmark + "All
+  // set" copy + auto-close after 800-1200ms. Two problems HK called
+  // out:
+  //   1. Checkmark glyph (U+2713) rendered as mojibake "âœ"" in some
+  //      browsers regardless of charset header + meta tag.
+  //   2. Just SEEING the page after the Square allow screen is bad CX.
+  //      It interrupts the flow. The user expects: tap Connect, see
+  //      Square allow, done. Not: tap Connect, see Square allow, see
+  //      another success page they have to dismiss or wait through.
   //
-  // Always provide a visible 'Continue to dashboard' button so the
-  // therapist is never stranded on the success page if the auto-
-  // close + auto-redirect both fail. HK reported being stuck on the
-  // raw HTML once; this fixes that.
+  // New behavior: empty cream backdrop (matches app, no jarring white),
+  // INSTANT postMessage+close for popup case, INSTANT redirect for
+  // non-popup case via meta refresh AND location.replace as belt-and-
+  // suspenders. No checkmark, no copy, no delay. Total visible time:
+  // a single paint cycle, imperceptible.
+  //
+  // Fallback for stuck cases (popup blocker reset window.opener AND
+  // location.replace blocked): the meta refresh at content="0" still
+  // navigates the page to the dashboard. Therapist may briefly see a
+  // blank cream screen but never gets stuck.
+  const dashboardUrl = 'https://mybodymap.app/dashboard?square=connected';
   return new Response(`<!DOCTYPE html>
-    <html lang="en">
-      <head>
-        <meta charset="utf-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1">
-        <title>Square Connected</title>
-      </head>
-      <body style="margin:0;padding:40px 20px;font-family:system-ui,sans-serif;background:#FAF5EE;min-height:100vh;display:flex;align-items:center;justify-content:center;">
-        <div style="max-width:380px;width:100%;background:#fff;border-radius:14px;padding:28px 24px;box-shadow:0 4px 20px rgba(0,0,0,0.06);text-align:center;">
-          <div style="width:56px;height:56px;border-radius:50%;background:#DCFCE7;display:flex;align-items:center;justify-content:center;margin:0 auto 14px;font-size:28px;color:#16A34A;">✓</div>
-          <h2 style="margin:0 0 6px;color:#2A5741;font-size:18px;font-weight:700;font-family:Georgia,serif;">Square connected</h2>
-          <p style="margin:0 0 20px;color:#6B7280;font-size:13px;line-height:1.5;">
-            All set. You can close this window or continue to your dashboard.
-          </p>
-          <a href="https://mybodymap.app/dashboard?square=connected" id="continueBtn"
-             style="display:inline-block;background:#2A5741;color:#fff;text-decoration:none;border-radius:10px;padding:11px 22px;font-size:13px;font-weight:700;">
-            Continue to Dashboard
-          </a>
-          <p id="autoClose" style="margin:14px 0 0;font-size:11px;color:#9CA3AF;display:none;">
-            This window will close automatically...
-          </p>
-        </div>
-        <script>
-          (function() {
-            try {
-              if (window.opener && !window.opener.closed) {
-                // Popup case: notify parent and auto-close.
-                document.getElementById('autoClose').style.display = 'block';
-                window.opener.postMessage({type:'square-oauth-success'}, '*');
-                setTimeout(function(){
-                  try { window.close(); } catch(e) {}
-                }, 800);
-              } else {
-                // Regular tab/redirect case: auto-redirect to
-                // dashboard after a short delay so the success
-                // confirmation has a moment to register.
-                document.getElementById('autoClose').textContent = 'Redirecting to dashboard...';
-                document.getElementById('autoClose').style.display = 'block';
-                setTimeout(function(){
-                  window.location.href = 'https://mybodymap.app/dashboard?square=connected';
-                }, 1200);
-              }
-            } catch (e) {
-              // Defensive: if anything in the script throws, the
-              // visible button above is still tappable. Log for
-              // diagnostics.
-              console.warn('OAuth callback post-success script error:', e);
-            }
-          })();
-        </script>
-      </body>
-    </html>
-  `, { headers: { 'Content-Type': 'text/html; charset=utf-8' } });
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="refresh" content="0; url=${dashboardUrl}">
+<title>Connecting...</title>
+<style>html,body{margin:0;padding:0;background:#FAF5EE;height:100vh}</style>
+</head>
+<body>
+<script>
+(function(){
+  try {
+    if (window.opener && !window.opener.closed) {
+      window.opener.postMessage({type:'square-oauth-success'}, '*');
+      window.close();
+    } else {
+      window.location.replace(${JSON.stringify(dashboardUrl)});
+    }
+  } catch(_e) {
+    window.location.replace(${JSON.stringify(dashboardUrl)});
+  }
+})();
+</script>
+</body>
+</html>`, { headers: { 'Content-Type': 'text/html; charset=utf-8' } });
 });
