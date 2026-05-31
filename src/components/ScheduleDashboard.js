@@ -4739,6 +4739,31 @@ function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled, show
 function TimelineView({ therapist, allAppts, dayOffset, setDayOffset, today, onReschedule, onRefresh, blockedDays = [], onCreateBlock, onScheduleAtTime }) {
   const { toast: tlToast, showToast: tlShowToast } = useToast();
   const [selected,setSelected] = useState(null);
+
+  // HK May 31 2026: when allAppts refreshes (wake from background,
+  // realtime event, post-save refetch), the previously-selected booking
+  // may have a different shape (status changed, time changed, etc) or
+  // may no longer exist (cancelled, filtered out). If we keep rendering
+  // the panel against the stale `selected` object, sub-components see
+  // mismatched data and the panel appears to crash.
+  //
+  // Sync the panel's `selected` to the fresh booking from allAppts on
+  // every refresh. If the booking is gone, close the panel cleanly.
+  // The "crash + lands on today" pattern reported was very likely this:
+  // sms: handler put PWA in background, realtime woke it, fetchBookings
+  // ran, selected pointed at stale data, sub-component threw.
+  useEffect(() => {
+    if (!selected) return;
+    const fresh = allAppts.find(a => a.id === selected.id);
+    if (!fresh) {
+      setSelected(null);
+      return;
+    }
+    if (fresh !== selected) {
+      setSelected(fresh);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [allAppts]);
   const [showLegend,setShowLegend] = useState(false);
   // Phase 9.2 long-press → create block. Tracking the active press and
   // the resulting draft block being confirmed in a sheet.
@@ -5430,6 +5455,16 @@ function WeeklyView({ therapist, appointments, today, onReschedule, onRefresh, b
   const weekStartsOn = therapist?.week_starts_on ?? 0;
   const [weekOffset,setWeekOffset]=useState(0);
   const [selected,setSelected]=useState(null);
+
+  // HK May 31 2026: panel stale-data guard. See TimelineView for why.
+  useEffect(() => {
+    if (!selected) return;
+    const fresh = APPTS.find(a => a.id === selected.id);
+    if (!fresh) { setSelected(null); return; }
+    if (fresh !== selected) setSelected(fresh);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [appointments]);
+
   const [showLegend,setShowLegend]=useState(false);
   const isMobile=window.innerWidth<640;
   // Get start of week respecting weekStartsOn. If Sunday-first, week
@@ -6066,6 +6101,16 @@ function MonthlyView({ therapist, appointments, today, onReschedule, onRefresh, 
   const [monthOffset,setMonthOffset]=useState(0);
   const [selDate,setSelDate]=useState(today);
   const [selected,setSelected]=useState(null);
+
+  // HK May 31 2026: panel stale-data guard. See TimelineView for why.
+  useEffect(() => {
+    if (!selected) return;
+    const fresh = (appointments || []).find(a => a.id === selected.id);
+    if (!fresh) { setSelected(null); return; }
+    if (fresh !== selected) setSelected(fresh);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [appointments]);
+
   const viewMonth=new Date(today.getFullYear(),today.getMonth()+monthOffset,1);
   const daysInMonth=new Date(viewMonth.getFullYear(),viewMonth.getMonth()+1,0).getDate();
   const firstDay=new Date(viewMonth.getFullYear(),viewMonth.getMonth(),1).getDay();
@@ -7296,57 +7341,97 @@ export default function ScheduleDashboard({ therapist }) {
   // the BookingModal reschedule flow at the top of the tree.
   const { toast: scheduleToast, showToast: showScheduleToast } = useToast();
 
-  // HK May 31 2026: dayOffset and subView are now URL-backed so the
-  // therapist's place in the schedule survives:
-  //   - saves inside the DetailPanel (which previously caused a
-  //     re-render that appeared to "land on today" - was actually a
-  //     state-loss symptom)
-  //   - back/forward browser navigation
-  //   - page refresh
-  //   - opening a session detail and clicking Back
+  // HK May 31 2026: dayOffset and subView are URL-backed AND backed up
+  // to sessionStorage. URL is the source of truth, but iOS Safari has
+  // a known bug where returning from a URL-scheme handler (sms:, tel:,
+  // mailto:) sometimes strips the query string from the path. When
+  // that happens, the URL says /dashboard/schedule (no ?d=) and we'd
+  // re-default to today, surprising the therapist.
+  //
+  // sessionStorage backup catches this. On mount we look at URL first,
+  // then fall back to sessionStorage if URL is empty AND the stored
+  // value is fresh (under 2 hours old). Older than that, defaults
+  // apply, because the therapist probably opened a new session and
+  // genuinely expects today.
   //
   // URL shape: /dashboard/schedule?d=2026-06-04&view=today
-  //   - d:    ISO date YYYY-MM-DD of the viewed day (omitted = today)
+  //   - d:    ISO date YYYY-MM-DD (omitted = today)
   //   - view: today | weekly | monthly | yearly | insights (default today)
-  //
-  // We use replace() not push() because navigating between days isn't
-  // a meaningful "back" target. The therapist taps Next/Prev many
-  // times - browser back should pop them out of /schedule, not walk
-  // them back through every day.
   const [searchParams, setSearchParams] = useSearchParams();
   const [today] = useState(getToday);
 
   // Parse URL once on mount. After that, state is the source of truth
-  // and we write to URL on change.
-  const initialDayOffset = (() => {
+  // and we write to URL (and sessionStorage) on change.
+  const STORAGE_KEY = 'mbm-schedule-state';
+  const STORAGE_TTL_MS = 2 * 60 * 60 * 1000; // 2 hours
+
+  const initialState = (() => {
+    // Prefer URL.
     const dParam = searchParams.get('d');
-    if (!dParam) return 0;
-    const parsed = new Date(dParam + 'T00:00:00');
-    if (isNaN(parsed.getTime())) return 0;
-    const diffMs = parsed.getTime() - today.getTime();
-    return Math.round(diffMs / (1000 * 60 * 60 * 24));
+    const viewParam = searchParams.get('view');
+    if (dParam) {
+      const parsed = new Date(dParam + 'T00:00:00');
+      if (!isNaN(parsed.getTime())) {
+        const diffMs = parsed.getTime() - today.getTime();
+        return {
+          dayOffset: Math.round(diffMs / (1000 * 60 * 60 * 24)),
+          subView: viewParam || 'today',
+        };
+      }
+    }
+    // Fallback: recent sessionStorage backup. Catches the iOS sms:
+    // handler roundtrip that strips query params.
+    try {
+      const raw = sessionStorage.getItem(STORAGE_KEY);
+      if (raw) {
+        const stored = JSON.parse(raw);
+        const age = Date.now() - (stored.at || 0);
+        if (age < STORAGE_TTL_MS && typeof stored.dayOffset === 'number') {
+          return {
+            dayOffset: stored.dayOffset,
+            subView: stored.subView || 'today',
+          };
+        }
+      }
+    } catch (_) {}
+    return { dayOffset: 0, subView: 'today' };
   })();
-  const initialSubView = searchParams.get('view') || 'today';
 
-  const [subView, setSubViewRaw] = useState(initialSubView);
-  const [dayOffset, setDayOffsetRaw] = useState(initialDayOffset);
+  const [subView, setSubViewRaw] = useState(initialState.subView);
+  const [dayOffset, setDayOffsetRaw] = useState(initialState.dayOffset);
 
-  // Wrapped setters that also update URL. Both accept either a value
-  // or an updater fn (matches useState API so existing call sites work).
+  // Helper: write to both URL and sessionStorage so either can restore
+  // state.
+  const persistState = (offset, view) => {
+    const newParams = new URLSearchParams(searchParams);
+    if (offset === 0) {
+      newParams.delete('d');
+    } else {
+      const targetDate = addDays(today, offset);
+      const yyyy = targetDate.getFullYear();
+      const mm = String(targetDate.getMonth() + 1).padStart(2, '0');
+      const dd = String(targetDate.getDate()).padStart(2, '0');
+      newParams.set('d', `${yyyy}-${mm}-${dd}`);
+    }
+    if (view === 'today') {
+      newParams.delete('view');
+    } else {
+      newParams.set('view', view);
+    }
+    setSearchParams(newParams, { replace: true });
+    try {
+      sessionStorage.setItem(STORAGE_KEY, JSON.stringify({
+        dayOffset: offset, subView: view, at: Date.now(),
+      }));
+    } catch (_) {}
+  };
+
+  // Wrapped setters that also update URL + sessionStorage. Both accept
+  // either a value or an updater fn (matches useState API).
   const setDayOffset = (next) => {
     setDayOffsetRaw((prev) => {
       const value = typeof next === 'function' ? next(prev) : next;
-      const newParams = new URLSearchParams(searchParams);
-      if (value === 0) {
-        newParams.delete('d');
-      } else {
-        const targetDate = addDays(today, value);
-        const yyyy = targetDate.getFullYear();
-        const mm = String(targetDate.getMonth() + 1).padStart(2, '0');
-        const dd = String(targetDate.getDate()).padStart(2, '0');
-        newParams.set('d', `${yyyy}-${mm}-${dd}`);
-      }
-      setSearchParams(newParams, { replace: true });
+      persistState(value, subView);
       return value;
     });
   };
@@ -7354,16 +7439,20 @@ export default function ScheduleDashboard({ therapist }) {
   const setSubView = (next) => {
     setSubViewRaw((prev) => {
       const value = typeof next === 'function' ? next(prev) : next;
-      const newParams = new URLSearchParams(searchParams);
-      if (value === 'today') {
-        newParams.delete('view');
-      } else {
-        newParams.set('view', value);
-      }
-      setSearchParams(newParams, { replace: true });
+      persistState(dayOffset, value);
       return value;
     });
   };
+
+  // Also re-sync URL on mount in case sessionStorage restored state
+  // but URL was empty. Without this the URL stays bare and the next
+  // refresh would lose the date.
+  useEffect(() => {
+    if (initialState.dayOffset !== 0 && !searchParams.get('d')) {
+      persistState(initialState.dayOffset, initialState.subView);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const [realBookings,setRealBookings]=useState(null);
   const [pendingApprovalBookings,setPendingApprovalBookings]=useState([]);
