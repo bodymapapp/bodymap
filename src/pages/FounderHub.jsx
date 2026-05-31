@@ -132,6 +132,16 @@ const SECTIONS = [
     backupKey: "03d-design-principles",
   },
   {
+    id: "risk-register",
+    number: 3.4,
+    title: "Risk Register",
+    subtitle: "Known risks: broken or scale-fragile spots not yet fixed. Each entry has a trigger, fix estimate, and status. Append-only, closed risks stay for paper trail.",
+    status: "live",
+    type: "markdown",
+    path: "docs/RISK_REGISTER.md",
+    backupKey: "03f-risk-register",
+  },
+  {
     id: "block-plan",
     number: 4,
     title: "Block Plan",
