@@ -128,6 +128,72 @@ function traceStyles(appt) {
   };
 }
 
+// HK May 31 2026: root-cause fix for DetailPanel glitch.
+//
+// Before: each view (Timeline/Weekly/Monthly) computed
+//   freshSelected = allAppts.find(a => a.id === selectedBookingId)
+// every render. Because allAppts is rebuilt on every fetchBookings,
+// freshSelected got a NEW OBJECT IDENTITY each render even when the
+// underlying data was identical. DetailPanel received a new appt prop
+// reference, its useEffect([appt]) fired, and the user saw a render
+// cascade as a visible glitch.
+//
+// Now: useStableSelectedAppt returns a reference that ONLY changes
+// when the appt data actually changes. A content hash over the fields
+// DetailPanel reads gates the reference swap; if the hash is the same,
+// the previous reference is returned and DetailPanel does not re-render.
+// Cache layer preserves the panel across refetch races (allAppts briefly
+// empty mid-update) by returning the last-known-good when the fresh
+// lookup fails.
+//
+// Cost: one short string concat + comparison per render, negligible.
+// Benefit: panel renders are now driven by real data change, not
+// parent array identity churn.
+function hashApptForPanel(a) {
+  if (!a) return '';
+  // Fields DetailPanel reads. If any changes, panel should see the
+  // new appt. If none change, panel keeps its stable reference.
+  return [
+    a.id, a.status, a.rawStatus,
+    a.client, a.email, a.clientId, a.sessionId,
+    a.time, a.startTime, a.endTime, a.duration,
+    a.date && a.date.getTime ? a.date.getTime() : '',
+    a.booking_date,
+    a.service, a.service_id, a.service_price_cents, a.price,
+    a.location_id, a.locationName,
+    (a.addon_ids || []).join(','), a.addon_total_price, a.addon_extra_minutes,
+    a.partner_name, a.partner_email, a.is_couples,
+    a.deposit_required, a.deposit_paid, a.deposit_amount,
+    a.reminder_sent, a.preview, a.notes,
+    a.paid, a.paid_cents, a.paidCents, a.refundedCents,
+  ].join('|');
+}
+
+function useStableSelectedAppt(allAppts, selectedBookingId) {
+  const cacheRef = useRef(null);
+  const fresh = selectedBookingId
+    ? (allAppts || []).find(a => a.id === selectedBookingId) || null
+    : null;
+  useEffect(() => {
+    if (fresh) cacheRef.current = fresh;
+    if (!selectedBookingId) cacheRef.current = null;
+    // We intentionally do NOT depend on `fresh` object identity here;
+    // the hash memo below handles identity gating. This effect just
+    // maintains the cross-refetch cache.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedBookingId, fresh && fresh.id]);
+  const candidate = fresh
+    || (cacheRef.current && cacheRef.current.id === selectedBookingId
+        ? cacheRef.current
+        : null);
+  // useMemo with the content hash gives a stable reference: same hash
+  // means same object returned, different hash means swap.
+  const hash = hashApptForPanel(candidate);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  return useMemo(() => candidate, [hash]);
+}
+
+
 const makeSample = (today) => [
   {id:'s1',client:'Emma R.',   time:'9:00 AM', duration:60,date:addDays(today,0),status:'intake-done',   sessions:4, preview:true,service:'Swedish Massage',focus:[],notes:'Prefers quiet session'},
   {id:'s2',client:'Jess M.',   time:'10:30 AM',duration:90,date:addDays(today,0),status:'pending-intake',sessions:1, preview:true,service:'Deep Tissue',    focus:[],notes:''},
@@ -4819,18 +4885,13 @@ function TimelineView({ therapist, allAppts, dayOffset, setDayOffset, today, onR
   // cache the last-known-good appt in a ref so the panel keeps
   // rendering against it through the race. Once a fresh version is
   // available (matching id), we swap to it.
-  const lastSelectedApptRef = useRef(null);
-  const freshSelected = selectedBookingId
-    ? (allAppts || []).find(a => a.id === selectedBookingId) || null
-    : null;
-  useEffect(() => {
-    if (freshSelected) lastSelectedApptRef.current = freshSelected;
-    if (!selectedBookingId) lastSelectedApptRef.current = null;
-  }, [freshSelected, selectedBookingId]);
-  const selected = freshSelected
-    || (lastSelectedApptRef.current && lastSelectedApptRef.current.id === selectedBookingId
-        ? lastSelectedApptRef.current
-        : null);
+  // HK May 31 2026: stable-reference selection via useStableSelectedAppt
+  // hook. Was 11 lines of duplicated find + cache + race logic per view
+  // (Timeline, Weekly, Monthly), each of which churned the appt prop on
+  // every fetchBookings and caused DetailPanel to glitch. The hook
+  // returns a reference that only changes when the appt data actually
+  // changes, so DetailPanel stays steady through refetches.
+  const selected = useStableSelectedAppt(allAppts, selectedBookingId);
 
   const setSelected = (next) => {
     const value = typeof next === 'function' ? next(null) : next;
@@ -5527,19 +5588,9 @@ function WeeklyView({ therapist, appointments, today, onReschedule, onRefresh, b
   const weekStartsOn = therapist?.week_starts_on ?? 0;
   const [weekOffset,setWeekOffset]=useState(0);
 
-  // HK May 31 2026: see TimelineView for the cache rationale.
-  const lastSelectedApptRef = useRef(null);
-  const freshSelected = selectedBookingId
-    ? APPTS.find(a => a.id === selectedBookingId) || null
-    : null;
-  useEffect(() => {
-    if (freshSelected) lastSelectedApptRef.current = freshSelected;
-    if (!selectedBookingId) lastSelectedApptRef.current = null;
-  }, [freshSelected, selectedBookingId]);
-  const selected = freshSelected
-    || (lastSelectedApptRef.current && lastSelectedApptRef.current.id === selectedBookingId
-        ? lastSelectedApptRef.current
-        : null);
+  // HK May 31 2026: stable-reference selection. See useStableSelectedAppt
+  // definition for the rationale and the DetailPanel glitch this prevents.
+  const selected = useStableSelectedAppt(APPTS, selectedBookingId);
   const setSelected = (next) => {
     const value = typeof next === 'function' ? next(null) : next;
     if (setSelectedBookingId) setSelectedBookingId(value ? value.id : '');
@@ -6181,19 +6232,9 @@ function MonthlyView({ therapist, appointments, today, onReschedule, onRefresh, 
   const [monthOffset,setMonthOffset]=useState(0);
   const [selDate,setSelDate]=useState(today);
 
-  // HK May 31 2026: see TimelineView for the cache rationale.
-  const lastSelectedApptRef = useRef(null);
-  const freshSelected = selectedBookingId
-    ? APPTS.find(a => a.id === selectedBookingId) || null
-    : null;
-  useEffect(() => {
-    if (freshSelected) lastSelectedApptRef.current = freshSelected;
-    if (!selectedBookingId) lastSelectedApptRef.current = null;
-  }, [freshSelected, selectedBookingId]);
-  const selected = freshSelected
-    || (lastSelectedApptRef.current && lastSelectedApptRef.current.id === selectedBookingId
-        ? lastSelectedApptRef.current
-        : null);
+  // HK May 31 2026: stable-reference selection. See useStableSelectedAppt
+  // definition for the rationale and the DetailPanel glitch this prevents.
+  const selected = useStableSelectedAppt(APPTS, selectedBookingId);
   const setSelected = (next) => {
     const value = typeof next === 'function' ? next(null) : next;
     if (setSelectedBookingId) setSelectedBookingId(value ? value.id : '');
