@@ -53,6 +53,8 @@ export default function BookingDetailPage({ therapist }) {
         .from('sessions')
         .select('id, client_id')
         .eq('booking_id', bookingId)
+        .order('created_at', { ascending: false })
+        .limit(1)
         .maybeSingle(),
       supabase
         .from('session_payments')
