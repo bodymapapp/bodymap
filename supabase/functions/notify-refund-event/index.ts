@@ -22,6 +22,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { notifyTherapist, notifyClient } from "../_shared/notifications.ts";
 import { renderClientEmail } from "../_shared/clientEmail.ts";
+import { resolveClientName, resolveClientFirstName } from "../_shared/clientName.ts";
 
 const cors = {
   'Access-Control-Allow-Origin': '*',
@@ -75,7 +76,7 @@ serve(async (req) => {
     if (payment.booking_id) {
       const { data } = await supabase
         .from('bookings')
-        .select('id, booking_date, start_time, services(name)')
+        .select('id, booking_date, start_time, client_name, client_email, services(name)')
         .eq('id', payment.booking_id)
         .maybeSingle();
       booking = data;
@@ -83,7 +84,7 @@ serve(async (req) => {
 
     const totalCents = (payment.amount_cents || 0) + (payment.tip_cents || 0);
     const dollars = (totalCents / 100).toFixed(2);
-    const clientName = (client?.name || 'Client').toString();
+    const clientName = resolveClientName(booking, client, 'Client');
     const firstName = clientName.split(' ')[0];
     const businessName = therapist.business_name || therapist.full_name || 'MyBodyMap';
 

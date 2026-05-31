@@ -12,6 +12,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { logNotification } from "../_shared/notifications.ts";
+import { resolveClientFirstName } from "../_shared/clientName.ts";
 import { fromFor, replyToFor } from "../_shared/emailTemplate.ts";
 import { renderClientEmailDoc } from "../_shared/clientEmail.ts";
 
@@ -157,7 +158,7 @@ async function sendForClient(supabase: any, RESEND_KEY: string, clientId: string
   }
 
   const therapistFirst = (therapist?.full_name || therapist?.business_name || 'Your therapist').split(' ')[0];
-  const clientFirstName = client.name?.split(' ')[0] || 'there';
+  const clientFirstName = resolveClientFirstName(null, client, 'there');
   const bookingUrl = `https://mybodymap.app/book/${therapist.custom_url}`;
 
   // HK May 29 2026: per EMAIL_COPY_SPEC C14. Soft, never salesy.

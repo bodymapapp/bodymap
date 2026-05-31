@@ -10,6 +10,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { logNotification } from "../_shared/notifications.ts";
 import { emailWrapper, ctaButton, eyebrow, factBox, fromFor } from "../_shared/emailTemplate.ts";
+import { resolveClientName } from "../_shared/clientName.ts";
 
 const cors = {
   'Access-Control-Allow-Origin': '*',
@@ -28,7 +29,7 @@ serve(async (req) => {
   const { data: booking } = await supabase
     .from('bookings')
     .select(`
-      id, client_id, booking_date, start_time, service_id, services(name),
+      id, client_id, client_name, client_email, booking_date, start_time, service_id, services(name),
       therapists(id, full_name, business_name, custom_url, email),
       clients(id, name, email, phone)
     `)
@@ -41,7 +42,7 @@ serve(async (req) => {
   const client = booking.clients;
   if (!therapist?.email) return jsonErr('no therapist email', 200, { skipped: 'no_therapist_email' });
 
-  const clientName = client?.name || 'A client';
+  const clientName = resolveClientName(booking, client, 'A client');
   const clientFirstName = clientName.split(' ')[0];
   const apptDate = new Date(`${booking.booking_date}T${booking.start_time}`);
   const apptWhen = apptDate.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }) + ' at ' + apptDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });

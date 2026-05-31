@@ -10,6 +10,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { logNotification } from "../_shared/notifications.ts";
 import { emailWrapper, ctaButton, eyebrow, factBox, fromFor, replyToFor, formatApptDateTime } from "../_shared/emailTemplate.ts";
+import { resolveClientFirstName } from "../_shared/clientName.ts";
 
 const cors = {
   'Access-Control-Allow-Origin': '*',
@@ -81,7 +82,7 @@ async function sendForBooking(supabase: any, RESEND_KEY: string, bookingId: stri
   const { data: booking } = await supabase
     .from('bookings')
     .select(`
-      id, client_id, booking_date, start_time, service_id, status,
+      id, client_id, client_name, client_email, booking_date, start_time, service_id, status,
       services(name, duration),
       location:therapist_locations(name, street1, street2, city, state, postal_code),
       therapists(id, full_name, business_name, custom_url, email, notification_prefs),
@@ -102,7 +103,7 @@ async function sendForBooking(supabase: any, RESEND_KEY: string, bookingId: stri
   const serviceDuration = booking.services?.duration || null;
   const loc = booking.location; const locationAddr = loc ? [loc.street1, loc.street2, [loc.city, loc.state].filter(Boolean).join(", "), loc.postal_code].filter(Boolean).join(", ") : null;
   const therapistFirst = (therapist?.full_name || therapist?.business_name || 'Your therapist').split(' ')[0];
-  const clientFirstName = client.name?.split(' ')[0] || 'there';
+  const clientFirstName = resolveClientFirstName(booking, client, 'there');
   const apptWhen = formatApptDateTime(booking.booking_date, booking.start_time);
   const rescheduleUrl = `https://mybodymap.app/book/${therapist.custom_url}?reschedule=${booking.id}`;
 

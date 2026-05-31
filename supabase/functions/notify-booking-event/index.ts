@@ -488,7 +488,12 @@ function clientEmailContentFor(eventType: string, ctx: {
       .replace(/\s+/g, ' ')         // collapse whitespace
       .trim();
   };
-  const clientNameClean = cleanName(client.name) || cleanName(booking.client_name) || 'there';
+  // HK May 31 2026: precedence flipped. Was preferring client.name over
+  // booking.client_name; that produced "Lapse Test" receipts when the
+  // booking actually said "Joy Client". The therapist typed
+  // booking.client_name at booking time and that is the truth for
+  // THIS session, regardless of how clients.name has drifted since.
+  const clientNameClean = cleanName(booking.client_name) || cleanName(client.name) || 'there';
   const clientFirst = clientNameClean.split(' ')[0] || 'there';
   const whenStr = formatApptDateTime(booking.booking_date, booking.start_time);
   const whenDate = whenStr.split(' at ')[0];

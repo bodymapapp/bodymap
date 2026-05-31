@@ -24,6 +24,7 @@ import {
   ProviderError,
 } from '../_shared/payment-provider.ts';
 import { notifyTherapist } from '../_shared/notifications.ts';
+import { resolveClientName } from '../_shared/clientName.ts';
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
@@ -274,7 +275,7 @@ serve(async (req) => {
     try {
       const isNoShow = reason === 'no_show';
       const eventType = isNoShow ? 'no_show_recorded' : 'booking_cancelled';
-      const clientName = (client.name || 'Client').toString();
+      const clientName = resolveClientName(booking, client, 'Client');
       const firstName = clientName.split(' ')[0];
       const feeUsd = ((chargeResult.amountCents || 0) / 100).toFixed(2);
       // HK May 28 2026: bookings has no start_at column (it uses

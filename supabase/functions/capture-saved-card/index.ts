@@ -25,6 +25,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getStripeSecret } from "../_shared/paymentMode.ts";
 import { notifyTherapist } from "../_shared/notifications.ts";
+import { resolveClientName } from "../_shared/clientName.ts";
 
 const cors = {
   'Access-Control-Allow-Origin': '*',
@@ -131,12 +132,26 @@ serve(async (req) => {
             .eq('id', client_id)
             .maybeSingle();
 
+          // HK May 31 2026: prefer booking.client_name when this capture
+          // is tied to a booking (therapist typed the name there at
+          // booking time, which is the truth for this session). Falls
+          // back to client.name otherwise.
+          let booking: { client_name?: string | null } | null = null;
+          if (booking_id) {
+            const { data: bk } = await supabase
+              .from('bookings')
+              .select('client_name')
+              .eq('id', booking_id)
+              .maybeSingle();
+            booking = bk;
+          }
+
           // Amount comes from the PaymentIntent itself, which is
           // already loaded above as `pi` (server-validated; never
           // trust the frontend).
           const amountCents = Number(pi.amount || 0);
           const dollars = (amountCents / 100).toFixed(2);
-          const clientName = client?.name || 'a client';
+          const clientName = resolveClientName(booking, client, 'a client');
           const firstName = clientName.split(' ')[0];
 
           const title = `${clientName} paid $${dollars}`;

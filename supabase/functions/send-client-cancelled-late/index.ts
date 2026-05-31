@@ -14,6 +14,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { logNotification } from "../_shared/notifications.ts";
 import { emailWrapper, fromFor, replyToFor, formatApptDateTime } from "../_shared/emailTemplate.ts";
 import { renderClientEmail } from "../_shared/clientEmail.ts";
+import { resolveClientFirstName } from "../_shared/clientName.ts";
 
 const cors = {
   'Access-Control-Allow-Origin': '*',
@@ -32,7 +33,7 @@ serve(async (req) => {
   const { data: booking } = await supabase
     .from('bookings')
     .select(`
-      id, client_id, booking_date, start_time, service_id, services(name),
+      id, client_id, client_name, client_email, booking_date, start_time, service_id, services(name),
       therapists(id, full_name, business_name, custom_url, email, late_cancel_policy_text),
       clients(id, name, email, outreach_unsubscribed_at)
     `)
@@ -47,7 +48,7 @@ serve(async (req) => {
   if (client.outreach_unsubscribed_at) return jsonErr('unsubscribed', 200, { skipped: 'unsubscribed' });
 
   const therapistFirst = (therapist?.full_name || therapist?.business_name || 'Your therapist').split(' ')[0];
-  const clientFirstName = client.name?.split(' ')[0] || 'there';
+  const clientFirstName = resolveClientFirstName(booking, client, 'there');
   const apptWhen = formatApptDateTime(booking.booking_date, booking.start_time);
   const bookingUrl = `https://mybodymap.app/book/${therapist.custom_url}`;
   const serviceName = booking.services?.name || 'session';

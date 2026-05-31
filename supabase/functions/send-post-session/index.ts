@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { sendSmsViaTwilio, shouldSend, logNotification } from "../_shared/notifications.ts";
 import { renderClientEmailDoc } from "../_shared/clientEmail.ts";
+import { resolveClientFirstName } from "../_shared/clientName.ts";
 
 const cors = {
   'Access-Control-Allow-Origin': '*',
@@ -46,7 +47,22 @@ serve(async (req) => {
   const client = session.clients;
   const clientEmail = client?.email;
   const clientPhone = client?.phone;
-  const clientFirstName = client?.name?.split(' ')[0] || 'there';
+
+  // HK May 31 2026: fetch booking.client_name as primary source of
+  // truth for who-was-this-session-for. Prefer booking name over
+  // client record name (which can drift from fixture overlaps or
+  // record merges). booking_id may be null on legacy sessions.
+  let booking: { client_name?: string | null } | null = null;
+  if (session.booking_id) {
+    const { data: bk } = await supabase
+      .from('bookings')
+      .select('client_name')
+      .eq('id', session.booking_id)
+      .maybeSingle();
+    booking = bk;
+  }
+
+  const clientFirstName = resolveClientFirstName(booking, client, 'there');
   const therapistName = therapist?.business_name || therapist?.full_name || 'Your therapist';
 
   const sendEmail = shouldSend(therapist, 'client', 'post_session', 'email');

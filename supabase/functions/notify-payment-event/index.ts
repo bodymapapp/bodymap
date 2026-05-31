@@ -29,6 +29,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { notifyTherapist, notifyClient } from "../_shared/notifications.ts";
 import { renderClientEmailDoc } from "../_shared/clientEmail.ts";
+import { resolveClientName, resolveClientFirstName } from "../_shared/clientName.ts";
 
 const cors = {
   'Access-Control-Allow-Origin': '*',
@@ -83,7 +84,7 @@ serve(async (req) => {
     if (payment.booking_id) {
       const { data } = await supabase
         .from('bookings')
-        .select('id, booking_date, start_time, services(name)')
+        .select('id, booking_date, start_time, client_name, client_email, services(name)')
         .eq('id', payment.booking_id)
         .maybeSingle();
       booking = data;
@@ -94,8 +95,11 @@ serve(async (req) => {
     const dollars = (totalCents / 100).toFixed(2);
     const tipDollars = ((payment.tip_cents || 0) / 100).toFixed(2);
     const hasTip = (payment.tip_cents || 0) > 0;
-    const clientName = (client?.name || 'Client').toString();
-    const firstName = clientName.split(' ')[0];
+    // HK May 31 2026: prefer booking.client_name over client.name. The
+    // therapist typed booking.client_name at booking time; clients.name
+    // may have drifted (merged records, lapse fixtures sharing emails).
+    const clientName = resolveClientName(booking, client, 'Client');
+    const firstName = resolveClientFirstName(booking, client, 'Client');
     const businessName = therapist.business_name || therapist.full_name || 'MyBodyMap';
 
     let whenStr = '';
@@ -183,7 +187,7 @@ serve(async (req) => {
     let clientResult = null;
     if (client) {
       const serviceName = booking?.services?.name || 'your session';
-      const clientFirst = (client.name || '').split(' ')[0] || 'there';
+      const clientFirst = resolveClientFirstName(booking, client, 'there');
       const therapistFirst = (therapist?.full_name || businessName).split(' ')[0];
 
       // HK May 29 2026: per EMAIL_COPY_SPEC C13. Clean receipt, NOT
