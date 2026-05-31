@@ -2681,7 +2681,9 @@ function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled, show
 
     setCancelling(false);
     onCancelled?.();
-    onClose();
+    // HK May 31 2026: don't close the panel after cancel. User stays
+    // on the booking and sees the cancelled state in-place. Only X
+    // button + backdrop tap close the panel.
   }
 
   // Policy-aware cancel: opens the CancellationChargeModal which
@@ -4681,7 +4683,7 @@ function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled, show
             setShowChargeModal(false);
             notify(chargeContext?.isNoShow ? 'Marked as no-show' : 'Appointment cancelled');
             onCancelled?.();
-            onClose();
+            // HK May 31 2026: don't close the panel: stay in-place.
           }}
         />
       )}
@@ -5502,7 +5504,7 @@ function TimelineView({ therapist, allAppts, dayOffset, setDayOffset, today, onR
         </>
       )}
 
-      {selected&&<DetailPanel appt={selected} therapist={therapist} onClose={()=>setSelected(null)} onReschedule={a=>{setSelected(null);onReschedule&&onReschedule(a);}} onCancelled={()=>{setSelected(null);if(typeof onRefresh==='function')onRefresh();}} showToast={tlShowToast}/>}
+      {selected&&<DetailPanel appt={selected} therapist={therapist} onClose={()=>setSelected(null)} onReschedule={a=>{onReschedule&&onReschedule(a);}} onCancelled={()=>{if(typeof onRefresh==='function')onRefresh();}} showToast={tlShowToast}/>}
       {tlToast}
     </div>
   );
@@ -6156,7 +6158,7 @@ function WeeklyView({ therapist, appointments, today, onReschedule, onRefresh, b
         })()
       )}
       {wkToast}
-      {selected&&<DetailPanel appt={selected} therapist={therapist} onClose={()=>setSelected(null)} onReschedule={a=>{setSelected(null);onReschedule&&onReschedule(a);}} onCancelled={()=>{setSelected(null);if(typeof onRefresh==='function')onRefresh();}} showToast={wkShowToast}/>}
+      {selected&&<DetailPanel appt={selected} therapist={therapist} onClose={()=>setSelected(null)} onReschedule={a=>{onReschedule&&onReschedule(a);}} onCancelled={()=>{if(typeof onRefresh==='function')onRefresh();}} showToast={wkShowToast}/>}
     </div>
   );
 }
@@ -6368,7 +6370,7 @@ function MonthlyView({ therapist, appointments, today, onReschedule, onRefresh, 
           })}
         </div>
       }
-      {selected&&<DetailPanel appt={selected} therapist={therapist} onClose={()=>setSelected(null)} onReschedule={a=>{setSelected(null);onReschedule&&onReschedule(a);}} onCancelled={()=>{setSelected(null);if(typeof onRefresh==='function')onRefresh();}} showToast={moShowToast}/>}
+      {selected&&<DetailPanel appt={selected} therapist={therapist} onClose={()=>setSelected(null)} onReschedule={a=>{onReschedule&&onReschedule(a);}} onCancelled={()=>{if(typeof onRefresh==='function')onRefresh();}} showToast={moShowToast}/>}
       {moToast}
     </div>
   );
@@ -7471,9 +7473,24 @@ export default function ScheduleDashboard({ therapist }) {
     if (fromQuery !== null) {
       return { dayOffset: fromQuery, subView: viewParam || 'today', bookingId: bookingIdFromQuery };
     }
-    // 3. sessionStorage backup
+    // 3. sessionStorage backup (in-tab)
     try {
       const raw = sessionStorage.getItem(STORAGE_KEY);
+      if (raw) {
+        const stored = JSON.parse(raw);
+        const age = Date.now() - (stored.at || 0);
+        if (age < STORAGE_TTL_MS && typeof stored.dayOffset === 'number') {
+          return {
+            dayOffset: stored.dayOffset,
+            subView: stored.subView || 'today',
+            bookingId: bookingIdFromQuery || stored.bookingId || '',
+          };
+        }
+      }
+    } catch (_) {}
+    // 4. localStorage backup (survives tab close + browser restart)
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
       if (raw) {
         const stored = JSON.parse(raw);
         const age = Date.now() - (stored.at || 0);
@@ -7498,6 +7515,20 @@ export default function ScheduleDashboard({ therapist }) {
   // from this. URL-backed via ?b= param. Survives every remount.
   // Empty string = no booking selected (panel closed).
   const [selectedBookingId, setSelectedBookingIdRaw] = useState(initialState.bookingId || '');
+
+  // Diagnostic logging (HK May 31 2026): logs every change to
+  // selectedBookingId with a stack trace. If the panel closes "on
+  // its own," HK can grab the console and we'll see exactly what
+  // code path nulled it out.
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    // eslint-disable-next-line no-console
+    console.log(`[PANEL] selectedBookingId = ${selectedBookingId || '(empty)'}`);
+    if (!selectedBookingId) {
+      // eslint-disable-next-line no-console
+      console.log('[PANEL] cleared at:', new Error('panel-close-trace').stack);
+    }
+  }, [selectedBookingId]);
 
   // Refs mirror current state for use inside stable callbacks. Avoids
   // stale closures that captured an old value at setter-definition
@@ -7536,11 +7567,17 @@ export default function ScheduleDashboard({ therapist }) {
     if (routeLocation.pathname + routeLocation.search !== target) {
       routeNavigate(target, { replace: true });
     }
-    try {
-      sessionStorage.setItem(STORAGE_KEY, JSON.stringify({
-        dayOffset: offset, subView: view, bookingId: bookingId || null, at: Date.now(),
-      }));
-    } catch (_) {}
+    const blob = JSON.stringify({
+      dayOffset: offset, subView: view, bookingId: bookingId || null, at: Date.now(),
+    });
+    // Triple-redundant persistence:
+    //   sessionStorage = survives in-tab navigation, refresh
+    //   localStorage  = survives tab close, browser restart, Chrome
+    //                   memory-saver tab discard
+    // We read from sessionStorage first (more recent for same tab)
+    // and fall back to localStorage.
+    try { sessionStorage.setItem(STORAGE_KEY, blob); } catch (_) {}
+    try { localStorage.setItem(STORAGE_KEY, blob); } catch (_) {}
   };
 
   const setDayOffset = (next) => {
@@ -7599,11 +7636,11 @@ export default function ScheduleDashboard({ therapist }) {
       setSelectedBookingIdRaw(urlBookingId);
       selectedBookingIdRef.current = urlBookingId;
     }
-    try {
-      sessionStorage.setItem(STORAGE_KEY, JSON.stringify({
-        dayOffset: target, subView, bookingId: urlBookingId || null, at: Date.now(),
-      }));
-    } catch (_) {}
+    const blob = JSON.stringify({
+      dayOffset: target, subView, bookingId: urlBookingId || null, at: Date.now(),
+    });
+    try { sessionStorage.setItem(STORAGE_KEY, blob); } catch (_) {}
+    try { localStorage.setItem(STORAGE_KEY, blob); } catch (_) {}
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [routeParams.scheduleDate, searchParams]);
 
