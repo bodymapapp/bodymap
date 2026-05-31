@@ -105,7 +105,11 @@ async function sendForBooking(supabase: any, RESEND_KEY: string, bookingId: stri
   const therapistFirst = (therapist?.full_name || therapist?.business_name || 'Your therapist').split(' ')[0];
   const clientFirstName = resolveClientFirstName(booking, client, 'there');
   const apptWhen = formatApptDateTime(booking.booking_date, booking.start_time);
-  const rescheduleUrl = `https://mybodymap.app/book/${therapist.custom_url}?reschedule=${booking.id}`;
+  // HK May 31 2026: both CTAs pointed at client self-service URLs
+  // that are not yet wired. Removed to stop sending dead links.
+  // Reply-to-email is the working alternative; reminder still
+  // delivers the date/time/location facts the client needs.
+  const rescheduleUrl = null;
 
   // HK May 29 2026: per EMAIL_COPY_SPEC C4. Helpful, no pressure,
   // session details box always present.
@@ -122,9 +126,9 @@ async function sendForBooking(supabase: any, RESEND_KEY: string, bookingId: stri
     startTime: booking.start_time,
     durationMin: serviceDuration,
     locationAddress: locationAddr,
-    primaryCta: { label: 'View or reschedule', href: rescheduleUrl },
-    secondaryCta: { label: 'Cancel this booking', href: `https://mybodymap.app/book/${therapist.custom_url}/manage?b=${booking.id}` },
-    closingLine: `If anything has come up, you can move it from the link above. See you soon.`,
+    primaryCta: null,
+    secondaryCta: null,
+    closingLine: `If anything has come up, just reply to this email. See you soon.`,
     prefName: 'Session reminder (48h)',
   });
 

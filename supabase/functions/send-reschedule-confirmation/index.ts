@@ -100,7 +100,10 @@ serve(async (req) => {
   const therapistFirst = (therapist?.full_name || therapist?.business_name || 'Your therapist').split(' ')[0];
   const clientFirstName = resolveClientFirstName(booking, client, 'there');
   const newWhen = formatApptDateTime(booking.booking_date, booking.start_time);
-  const rescheduleUrl = `https://mybodymap.app/book/${therapist.custom_url}?reschedule=${booking.id}`;
+  // HK May 31 2026: rescheduleUrl removed. ?reschedule=<id> is not
+  // wired for client self-service yet. Reply-to-email is the working
+  // alternative.
+  const rescheduleUrl = null;
 
   // HK May 29 2026: per EMAIL_COPY_SPEC C10. Calm, helpful, new+old time
   // both visible, single CTA to view/change again.
@@ -119,8 +122,8 @@ serve(async (req) => {
     locationAddress: locationAddr,
     previousDate: prev_date || null,
     previousTime: prev_time || null,
-    primaryCta: { label: 'View or change again', href: rescheduleUrl },
-    closingLine: `See you then.`,
+    primaryCta: null,
+    closingLine: `If this new time does not work, just reply to this email and ${therapistFirst} will sort it out.`,
     prefName: 'Booking rescheduled',
   });
 

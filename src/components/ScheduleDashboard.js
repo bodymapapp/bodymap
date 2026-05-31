@@ -83,6 +83,53 @@ const LEGEND_ITEMS = [
   {color:'#5B4DC8', bg:'#EFEAFD', label:'From Google'},
 ];
 
+// HK May 31 2026: single legend component used by Timeline, Weekly,
+// and Monthly views so they all explain colors the same way. Was
+// three different layouts before (Timeline+Weekly had a collapsible
+// "Legend" pill; Monthly had an always-on inline "HOW TO READ" strip
+// with extras for initials and "tap a day"). HK called out the
+// inconsistency. Now the same control on every view: collapsed pill
+// labeled "How to read" that expands to show the color swatches.
+function LegendPill() {
+  const [open, setOpen] = useState(false);
+  return (
+    <div style={{marginBottom:12,display:'flex',alignItems:'center',gap:8,flexWrap:'wrap'}}>
+      <button
+        onClick={() => setOpen(v => !v)}
+        style={{
+          display:'inline-flex',alignItems:'center',gap:5,
+          background: open ? '#F0FDF4' : '#fff',
+          border: `1px solid ${open ? '#BBF7D0' : '#E5E7EB'}`,
+          borderRadius:14, padding:'4px 10px',
+          fontSize:11, color: open ? '#16A34A' : '#6B7280',
+          fontWeight:600, cursor:'pointer', whiteSpace:'nowrap',
+        }}
+      >
+        <span style={{fontSize:10}}>{open ? '▾' : '▸'}</span>
+        How to read
+      </button>
+      {open && (
+        <div style={{
+          display:'flex',gap:10,flexWrap:'wrap',alignItems:'center',
+          padding:'6px 10px',background:'#fff',borderRadius:8,
+          border:'1px solid #F3F4F6',flex:1,minWidth:0,
+        }}>
+          {LEGEND_ITEMS.map(({color, bg, label}) => (
+            <div key={label} style={{display:'flex',alignItems:'center',gap:4}}>
+              <div style={{width:10,height:10,borderRadius:3,background:bg,border:`1.5px solid ${color}`}}/>
+              <span style={{fontSize:11,color:'#6B7280'}}>{label}</span>
+            </div>
+          ))}
+          <div style={{display:'flex',alignItems:'center',gap:4}}>
+            <div style={{width:10,height:10,borderRadius:3,background:'#F8F8F8',border:'1.5px dashed #CBD5E1'}}/>
+            <span style={{fontSize:11,color:'#9CA3AF'}}>Preview</span>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // HK May 29 2026: build the human-readable annotation line that sits
 // under an appt's time on the timeline. Returns a short string like
 // "Cancelled May 28, 2:14 PM" or "$1 no-show fee charged" or
@@ -4897,7 +4944,6 @@ function TimelineView({ therapist, allAppts, dayOffset, setDayOffset, today, onR
     const value = typeof next === 'function' ? next(null) : next;
     if (setSelectedBookingId) setSelectedBookingId(value ? value.id : '');
   };
-  const [showLegend,setShowLegend] = useState(false);
   // Phase 9.2 long-press → create block. Tracking the active press and
   // the resulting draft block being confirmed in a sheet.
   const longPressTimerRef = useRef(null);
@@ -5159,30 +5205,9 @@ function TimelineView({ therapist, allAppts, dayOffset, setDayOffset, today, onR
         })}
       </div>
 
-      {/* Legend, collapsible. HK May 14 2026: the legend was always
-          on, ate ~50px every render. Now hidden by default behind a
-          'Legend' pill. Calendar gets the space back. */}
-      <div style={{marginBottom:12,display:'flex',alignItems:'center',gap:8,flexWrap:'wrap'}}>
-        <button onClick={()=>setShowLegend(v=>!v)}
-          style={{display:'inline-flex',alignItems:'center',gap:5,background:showLegend?'#F0FDF4':'#fff',border:`1px solid ${showLegend?'#BBF7D0':'#E5E7EB'}`,borderRadius:14,padding:'4px 10px',fontSize:11,color:showLegend?'#16A34A':'#6B7280',fontWeight:600,cursor:'pointer',whiteSpace:'nowrap'}}>
-          <span style={{fontSize:10}}>{showLegend?'▾':'▸'}</span>
-          Legend
-        </button>
-        {showLegend && (
-          <div style={{display:'flex',gap:10,flexWrap:'wrap',alignItems:'center',padding:'6px 10px',background:'#fff',borderRadius:8,border:'1px solid #F3F4F6',flex:1,minWidth:0}}>
-            {LEGEND_ITEMS.map(({color,bg,label})=>(
-              <div key={label} style={{display:'flex',alignItems:'center',gap:4}}>
-                <div style={{width:10,height:10,borderRadius:3,background:bg,border:`1.5px solid ${color}`}}/>
-                <span style={{fontSize:11,color:'#6B7280'}}>{label}</span>
-              </div>
-            ))}
-            <div style={{display:'flex',alignItems:'center',gap:4}}>
-              <div style={{width:10,height:10,borderRadius:3,background:'#F8F8F8',border:'1.5px dashed #CBD5E1'}}/>
-              <span style={{fontSize:11,color:'#9CA3AF'}}>Preview</span>
-            </div>
-          </div>
-        )}
-      </div>
+      {/* HK May 31 2026: legend extracted to LegendPill, used identically
+          across Timeline/Weekly/Monthly. See LegendPill definition. */}
+      <LegendPill />
 
       <div style={{background:'#FBF8F1',borderRadius:16,padding:'16px 14px 20px',border:'1px solid #EEF2F7'}}>
         <div
@@ -5596,7 +5621,6 @@ function WeeklyView({ therapist, appointments, today, onReschedule, onRefresh, b
     if (setSelectedBookingId) setSelectedBookingId(value ? value.id : '');
   };
 
-  const [showLegend,setShowLegend]=useState(false);
   const isMobile=window.innerWidth<640;
   // Get start of week respecting weekStartsOn. If Sunday-first, week
   // starts on Sun; if Monday-first, week starts on Mon.
@@ -5639,24 +5663,9 @@ function WeeklyView({ therapist, appointments, today, onReschedule, onRefresh, b
   }
   return (
     <div>
-      {/* Legend, collapsible. Off by default for vertical space. */}
-      <div style={{marginBottom:12,display:'flex',alignItems:'center',gap:8,flexWrap:'wrap'}}>
-        <button onClick={()=>setShowLegend(v=>!v)}
-          style={{display:'inline-flex',alignItems:'center',gap:5,background:showLegend?'#F0FDF4':'#fff',border:`1px solid ${showLegend?'#BBF7D0':'#E5E7EB'}`,borderRadius:14,padding:'4px 10px',fontSize:11,color:showLegend?'#16A34A':'#6B7280',fontWeight:600,cursor:'pointer',whiteSpace:'nowrap'}}>
-          <span style={{fontSize:10}}>{showLegend?'▾':'▸'}</span>
-          Legend
-        </button>
-        {showLegend && (
-          <div style={{display:'flex',gap:10,flexWrap:'wrap',alignItems:'center',padding:'6px 10px',background:'#fff',borderRadius:8,border:'1px solid #F3F4F6',flex:1,minWidth:0}}>
-            {LEGEND_ITEMS.map(({color,bg,label})=>(
-              <div key={label} style={{display:'flex',alignItems:'center',gap:4}}>
-                <div style={{width:10,height:10,borderRadius:3,background:bg,border:`1.5px solid ${color}`}}/>
-                <span style={{fontSize:11,color:'#6B7280'}}>{label}</span>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
+      {/* HK May 31 2026: legend extracted to LegendPill, used identically
+          across Timeline/Weekly/Monthly. See LegendPill definition. */}
+      <LegendPill />
       <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:20}}>
         <button onClick={()=>setWeekOffset(w=>w-1)} style={{background:'#fff',border:'1.5px solid #E5E7EB',borderRadius:8,padding:'8px 16px',fontSize:13,fontWeight:600,cursor:'pointer',color:'#1F2937'}}>← Prev</button>
         <div style={{textAlign:'center'}}>
@@ -6265,21 +6274,10 @@ function MonthlyView({ therapist, appointments, today, onReschedule, onRefresh, 
   }
   return (
     <div>
-      {/* Legend */}
-      <div style={{display:'flex',gap:10,flexWrap:'wrap',marginBottom:16,padding:'10px 14px',background:'#fff',borderRadius:10,border:'1px solid #F3F4F6',alignItems:'center'}}>
-        <span style={{fontSize:11,fontWeight:700,color:'#374151'}}>HOW TO READ:</span>
-        {LEGEND_ITEMS.map(({color,bg,label})=>(
-          <div key={label} style={{display:'flex',alignItems:'center',gap:4}}>
-            <div style={{width:12,height:12,borderRadius:3,background:bg,border:`2px solid ${color}`}}/>
-            <span style={{fontSize:11,color:'#6B7280'}}>{label}</span>
-          </div>
-        ))}
-        <div style={{display:'flex',alignItems:'center',gap:4}}>
-          <div style={{width:18,height:18,borderRadius:'50%',background:'#2A5741',display:'flex',alignItems:'center',justifyContent:'center',fontSize:8,fontWeight:700,color:'#fff'}}>AB</div>
-          <span style={{fontSize:11,color:'#6B7280'}}>Client initials</span>
-        </div>
-        <span style={{fontSize:11,color:'#9CA3AF',marginLeft:'auto'}}>Tap a day to see appointments</span>
-      </div>
+      {/* HK May 31 2026: was always-on with "HOW TO READ" prefix and
+          extra swatches that didn't appear on Timeline/Weekly. Replaced
+          with LegendPill for parity across views. */}
+      <LegendPill />
       <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:20}}>
         <button onClick={()=>setMonthOffset(m=>m-1)} style={{background:'#fff',border:'1.5px solid #E5E7EB',borderRadius:8,padding:'8px 16px',fontSize:13,fontWeight:600,cursor:'pointer',color:'#1F2937'}}>← Prev</button>
         <div style={{fontSize:16,fontWeight:700,color:'#1F2937'}}>{fmtMonth(viewMonth)}</div>

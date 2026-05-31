@@ -326,7 +326,12 @@ serve(async (req) => {
           extraFactRows: extraRows,
           policyInline: policyText,
           primaryCta: isPendingApproval ? null : { label: 'Fill my intake form', href: intakeUrl },
-          secondaryCta: isPendingApproval ? null : { label: 'Manage booking (reschedule or cancel)', href: `https://mybodymap.app/book/${therapist.custom_url}/manage?b=${booking.id}` },
+          // HK May 31 2026: secondary CTA pointed at /manage?b=... which
+          // is not yet wired for clients to self-reschedule/cancel.
+          // Removed to stop sending dead links. Clients can reply to the
+          // email if they need to change anything; the closing line
+          // already invites that.
+          secondaryCta: null,
           closingLine: isPendingApproval
             ? `Reply to this email if you'd like to add a note for ${therapistFirstName}.`
             : `Filling your intake ahead of time means you're ready the moment you arrive. Questions? Just reply to this email.`,

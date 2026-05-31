@@ -498,12 +498,10 @@ function clientEmailContentFor(eventType: string, ctx: {
   const whenStr = formatApptDateTime(booking.booking_date, booking.start_time);
   const whenDate = whenStr.split(' at ')[0];
   const bookingUrl = `https://mybodymap.app/book/${therapist?.custom_url}`;
-  // HK May 29 2026: manage URL is the client-facing page where they
-  // can view + cancel a specific booking. Was using a non-existent
-  // ?reschedule=<id> param on the public booking page which 404'd to
-  // the regular booking flow. /book/<slug>/manage?b=<uuid> is the
-  // canonical pattern (matches Cal.com / Calendly magic links).
-  const manageUrl = `https://mybodymap.app/book/${therapist?.custom_url}/manage?b=${booking.id}`;
+  // HK May 31 2026: manageUrl removed. /manage?b=... is the future
+  // client self-reschedule/cancel page but is not yet wired for live
+  // use. Until it is, every email or SMS that pointed there was a
+  // dead link to customers. Reply-to-email is the working alternative.
   const feeDollars = options.feeAmountCents ? (options.feeAmountCents / 100).toFixed(2) : '0.00';
 
   if (eventType === 'reschedule') {
@@ -524,11 +522,11 @@ function clientEmailContentFor(eventType: string, ctx: {
         locationAddress: locationAddr,
         previousDate: options.reschedulePrev?.prev_date || null,
         previousTime: options.reschedulePrev?.prev_time || null,
-        primaryCta: { label: 'View or cancel this booking', href: manageUrl },
-        closingLine: `If this new time does not work, you can cancel from the link above or reply to this email and I will sort it out.`,
+        primaryCta: null,
+        closingLine: `If this new time does not work, just reply to this email and ${therapistFirst} will sort it out.`,
         prefName: 'Booking rescheduled',
       }, `Your session is now ${whenStr}.`),
-      smsText: `${businessName}: your ${serviceName} has been moved to ${whenStr}. See you then. Manage: ${manageUrl}`,
+      smsText: `${businessName}: your ${serviceName} has been moved to ${whenStr}. Reply if this does not work.`,
     };
   }
 
