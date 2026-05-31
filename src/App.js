@@ -117,6 +117,12 @@ function App() {
           <Route path="/dashboard/gifts" element={<ProtectedRoute><Dashboard view="gifts" /></ProtectedRoute>} />
           <Route path="/dashboard/outreach" element={<ProtectedRoute><Dashboard view="outreach" /></ProtectedRoute>} />
           <Route path="/dashboard/schedule" element={<ProtectedRoute><Dashboard view="schedule" /></ProtectedRoute>} />
+          {/* HK May 31 2026: date-in-path is the durable URL for the
+              schedule. Survives iOS PWA URL-scheme handler returns
+              (sms:, tel:, mailto:) which sometimes strip query
+              strings. The bare /dashboard/schedule route stays as
+              backward-compat and "today" entry point. */}
+          <Route path="/dashboard/schedule/:scheduleDate" element={<ProtectedRoute><Dashboard view="schedule" /></ProtectedRoute>} />
           <Route path="/dashboard/billing" element={<ProtectedRoute><Dashboard view="billing" /></ProtectedRoute>} />
           <Route path="/dashboard/ai" element={<ProtectedRoute><Dashboard view="ai" /></ProtectedRoute>} />
           <Route path="/dashboard/clients/:clientId" element={<ProtectedRoute><Dashboard view="sessions" /></ProtectedRoute>} />

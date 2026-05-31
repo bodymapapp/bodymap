@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useParams, useNavigate, useLocation } from 'react-router-dom';
 import { supabase, db } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import BookingModal from './BookingModal';
@@ -1903,71 +1903,24 @@ function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled, show
         return;
       }
 
-      // No existing session. Auto-create an empty draft.
-      if (!appt.clientId || !therapist?.id) {
-        console.warn('[auto-session] cannot create: missing prerequisites', {
-          booking_id: appt.id,
-          client_id: appt.clientId,
-          therapist_id: therapist?.id,
-        });
-        return;
-      }
-      // HK May 25 2026 round 10: use the SAME db.createSession helper
-      // and the SAME field set that ClientIntake uses for green
-      // sessions. The orange-vs-green difference is only 'did the
-      // client fill the intake or not', not 'which insert path was
-      // used'. Both states get a session row created by the same
-      // function with the same shape; orange just has empty arrays
-      // and default preferences. HK's call after 9 rounds of
-      // inventing parallel insert paths.
-      console.log('[auto-session] creating draft for booking', appt.id);
-      let created;
-      try {
-        created = await db.createSession({
-          therapist_id: therapist.id,
-          client_id: appt.clientId,
-          booking_id: appt.id,
-          front_focus: [],
-          front_avoid: [],
-          back_focus: [],
-          back_avoid: [],
-          pressure: 3,
-          goal: 'relax',
-          table_temp: 'warm',
-          room_temp: 'comfortable',
-          music: 'soft',
-          lighting: 'dim',
-          conversation: 'quiet',
-          draping: 'standard',
-          oil_pref: 'none',
-          med_flag: 'none',
-          med_note: null,
-          client_notes: null,
-          medical_conditions: null,
-          custom_intake_answers: null,
-          front_pct: null,
-          top_pct: null,
-          middle_pct: null,
-          bottom_pct: null,
-          completed: false,
-        });
-      } catch (sErr) {
-        if (!alive) return;
-        console.error('[auto-session] insert FAILED:');
-        console.error('  code:', sErr?.code);
-        console.error('  message:', sErr?.message);
-        console.error('  details:', sErr?.details);
-        console.error('  hint:', sErr?.hint);
-        console.error('  booking_id:', appt.id);
-        console.error('  client_id:', appt.clientId);
-        console.error('  therapist_id:', therapist.id);
-        return;
-      }
-      if (!alive) return;
-      if (created) {
-        console.log('[auto-session] created', created.id);
-        setCurrentSession(created);
-      }
+      // HK May 31 2026: STOP auto-creating empty draft sessions on
+      // every panel open. Previously this fired a sessions INSERT on
+      // every tap, which triggered Supabase realtime, which fired
+      // scheduleRefresh, which ran a full fetchBookings (1.2 seconds
+      // of blocking refresh). On a phone with 651 bookings and panel
+      // sub-components mid-render, this caused cascading refresh
+      // storms that looked like crashes.
+      //
+      // The notes editor (SOAP, brief, recap) already creates the
+      // session on first save via db.createSession. There is no
+      // functional reason to pre-create an empty row. The panel
+      // renders fine against currentSession = null because the
+      // intake_done check below treats it as "no intake yet."
+      //
+      // Net effect: one DB write per actual save instead of one
+      // per tap. Realtime traffic drops 10x. No more refresh storm
+      // every time the therapist opens a booking.
+      return;
     })();
     return () => { alive = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -7341,46 +7294,61 @@ export default function ScheduleDashboard({ therapist }) {
   // the BookingModal reschedule flow at the top of the tree.
   const { toast: scheduleToast, showToast: showScheduleToast } = useToast();
 
-  // HK May 31 2026: dayOffset and subView are URL-backed AND backed up
-  // to sessionStorage. URL is the source of truth, but iOS Safari has
-  // a known bug where returning from a URL-scheme handler (sms:, tel:,
-  // mailto:) sometimes strips the query string from the path. When
-  // that happens, the URL says /dashboard/schedule (no ?d=) and we'd
-  // re-default to today, surprising the therapist.
+  // HK May 31 2026 Option A: date lives IN the URL path
+  // (/dashboard/schedule/2026-06-04). This is the durable form: iOS
+  // PWA URL-scheme handler returns (sms:, tel:, mailto:) sometimes
+  // strip query strings but they preserve the path. The bare
+  // /dashboard/schedule still works and means "today."
   //
-  // sessionStorage backup catches this. On mount we look at URL first,
-  // then fall back to sessionStorage if URL is empty AND the stored
-  // value is fresh (under 2 hours old). Older than that, defaults
-  // apply, because the therapist probably opened a new session and
-  // genuinely expects today.
+  // Three sources, in priority order:
+  //   1. Path param :scheduleDate from /dashboard/schedule/YYYY-MM-DD
+  //   2. ?d= query param (back-compat with previous URL shape)
+  //   3. sessionStorage backup (catches edge cases where path AND
+  //      query are both lost, e.g. some bfcache evictions)
   //
-  // URL shape: /dashboard/schedule?d=2026-06-04&view=today
-  //   - d:    ISO date YYYY-MM-DD (omitted = today)
-  //   - view: today | weekly | monthly | yearly | insights (default today)
+  // Path is the only thing we WRITE to going forward. The query and
+  // sessionStorage are read-only fallbacks on mount; subsequent
+  // updates always navigate to the canonical path form.
   const [searchParams, setSearchParams] = useSearchParams();
+  const routeParams = useParams();
+  const routeNavigate = useNavigate();
+  const routeLocation = useLocation();
   const [today] = useState(getToday);
 
-  // Parse URL once on mount. After that, state is the source of truth
-  // and we write to URL (and sessionStorage) on change.
   const STORAGE_KEY = 'mbm-schedule-state';
-  const STORAGE_TTL_MS = 2 * 60 * 60 * 1000; // 2 hours
+  const STORAGE_TTL_MS = 2 * 60 * 60 * 1000;
+
+  // Parse a YYYY-MM-DD string into a dayOffset relative to today.
+  // Returns null if the string is invalid.
+  const dateStringToOffset = (s) => {
+    if (!s) return null;
+    const parsed = new Date(s + 'T00:00:00');
+    if (isNaN(parsed.getTime())) return null;
+    const diffMs = parsed.getTime() - today.getTime();
+    return Math.round(diffMs / (1000 * 60 * 60 * 24));
+  };
+
+  const offsetToDateString = (offset) => {
+    const d = addDays(today, offset);
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    return `${yyyy}-${mm}-${dd}`;
+  };
 
   const initialState = (() => {
-    // Prefer URL.
-    const dParam = searchParams.get('d');
+    // 1. Path param wins
+    const fromPath = dateStringToOffset(routeParams.scheduleDate);
     const viewParam = searchParams.get('view');
-    if (dParam) {
-      const parsed = new Date(dParam + 'T00:00:00');
-      if (!isNaN(parsed.getTime())) {
-        const diffMs = parsed.getTime() - today.getTime();
-        return {
-          dayOffset: Math.round(diffMs / (1000 * 60 * 60 * 24)),
-          subView: viewParam || 'today',
-        };
-      }
+    if (fromPath !== null) {
+      return { dayOffset: fromPath, subView: viewParam || 'today' };
     }
-    // Fallback: recent sessionStorage backup. Catches the iOS sms:
-    // handler roundtrip that strips query params.
+    // 2. Legacy ?d= query param
+    const fromQuery = dateStringToOffset(searchParams.get('d'));
+    if (fromQuery !== null) {
+      return { dayOffset: fromQuery, subView: viewParam || 'today' };
+    }
+    // 3. sessionStorage backup
     try {
       const raw = sessionStorage.getItem(STORAGE_KEY);
       if (raw) {
@@ -7400,25 +7368,24 @@ export default function ScheduleDashboard({ therapist }) {
   const [subView, setSubViewRaw] = useState(initialState.subView);
   const [dayOffset, setDayOffsetRaw] = useState(initialState.dayOffset);
 
-  // Helper: write to both URL and sessionStorage so either can restore
-  // state.
+  // Single source of truth writer: navigates to the canonical path
+  // form and updates sessionStorage. Used by both setDayOffset and
+  // setSubView so they stay in lockstep.
   const persistState = (offset, view) => {
-    const newParams = new URLSearchParams(searchParams);
-    if (offset === 0) {
-      newParams.delete('d');
-    } else {
-      const targetDate = addDays(today, offset);
-      const yyyy = targetDate.getFullYear();
-      const mm = String(targetDate.getMonth() + 1).padStart(2, '0');
-      const dd = String(targetDate.getDate()).padStart(2, '0');
-      newParams.set('d', `${yyyy}-${mm}-${dd}`);
+    const basePath = '/dashboard/schedule';
+    const pathWithDate = offset === 0
+      ? basePath
+      : `${basePath}/${offsetToDateString(offset)}`;
+    const sp = new URLSearchParams();
+    if (view !== 'today') sp.set('view', view);
+    const search = sp.toString() ? `?${sp.toString()}` : '';
+    const target = pathWithDate + search;
+
+    // Only navigate if the URL would actually change. Avoids extra
+    // history entries during initial sync.
+    if (routeLocation.pathname + routeLocation.search !== target) {
+      routeNavigate(target, { replace: true });
     }
-    if (view === 'today') {
-      newParams.delete('view');
-    } else {
-      newParams.set('view', view);
-    }
-    setSearchParams(newParams, { replace: true });
     try {
       sessionStorage.setItem(STORAGE_KEY, JSON.stringify({
         dayOffset: offset, subView: view, at: Date.now(),
@@ -7426,8 +7393,6 @@ export default function ScheduleDashboard({ therapist }) {
     } catch (_) {}
   };
 
-  // Wrapped setters that also update URL + sessionStorage. Both accept
-  // either a value or an updater fn (matches useState API).
   const setDayOffset = (next) => {
     setDayOffsetRaw((prev) => {
       const value = typeof next === 'function' ? next(prev) : next;
@@ -7444,15 +7409,34 @@ export default function ScheduleDashboard({ therapist }) {
     });
   };
 
-  // Also re-sync URL on mount in case sessionStorage restored state
-  // but URL was empty. Without this the URL stays bare and the next
-  // refresh would lose the date.
+  // On mount: if path didn't have the date but we restored from
+  // sessionStorage or legacy ?d=, write the canonical path so the
+  // URL bar reflects truth and the next refresh starts from a
+  // good place.
   useEffect(() => {
-    if (initialState.dayOffset !== 0 && !searchParams.get('d')) {
+    const fromPath = dateStringToOffset(routeParams.scheduleDate);
+    if (fromPath === null && initialState.dayOffset !== 0) {
       persistState(initialState.dayOffset, initialState.subView);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Sync state back from URL if it changes externally (browser back/
+  // forward, deep-link from a notification, etc). Path is the
+  // authority here.
+  useEffect(() => {
+    const fromPath = dateStringToOffset(routeParams.scheduleDate);
+    const target = fromPath !== null ? fromPath : 0;
+    if (target !== dayOffset) {
+      setDayOffsetRaw(target);
+      try {
+        sessionStorage.setItem(STORAGE_KEY, JSON.stringify({
+          dayOffset: target, subView, at: Date.now(),
+        }));
+      } catch (_) {}
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [routeParams.scheduleDate]);
 
   const [realBookings,setRealBookings]=useState(null);
   const [pendingApprovalBookings,setPendingApprovalBookings]=useState([]);

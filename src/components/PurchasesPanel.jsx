@@ -326,7 +326,7 @@ export default function PurchasesPanel({ therapistId }) {
           .from('member_subscriptions')
           .select('*, memberships(name)')
           .eq('therapist_id', therapistId)
-          .order('created_at', { ascending: false })
+          .order('started_at', { ascending: false, nullsFirst: false })
           .limit(20),
       ]);
 
