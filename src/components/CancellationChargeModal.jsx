@@ -717,13 +717,13 @@ export default function CancellationChargeModal({
                   charge paths now. When card-on-file: existing charge
                   flow. When no card BUT fee due: offer send-link AND
                   inline card entry. When no fee: just mark/skip. */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                 {canCharge && (
                   <button onClick={chargeAndCancel} disabled={busy}
                     style={{
                       background: C.forest, color: '#fff', border: 'none',
-                      borderRadius: 10, padding: '12px 16px', fontSize: 14, fontWeight: 700,
-                      cursor: busy ? 'wait' : 'pointer',
+                      borderRadius: 12, padding: '16px 18px', fontSize: 16, fontWeight: 700,
+                      minHeight: 52, width: '100%', cursor: busy ? 'wait' : 'pointer',
                     }}>
                     Charge {formatPrice(effectiveFeeCents)} + {isNoShow ? 'Mark no-show' : 'Cancel'}
                   </button>
@@ -734,8 +734,9 @@ export default function CancellationChargeModal({
                     <button onClick={sendPaymentLink} disabled={busy}
                       style={{
                         background: C.forest, color: '#fff', border: 'none',
-                        borderRadius: 10, padding: '12px 16px', fontSize: 14, fontWeight: 700,
-                        cursor: busy ? 'wait' : 'pointer',
+                        borderRadius: 12, padding: '18px 20px', fontSize: 17, fontWeight: 700,
+                        minHeight: 56, width: '100%', cursor: busy ? 'wait' : 'pointer',
+                        boxShadow: busy ? 'none' : '0 2px 10px rgba(42,87,65,0.22)',
                       }}>
                       Send payment link for {formatPrice(effectiveFeeCents)}
                     </button>
@@ -743,8 +744,8 @@ export default function CancellationChargeModal({
                       style={{
                         background: '#fff', color: C.forest,
                         border: `1.5px solid ${C.forest}`,
-                        borderRadius: 10, padding: '12px 16px', fontSize: 14, fontWeight: 600,
-                        cursor: busy ? 'wait' : 'pointer',
+                        borderRadius: 12, padding: '16px 18px', fontSize: 16, fontWeight: 600,
+                        minHeight: 52, width: '100%', cursor: busy ? 'wait' : 'pointer',
                       }}>
                       Enter card now
                     </button>
@@ -755,8 +756,8 @@ export default function CancellationChargeModal({
                   style={{
                     background: '#fff', color: C.text,
                     border: `1.5px solid ${C.light}`,
-                    borderRadius: 10, padding: '12px 16px', fontSize: 14, fontWeight: 600,
-                    cursor: busy ? 'wait' : 'pointer',
+                    borderRadius: 12, padding: '16px 18px', fontSize: 16, fontWeight: 600,
+                    minHeight: 52, width: '100%', cursor: busy ? 'wait' : 'pointer',
                   }}>
                   {fee.feeCents > 0
                     ? (isNoShow ? 'Skip fee + Mark no-show' : 'Skip fee + Cancel')
