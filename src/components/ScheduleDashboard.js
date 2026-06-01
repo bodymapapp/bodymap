@@ -6234,7 +6234,13 @@ function WeeklyView({ therapist, appointments, today, onReschedule, onRefresh, b
                   );
                 })()}
 
-                {/* Appointment rows (or block message) */}
+                {/* HK Jun 1 2026 (Jacquie incident): day-card body
+                    interleaves BLOCKS with appointments so the therapist
+                    sees both in one scroll. Was bug: as soon as any
+                    appointment existed, the partial-block message was
+                    suppressed and the block became invisible inside
+                    the day card. Empty-day fallbacks (no appts) still
+                    show the dedicated "blocked" message at top. */}
                 {dayAppts.length===0 && isFullBlocked
                   ? <div style={{padding:'14px 16px',fontSize:12,color:'#92400E',fontStyle:'italic',textAlign:'center'}}>
                       {block.reasons.length ? block.reasons[0] : 'You blocked this day off. Booking page will not offer it.'}
@@ -6245,33 +6251,77 @@ function WeeklyView({ therapist, appointments, today, onReschedule, onRefresh, b
                     </div>
                   : dayAppts.length===0
                   ? <div style={{padding:'14px 16px',fontSize:12,color:'#B4B4B4',fontStyle:'italic',textAlign:'center'}}>Open day</div>
-                  : <div style={{display:'flex',flexDirection:'column'}}>
-                      {dayAppts.map((appt,idx)=>{
-                        const st=STATUS[appt.status]||STATUS['pending-intake'];
-                        return (
-                          <div key={appt.id} onClick={()=>!appt.preview&&setSelected(appt)}
-                            style={{display:'flex',alignItems:'center',gap:12,padding:'12px 14px',cursor:appt.preview?'default':'pointer',borderTop:idx>0?'1px solid #F3F4F6':'none',opacity:appt.preview?0.5:1,background:appt.preview?'#FAFAFA':'transparent'}}>
-                            <div style={{width:36,height:36,borderRadius:'50%',background:appt.preview?'#D1D5DB':ac(appt.client),color:'#fff',display:'flex',alignItems:'center',justifyContent:'center',fontSize:12,fontWeight:700,flexShrink:0}}>{initials(appt.client)}</div>
-                            <div style={{flex:1,minWidth:0}}>
-                              <div style={{display:'flex',alignItems:'center',gap:6,marginBottom:2}}>
-                                <div style={{fontSize:14,fontWeight:700,color:appt.preview?'#9CA3AF':'#111827',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{appt.client}</div>
+                  : (() => {
+                      // Build interleaved items: appointments + partial
+                      // blocks for this day, sorted by start time.
+                      const dateStrItem = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+                      const partialBlocks = (blockedDays || []).filter(b => b.date === dateStrItem && b.start_time && b.end_time);
+                      const m2 = (s) => {
+                        const [h, mm] = (s || '00:00').slice(0,5).split(':').map(Number);
+                        return h * 60 + mm;
+                      };
+                      const items = [
+                        ...dayAppts.map(a => ({ kind: 'appt', sortKey: t2m(a.time), data: a })),
+                        ...partialBlocks.map(b => ({ kind: 'block', sortKey: m2(b.start_time), data: b })),
+                      ].sort((x, y) => x.sortKey - y.sortKey);
+                      return (
+                        <div style={{display:'flex',flexDirection:'column'}}>
+                          {items.map((item, idx) => {
+                            if (item.kind === 'block') {
+                              const b = item.data;
+                              const timeLabel = `${fmt12((b.start_time || '00:00').slice(0,5))} - ${fmt12((b.end_time || '00:00').slice(0,5))}`;
+                              const reasonLabel = b.note || b.reason || 'Time off';
+                              return (
+                                <div key={`block-${b.id || idx}`}
+                                  style={{
+                                    display: 'flex', alignItems: 'center', gap: 12,
+                                    padding: '12px 14px',
+                                    borderTop: idx > 0 ? '1px solid #F3F4F6' : 'none',
+                                    background: 'repeating-linear-gradient(45deg,rgba(254,243,199,0.5),rgba(254,243,199,0.5) 6px,rgba(253,230,138,0.55) 6px,rgba(253,230,138,0.55) 7px)',
+                                  }}>
+                                  <div style={{
+                                    width:36,height:36,borderRadius:'50%',
+                                    background:'#FFFBEB',color:'#92400E',
+                                    display:'flex',alignItems:'center',justifyContent:'center',
+                                    fontSize:18,flexShrink:0,
+                                  }}>🌿</div>
+                                  <div style={{flex:1,minWidth:0}}>
+                                    <div style={{fontSize:14,fontWeight:700,color:'#92400E'}}>{reasonLabel}</div>
+                                    <div style={{fontSize:12,color:'#92400E',opacity:0.85}}>
+                                      {timeLabel} · Blocked time off
+                                    </div>
+                                  </div>
+                                </div>
+                              );
+                            }
+                            const appt = item.data;
+                            const st = STATUS[appt.status] || STATUS['pending-intake'];
+                            return (
+                              <div key={appt.id} onClick={()=>!appt.preview&&setSelected(appt)}
+                                style={{display:'flex',alignItems:'center',gap:12,padding:'12px 14px',cursor:appt.preview?'default':'pointer',borderTop:idx>0?'1px solid #F3F4F6':'none',opacity:appt.preview?0.5:1,background:appt.preview?'#FAFAFA':'transparent'}}>
+                                <div style={{width:36,height:36,borderRadius:'50%',background:appt.preview?'#D1D5DB':ac(appt.client),color:'#fff',display:'flex',alignItems:'center',justifyContent:'center',fontSize:12,fontWeight:700,flexShrink:0}}>{initials(appt.client)}</div>
+                                <div style={{flex:1,minWidth:0}}>
+                                  <div style={{display:'flex',alignItems:'center',gap:6,marginBottom:2}}>
+                                    <div style={{fontSize:14,fontWeight:700,color:appt.preview?'#9CA3AF':'#111827',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{appt.client}</div>
+                                  </div>
+                                  <div style={{fontSize:12,color:'#6B7280',display:'flex',gap:6,alignItems:'center',flexWrap:'wrap'}}>
+                                    <span style={{fontWeight:600,color:appt.preview?'#9CA3AF':st.color}}>{appt.time}</span>
+                                    <span>·</span>
+                                    <span>{appt.service||'Session'}</span>
+                                  </div>
+                                </div>
+                                <div style={{display:'flex',flexDirection:'column',alignItems:'flex-end',gap:3,flexShrink:0}}>
+                                  <div style={{fontSize:10,fontWeight:700,color:appt.preview?'#9CA3AF':st.color,background:appt.preview?'#F3F4F6':st.bg,padding:'3px 8px',borderRadius:20,whiteSpace:'nowrap'}}>
+                                    {st.icon} {appt.preview?'Preview':st.label}
+                                  </div>
+                                  {!appt.preview && <div style={{fontSize:16,color:'#D1D5DB',lineHeight:1}}>›</div>}
+                                </div>
                               </div>
-                              <div style={{fontSize:12,color:'#6B7280',display:'flex',gap:6,alignItems:'center',flexWrap:'wrap'}}>
-                                <span style={{fontWeight:600,color:appt.preview?'#9CA3AF':st.color}}>{appt.time}</span>
-                                <span>·</span>
-                                <span>{appt.service||'Session'}</span>
-                              </div>
-                            </div>
-                            <div style={{display:'flex',flexDirection:'column',alignItems:'flex-end',gap:3,flexShrink:0}}>
-                              <div style={{fontSize:10,fontWeight:700,color:appt.preview?'#9CA3AF':st.color,background:appt.preview?'#F3F4F6':st.bg,padding:'3px 8px',borderRadius:20,whiteSpace:'nowrap'}}>
-                                {st.icon} {appt.preview?'Preview':st.label}
-                              </div>
-                              {!appt.preview && <div style={{fontSize:16,color:'#D1D5DB',lineHeight:1}}>›</div>}
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
+                            );
+                          })}
+                        </div>
+                      );
+                    })()
                 }
               </div>
             );
@@ -6722,35 +6772,107 @@ function MonthlyView({ therapist, appointments, today, onReschedule, onRefresh, 
           );
         })}
       </div>
-      <div style={{fontSize:12,fontWeight:700,color:'#6B7280',textTransform:'uppercase',letterSpacing:'0.06em',marginBottom:10}}>
-        {fmtShort(selDate)}, {selAppts.filter(a=>!a.preview).length} appointment{selAppts.filter(a=>!a.preview).length!==1?'s':''}
-      </div>
-      {selAppts.filter(a=>!a.preview).length===0
-        ?<div style={{background:'#fff',borderRadius:12,padding:24,textAlign:'center',color:'#9CA3AF',fontSize:14}}>No appointments on this day.</div>
-        :<div style={{display:'flex',flexDirection:'column',gap:8}}>
-          {selAppts.filter(a=>!a.preview).map(appt=>{
-            // HK May 29 2026: trace muting + annotation line
-            const ts = traceStyles(appt);
-            const ann = traceAnnotation(appt);
-            const st = STATUS[appt.status]||STATUS['pending-intake'];
-            return (
-            <div key={appt.id} onClick={()=>setSelected(appt)}
-              style={{background:st.bg,border:`1.5px solid ${st.dot}`,borderLeft:`4px solid ${st.dot}`,borderRadius:12,padding:'12px 16px',cursor:'pointer',display:'flex',alignItems:'center',gap:12,opacity:ts.opacity}}>
-              <div style={{width:36,height:36,borderRadius:'50%',background:ac(appt.client),color:'#fff',display:'flex',alignItems:'center',justifyContent:'center',fontSize:12,fontWeight:700,flexShrink:0}}>{initials(appt.client)}</div>
-              <div style={{flex:1}}>
-                <div style={{fontSize:14,fontWeight:700,color:'#1F2937',textDecoration:ts.textDecoration}}>{appt.client}</div>
-                <div style={{fontSize:12,color:'#6B7280',textDecoration:ts.textDecoration}}>{appt.time} · {appt.duration}min · {appt.service||'Session'}</div>
-                {ann && <div style={{fontSize:11,fontWeight:600,color:st.color,marginTop:3}}>{ann}</div>}
-              </div>
-              <div style={{display:'flex',flexDirection:'column',alignItems:'flex-end',gap:4}}>
-                <div style={{fontSize:11,fontWeight:700,color:st.color}}>{st.icon} {st.label}</div>
-                {appt.deposit_required&&!appt.deposit_paid&&<div style={{fontSize:10,fontWeight:700,color:'#D97706'}}>💳 Deposit due</div>}
-              </div>
+      {/* HK Jun 1 2026 (Jacquie incident): bottom day-list now shows
+          BLOCKS alongside appointments. Was bug: a 2-4 PM block was
+          invisible in Monthly view, so the therapist couldn't tell at
+          a glance whether her block had saved. Now blocks render as
+          amber "Time off" cards interleaved with appointments in time
+          order. The "X appointments" count stays appointments-only so
+          the header still answers "how busy is this day?" honestly. */}
+      {(() => {
+        const dateStrSel = `${selDate.getFullYear()}-${String(selDate.getMonth()+1).padStart(2,'0')}-${String(selDate.getDate()).padStart(2,'0')}`;
+        const dayBlocks = (blockedDays || []).filter(b => b.date === dateStrSel);
+        const realAppts = selAppts.filter(a => !a.preview);
+        // Build a sortable item list: appointments + blocks, each with a
+        // sort key in minutes-since-midnight. Full-day blocks sort to 0
+        // so they show at the top of the list.
+        const t2m = (str) => {
+          const [hh, mm] = (str || '00:00').slice(0,5).split(':').map(Number);
+          return hh * 60 + mm;
+        };
+        const items = [
+          ...realAppts.map(a => {
+            const [hh, mm] = (a.startTime || (a.time ? new Date(`2000-01-01 ${a.time}`).toTimeString().slice(0,5) : '00:00')).split(':').map(Number);
+            const sortKey = (hh * 60 + (mm || 0)) || (a.date ? a.date.getHours() * 60 + a.date.getMinutes() : 0);
+            return { kind: 'appt', sortKey, data: a };
+          }),
+          ...dayBlocks.map(b => ({
+            kind: 'block',
+            sortKey: b.start_time ? t2m(b.start_time) : 0,
+            data: b,
+          })),
+        ].sort((x, y) => x.sortKey - y.sortKey);
+
+        return (
+          <>
+            <div style={{fontSize:12,fontWeight:700,color:'#6B7280',textTransform:'uppercase',letterSpacing:'0.06em',marginBottom:10}}>
+              {fmtShort(selDate)}, {realAppts.length} appointment{realAppts.length!==1?'s':''}{dayBlocks.length > 0 ? ` · ${dayBlocks.length} time off` : ''}
             </div>
-            );
-          })}
-        </div>
-      }
+            {items.length === 0
+              ? <div style={{background:'#fff',borderRadius:12,padding:24,textAlign:'center',color:'#9CA3AF',fontSize:14}}>No appointments on this day.</div>
+              : <div style={{display:'flex',flexDirection:'column',gap:8}}>
+                  {items.map((item, idx) => {
+                    if (item.kind === 'block') {
+                      const b = item.data;
+                      const isFullDay = !b.start_time && !b.end_time;
+                      const timeLabel = isFullDay
+                        ? 'All day'
+                        : `${fmt12((b.start_time || '00:00').slice(0,5))} - ${fmt12((b.end_time || '00:00').slice(0,5))}`;
+                      const reasonLabel = b.note || b.reason || 'Time off';
+                      return (
+                        <div key={`block-${b.id || idx}`}
+                          style={{
+                            background: 'repeating-linear-gradient(45deg,#FEF3C7,#FEF3C7 6px,#FDE68A 6px,#FDE68A 7px)',
+                            border: '1.5px solid #FCD34D',
+                            borderLeft: '4px solid #D97706',
+                            borderRadius: 12,
+                            padding: '12px 16px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 12,
+                          }}>
+                          <div style={{
+                            width: 36, height: 36, borderRadius: '50%',
+                            background: '#FFFBEB', color: '#92400E',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            fontSize: 18, flexShrink: 0,
+                          }}>🌿</div>
+                          <div style={{ flex: 1 }}>
+                            <div style={{ fontSize: 14, fontWeight: 700, color: '#92400E' }}>
+                              {reasonLabel}
+                            </div>
+                            <div style={{ fontSize: 12, color: '#92400E', opacity: 0.85, marginTop: 2 }}>
+                              {timeLabel} · Blocked time off
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    }
+                    const appt = item.data;
+                    const ts = traceStyles(appt);
+                    const ann = traceAnnotation(appt);
+                    const st = STATUS[appt.status]||STATUS['pending-intake'];
+                    return (
+                      <div key={appt.id} onClick={()=>setSelected(appt)}
+                        style={{background:st.bg,border:`1.5px solid ${st.dot}`,borderLeft:`4px solid ${st.dot}`,borderRadius:12,padding:'12px 16px',cursor:'pointer',display:'flex',alignItems:'center',gap:12,opacity:ts.opacity}}>
+                        <div style={{width:36,height:36,borderRadius:'50%',background:ac(appt.client),color:'#fff',display:'flex',alignItems:'center',justifyContent:'center',fontSize:12,fontWeight:700,flexShrink:0}}>{initials(appt.client)}</div>
+                        <div style={{flex:1}}>
+                          <div style={{fontSize:14,fontWeight:700,color:'#1F2937',textDecoration:ts.textDecoration}}>{appt.client}</div>
+                          <div style={{fontSize:12,color:'#6B7280',textDecoration:ts.textDecoration}}>{appt.time} · {appt.duration}min · {appt.service||'Session'}</div>
+                          {ann && <div style={{fontSize:11,fontWeight:600,color:st.color,marginTop:3}}>{ann}</div>}
+                        </div>
+                        <div style={{display:'flex',flexDirection:'column',alignItems:'flex-end',gap:4}}>
+                          <div style={{fontSize:11,fontWeight:700,color:st.color}}>{st.icon} {st.label}</div>
+                          {appt.deposit_required&&!appt.deposit_paid&&<div style={{fontSize:10,fontWeight:700,color:'#D97706'}}>💳 Deposit due</div>}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+            }
+          </>
+        );
+      })()}
       {selected&&<DetailPanel appt={selected} therapist={therapist} onClose={()=>setSelected(null)} onReschedule={a=>{onReschedule&&onReschedule(a);}} onCancelled={()=>{if(typeof onRefresh==='function')onRefresh();}} showToast={moShowToast} onRequestCheckout={onRequestCheckout} paymentsRefreshTick={paymentsRefreshTick}/>}
       {moToast}
     </div>
