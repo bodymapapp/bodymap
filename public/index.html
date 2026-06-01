@@ -155,6 +155,23 @@
 
       // Register service worker. If a broken older SW is present, force unregister first.
       if ('serviceWorker' in navigator) {
+        // HK Jun 1 2026: listen for force-reload broadcast from the SW.
+        // When the SW activates a new version (v34+), it postMessages every
+        // open client with type SW_FORCE_RELOAD. The client reloads itself
+        // so the new bundle takes effect immediately. Without this, the
+        // page keeps rendering the OLD bundle even after SW upgrades,
+        // until the user manually quits the PWA. Set a 5-second guard so
+        // we don't loop-reload if something goes wrong.
+        let __sw_reload_armed = true;
+        try {
+          navigator.serviceWorker.addEventListener('message', (event) => {
+            if (event?.data?.type === 'SW_FORCE_RELOAD' && __sw_reload_armed) {
+              __sw_reload_armed = false;
+              setTimeout(() => { window.location.reload(); }, 200);
+            }
+          });
+        } catch (e) {}
+
         window.addEventListener('load', async () => {
           try {
             const regs = await navigator.serviceWorker.getRegistrations();

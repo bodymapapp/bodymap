@@ -1,34 +1,42 @@
 // BodyMap service worker
 // IMPORTANT: bumping CACHE_NAME forces all clients to rebuild cache on next visit.
-// HK Jun 1 2026: bumped to v33 + TEMPORARILY re-enabled skipWaiting + claim
-// for ONE deploy. PWA was not loading for HK (priority 1). Stale SW serving
-// dead cache was the prime suspect. Reverting to wait-for-close after this
+// HK Jun 1 2026: bumped to v34 + TEMPORARILY re-enabled skipWaiting + claim
+// + post-activate broadcast to force every open client to reload. PWA was
+// stuck on stale bundle after v32 deploys; new SW activated but the page
+// kept rendering the old JS. Reverting to wait-for-close after this
 // recovery deploy stabilizes.
-const CACHE_NAME = 'bodymap-v33';
+const CACHE_NAME = 'bodymap-v34';
 
-// HK Jun 1 2026 (recovery deploy): skipWaiting re-enabled for THIS deploy
-// only. Reason: HK's PWA was not loading. Likely cause = SW stuck serving
-// cached references to chunks that no longer exist on the server. The only
-// way to recover stuck clients in the field is to force-activate a new SW
-// that immediately takes over and clears the old cache. After this deploy
-// stabilizes, revert this block to the wait-for-close behavior.
+// HK Jun 1 2026 (recovery deploy v2): skipWaiting + claim + broadcast.
+// Why broadcast: when v34 SW activates and claims clients, the page is
+// still rendering the OLD bundle that v32 SW loaded. The new SW only
+// affects FUTURE network requests. So we send each open client a
+// postMessage telling it to reload. The client-side handler in src/index.js
+// listens for this and calls window.location.reload(). One round-trip,
+// no manual user action needed.
 self.addEventListener('install', event => {
   self.skipWaiting();
 });
 
-// Activate — clean old caches AND claim all clients so the new SW takes
-// effect on the very next request. This is the recovery path; without
-// clients.claim() a stuck client would never pick up the new SW until
-// the user fully quits the PWA, which they may not know how to do.
+// Activate — clean old caches, claim all clients, then BROADCAST so any
+// open page reloads itself to pick up the new bundle. Without this, the
+// new SW is active but the user sees stale UI until they manually quit.
 self.addEventListener('activate', event => {
-  event.waitUntil(
-    Promise.all([
-      caches.keys().then(keys =>
-        Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k)))
-      ),
-      self.clients.claim(),
-    ])
-  );
+  event.waitUntil((async () => {
+    // Clear all caches except the current one
+    const keys = await caches.keys();
+    await Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k)));
+    // Take over any open pages
+    await self.clients.claim();
+    // Broadcast a reload command to all clients. They'll listen via the
+    // navigator.serviceWorker.onmessage handler registered in src/index.js.
+    const clients = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+    for (const client of clients) {
+      try {
+        client.postMessage({ type: 'SW_FORCE_RELOAD', version: CACHE_NAME });
+      } catch (_e) { /* noop */ }
+    }
+  })());
 });
 
 // Fetch — network-first, safe cache fallback. CRITICAL: respondWith() MUST
