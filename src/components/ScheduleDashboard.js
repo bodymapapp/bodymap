@@ -5264,79 +5264,22 @@ function TimelineView({ therapist, allAppts, dayOffset, setDayOffset, today, onR
   // Pre-day open block (before first booking). Per founder playbook:
   // showing open time is the point of the calendar, since Fill This
   // Gap is the differentiating feature. Don't hide unbooked stretches.
-  //
-  // HK Jun 1 2026 (Jacquie incident): gap calc now respects partial
-  // blocks. Was bug: a block 2-4 PM + bookings at 1:30 and 4:30 left
-  // a raw gap 2:30-4:30 PM (2h), rendered as "Open · 2h available"
-  // ON TOP of the block. Therapist thought the block wasn't working,
-  // tried recreating it, ended up with duplicate block rows. Now
-  // blocks are folded into the occupied set just like bookings:
-  // gaps split around them. A gap that's fully inside a block is
-  // suppressed entirely.
-  const blockRanges = (() => {
-    // HK Jun 1 2026 fix: compute date string inline so this runs BEFORE
-    // viewDateStr/myBlocksToday are declared further down. The earlier
-    // reference to myBlocksToday triggered a ReferenceError (temporal
-    // dead zone) and white-screened the whole Schedule tab.
-    const yyyy = viewDate.getFullYear();
-    const mm = String(viewDate.getMonth() + 1).padStart(2, '0');
-    const dd = String(viewDate.getDate()).padStart(2, '0');
-    const ds = `${yyyy}-${mm}-${dd}`;
-    return (blockedDays || [])
-      .filter(b => b.date === ds && b.start_time && b.end_time)
-      .map(b => {
-        const [sh, sm] = (b.start_time || '00:00').slice(0, 5).split(':').map(Number);
-        const [eh, em] = (b.end_time   || '00:00').slice(0, 5).split(':').map(Number);
-        return { start: sh * 60 + sm, end: eh * 60 + em };
-      })
-      .filter(r => r.end > r.start);
-  })();
-
-  // Helper: subtract block ranges from a raw gap. Returns 0+ open
-  // sub-ranges in minutes-since-midnight.
-  const subtractBlocks = (gapStart, gapEnd) => {
-    let pieces = [{ start: gapStart, end: gapEnd }];
-    for (const blk of blockRanges) {
-      const next = [];
-      for (const p of pieces) {
-        if (blk.end <= p.start || blk.start >= p.end) {
-          next.push(p);                                    // no overlap
-        } else {
-          if (blk.start > p.start) next.push({ start: p.start, end: blk.start });
-          if (blk.end < p.end)     next.push({ start: blk.end, end: p.end });
-        }
-      }
-      pieces = next;
-    }
-    return pieces;
-  };
-
-  // Push only the truly-open sub-ranges (>90 min) so the "fill this
-  // gap" label appears only where a slot really exists.
-  const pushTrueOpenSegments = (gapStart, gapEnd) => {
-    const segs = subtractBlocks(gapStart, gapEnd);
-    for (const seg of segs) {
-      const mins = seg.end - seg.start;
-      if (mins > 90) gaps.push({ start: seg.start, end: seg.end, mins });
-    }
-  };
-
   if (sorted.length > 0) {
     const firstStart = t2m(sorted[0].time);
     if (firstStart - TL_START > 90) {
-      pushTrueOpenSegments(TL_START, firstStart);
+      gaps.push({ start: TL_START, end: firstStart, mins: firstStart - TL_START });
     }
   }
   for(let i=0;i<sorted.length-1;i++){
     const aEnd=t2m(sorted[i].time)+sorted[i].duration;
     const bStart=t2m(sorted[i+1].time);
-    if(bStart-aEnd>90) pushTrueOpenSegments(aEnd, bStart);
+    if(bStart-aEnd>90) gaps.push({start:aEnd,end:bStart,mins:bStart-aEnd});
   }
   // Post-day open block (after last booking to end of working day).
   if (sorted.length > 0) {
     const lastEnd = t2m(sorted[sorted.length-1].time) + sorted[sorted.length-1].duration;
     if (TL_END - lastEnd > 90) {
-      pushTrueOpenSegments(lastEnd, TL_END);
+      gaps.push({ start: lastEnd, end: TL_END, mins: TL_END - lastEnd });
     }
   }
   const hourNums = [];
