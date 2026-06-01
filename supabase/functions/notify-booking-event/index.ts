@@ -165,10 +165,16 @@ serve(async (req) => {
     // explicit, OR fee_amount_cents > 0). For reschedule, no fee row.
     const serviceName = (booking as any).services?.name || 'Session';
     const feeCents = typeof fee_amount_cents === 'number' ? fee_amount_cents : 0;
+    const feeRequestedNotCharged = feeCents > 0 && fee_charged !== true && !!payment_link_url;
     const showFeeRow = (isCancel || isNoShow) && (fee_charged === true || fee_charged === false);
+    // C11 fix (HK Jun 1 2026): therapist email must show the amount in
+    // the payment-requested case too (no card on file, link sent), not
+    // fall through to "No fee charged".
     const feeLine = (feeCents > 0 && fee_charged)
       ? `$${(feeCents / 100).toFixed(2)} ${isNoShow ? 'no-show' : 'cancellation'} fee charged`
-      : 'No fee charged';
+      : feeRequestedNotCharged
+        ? `$${(feeCents / 100).toFixed(2)} ${isNoShow ? 'no-show' : 'cancellation'} fee requested (payment link sent, no card on file)`
+        : 'No fee charged';
     const whoCancelled = initiated_by === 'client' ? clientName : 'You (the therapist)';
     const nowStr = new Date().toLocaleString('en-US', { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZoneName: 'short' });
     const reasonClean = (reason && String(reason).trim()) ? String(reason).trim() : null;
@@ -264,7 +270,17 @@ serve(async (req) => {
     // charged. The fee path lives in charge-cancellation-fee and has
     // its own client-side messaging (which we will wire next).
     let clientResult = null;
-    if (isNoShow && booking.client_id) {
+    // C11 fix (HK Jun 1 2026): only send the warm "no fee, no fuss"
+    // note when a fee is genuinely NOT owed. Previously this block
+    // fired for every no-show regardless of the fee outcome, so a
+    // client who owed a no-show fee and had no card on file received
+    // "No fee, no fuss" instead of the payment-request email. When a
+    // fee is owed, the downstream fan-out (clientEmailContentFor)
+    // sends the correct no_show_charged or no_show_payment_request
+    // email, so the inline note must stay silent in those cases.
+    const feeIsOwed = (typeof fee_amount_cents === 'number' && fee_amount_cents > 0)
+      && (fee_charged === true || !!payment_link_url);
+    if (isNoShow && booking.client_id && !feeIsOwed) {
       // Fetch full client record for the fan-out helper. Booking row
       // has name/email/phone copies but the client table is the
       // source of truth and may have more up-to-date contact info.
