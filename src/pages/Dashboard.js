@@ -3334,6 +3334,25 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
   // Inline error message for Square OAuth failure (HK May 22 2026,
   // replaces alert per house design rule).
   const [squareConnectError, setSquareConnectError] = React.useState(null);
+  // Soft success confirmation after returning from Square OAuth.
+  // HK Jun 1 2026: redirect flow lands the therapist back here, this
+  // gives them a clear "it worked" signal instead of silent success.
+  const [squareBanner, setSquareBanner] = React.useState(null); // { kind: 'success', text: string }
+
+  // Detect return from Square OAuth: square-oauth-callback redirects to
+  // /dashboard?square=connected. Show a soft success banner, open the
+  // Payments section so it is visible, then clean the URL so the banner
+  // shows once. Mirrors the Google Calendar return pattern.
+  React.useEffect(() => {
+    const sp = new URLSearchParams(window.location.search);
+    if (sp.get('square') === 'connected') {
+      setSquareBanner({ kind: 'success', text: 'Square connected. You are all set to take payments.' });
+      setOpenRow('payments');
+      sp.delete('square');
+      const newUrl = window.location.pathname + (sp.toString() ? '?' + sp.toString() : '') + window.location.hash;
+      window.history.replaceState({}, '', newUrl);
+    }
+  }, []);
 
   // Within 4.3 'Booking & cancellation policies' the two policy cards
   // are individually collapsible so therapists can focus on one at a
@@ -4809,6 +4828,21 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
           isOpen={openRow === 'payments'}
           onToggle={toggleRow}
         ><div style={{ padding: '4px 4px' }}>
+
+          {squareBanner && (
+            <div style={{
+              background: '#F0FDF4',
+              border: '1px solid #86EFAC',
+              color: '#15803D',
+              borderRadius: 8,
+              padding: '8px 10px',
+              fontSize: 12,
+              marginBottom: 12,
+              lineHeight: 1.5,
+            }}>
+              {squareBanner.text}
+            </div>
+          )}
 
           {/* Both processors support the full online feature set:
               deposits, packages, memberships, card-on-file, cancellation
