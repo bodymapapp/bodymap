@@ -636,6 +636,7 @@ export default function FounderDashboard() {
             selectedIds={selected}
             rows={filtered}
             onClearSelected={clearSelected}
+            onSelectAll={() => selectAll(filtered.map(r => r.id))}
             onAfterSend={fetchAll}
           />
           <TherapistTable
@@ -1257,7 +1258,7 @@ const BATCH_EMAIL_OPTIONS = [
   { value: "referral_thankyou", code: "E2.8", label: "Referral thank-you" },
 ];
 
-function BatchSendBar({ selectedIds, rows, onClearSelected, onAfterSend }) {
+function BatchSendBar({ selectedIds, rows, onClearSelected, onSelectAll, onAfterSend }) {
   const [actionType, setActionType] = useState("product_update");
   const [sending, setSending] = useState(false);
   const [progress, setProgress] = useState(null); // { done, total, results: [{id, name, status, error?}] }
@@ -1270,7 +1271,11 @@ function BatchSendBar({ selectedIds, rows, onClearSelected, onAfterSend }) {
 
   const selectedRows = rows.filter((r) => selectedIds.has(r.id));
   const count = selectedRows.length;
-  if (count === 0) return null;
+  // HK Jun 1 2026: do NOT early-return when count === 0. Bar must stay
+  // visible so therapists can discover the email options. Empty state
+  // surfaces an explicit "select therapists first" guide AND a one-tap
+  // "Select all" shortcut so the founder can broadcast to everyone in
+  // 2 taps from cold-open.
 
   const chosen = BATCH_EMAIL_OPTIONS.find((o) => o.value === actionType);
 
@@ -1361,11 +1366,38 @@ function BatchSendBar({ selectedIds, rows, onClearSelected, onAfterSend }) {
     }}>
       <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
         <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: C.forest }}>
-          Batch send
+          📧 Email broadcast
         </div>
-        <div style={{ fontSize: 13, color: C.dark, fontWeight: 600 }}>
-          {count} selected
-        </div>
+        {count > 0 ? (
+          <div style={{ fontSize: 13, color: C.dark, fontWeight: 600 }}>
+            {count} selected
+          </div>
+        ) : (
+          <>
+            <div style={{ fontSize: 13, color: C.gray }}>
+              No therapists selected
+            </div>
+            {onSelectAll && rows.length > 0 && (
+              <button
+                onClick={onSelectAll}
+                style={{
+                  padding: "5px 12px",
+                  background: "#fff",
+                  color: C.forest,
+                  border: `1.5px solid ${C.forest}`,
+                  borderRadius: 6,
+                  fontSize: 12,
+                  fontWeight: 700,
+                  cursor: "pointer",
+                  fontFamily: "system-ui",
+                }}
+                title={`Select all ${rows.length} visible therapists`}
+              >
+                ✓ Select all {rows.length}
+              </button>
+            )}
+          </>
+        )}
 
         <select
           value={actionType}
@@ -1391,18 +1423,19 @@ function BatchSendBar({ selectedIds, rows, onClearSelected, onAfterSend }) {
 
         <button
           onClick={openEditModal}
-          disabled={sending}
-          title="Edit subject and body once, then send to all selected"
+          disabled={sending || count === 0}
+          title={count === 0 ? "Select therapists below first" : "Edit subject and body once, then send to all selected"}
           style={{
             padding: "7px 14px",
-            background: sending ? C.light : "#FFF9F3",
-            color: C.forest,
-            border: `1.5px solid ${C.forest}`,
+            background: (sending || count === 0) ? C.light : "#FFF9F3",
+            color: (sending || count === 0) ? C.gray : C.forest,
+            border: `1.5px solid ${(sending || count === 0) ? C.light : C.forest}`,
             borderRadius: 6,
-            cursor: sending ? "default" : "pointer",
+            cursor: (sending || count === 0) ? "not-allowed" : "pointer",
             fontSize: 13,
             fontWeight: 700,
             fontFamily: "system-ui",
+            opacity: count === 0 ? 0.6 : 1,
           }}
         >
           ✎ Edit &amp; Send
@@ -1410,38 +1443,42 @@ function BatchSendBar({ selectedIds, rows, onClearSelected, onAfterSend }) {
 
         <button
           onClick={() => runBatch(null)}
-          disabled={sending}
+          disabled={sending || count === 0}
+          title={count === 0 ? "Select therapists below first" : `Send template to ${count} therapist${count === 1 ? '' : 's'}`}
           style={{
             padding: "7px 16px",
-            background: sending ? C.light : C.forest,
-            color: "#fff",
+            background: (sending || count === 0) ? C.light : C.forest,
+            color: (sending || count === 0) ? C.gray : "#fff",
             border: "none",
             borderRadius: 6,
-            cursor: sending ? "default" : "pointer",
+            cursor: (sending || count === 0) ? "not-allowed" : "pointer",
             fontSize: 13,
             fontWeight: 700,
             fontFamily: "system-ui",
+            opacity: count === 0 ? 0.6 : 1,
           }}
         >
-          {sending ? `Sending ${progress?.done || 0}/${progress?.total || count}…` : `Send to ${count}`}
+          {sending ? `Sending ${progress?.done || 0}/${progress?.total || count}…` : (count === 0 ? "Send" : `Send to ${count}`)}
         </button>
 
-        <button
-          onClick={onClearSelected}
-          disabled={sending}
-          style={{
-            padding: "7px 12px",
-            background: "transparent",
-            color: C.gray,
-            border: `1px solid ${C.light}`,
-            borderRadius: 6,
-            cursor: sending ? "default" : "pointer",
-            fontSize: 12,
-            fontFamily: "system-ui",
-          }}
-        >
-          Clear
-        </button>
+        {count > 0 && (
+          <button
+            onClick={onClearSelected}
+            disabled={sending}
+            style={{
+              padding: "7px 12px",
+              background: "transparent",
+              color: C.gray,
+              border: `1px solid ${C.light}`,
+              borderRadius: 6,
+              cursor: sending ? "default" : "pointer",
+              fontSize: 12,
+              fontFamily: "system-ui",
+            }}
+          >
+            Clear
+          </button>
+        )}
 
         {progress && (
           <div style={{ marginLeft: "auto", fontSize: 12, color: C.gray, fontFamily: "system-ui" }}>
