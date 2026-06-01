@@ -40,6 +40,43 @@
 
 const normalizePhone = (p) => (p || '').replace(/\D/g, '');
 
+// Scope B (HK Jun 1 2026): map a free-text imported value onto one of
+// our pill categories. If it matches a known synonym, return the
+// canonical pill label. Otherwise return "Other: <original>" so the
+// value is preserved and shows under the Other pill, never lost.
+function toCategory(raw, table) {
+  const v = (raw || '').trim();
+  if (!v) return null;
+  const k = v.toLowerCase();
+  for (const [label, syns] of table) {
+    if (syns.some(sy => k === sy || k.includes(sy))) return label;
+  }
+  return `Other: ${v}`;
+}
+const GENDER_MAP = [
+  ['Female', ['female', 'f', 'woman', 'women']],
+  ['Male', ['male', 'm', 'man', 'men']],
+  ['Non-binary', ['non-binary', 'nonbinary', 'non binary', 'nb', 'enby']],
+  ['Prefer not to say', ['prefer not', 'undisclosed', 'not specified', 'n/a', 'na']],
+];
+const REFERRAL_MAP = [
+  ['Referred by someone', ['refer', 'word of mouth', 'friend', 'family']],
+  ['Found online', ['google', 'search', 'online', 'web', 'yelp']],
+  ['Social media', ['instagram', 'facebook', 'social', 'tiktok', 'ig', 'fb']],
+  ['Returning client', ['returning', 'existing', 'repeat']],
+  ['Walk-in', ['walk', 'passing', 'local', 'saw']],
+];
+const BOOKING_METHOD_MAP = [
+  ['Online', ['online', 'web', 'self', 'app']],
+  ['By phone', ['phone', 'call']],
+  ['By text', ['text', 'sms']],
+  ['In person', ['in person', 'walk', 'front desk']],
+];
+const BOOKED_BY_MAP = [
+  ['Client booked it', ['client', 'customer', 'self', 'online']],
+  ['You booked it', ['therapist', 'staff', 'admin', 'owner', 'me', 'provider']],
+];
+
 // ─────────────────────────────────────────────────────────────────
 // CLIENT IMPORT (with optional historical bookings + memberships)
 // ─────────────────────────────────────────────────────────────────
@@ -202,6 +239,21 @@ export async function runClientImport(supabase, therapist, headers, rows, mappin
     const zip          = get(mapping.zip) || null;
     const country      = get(mapping.country) || null;
 
+    // Scope B: extra client fields. Dates parsed loosely (Date is OK
+    // here, these are static import values, never iOS-render paths).
+    const toIsoDate = (raw) => {
+      const t = (raw || '').trim();
+      if (!t) return null;
+      const d = new Date(t);
+      return isNaN(d) ? null : d.toISOString().slice(0, 10);
+    };
+    const birthday       = toIsoDate(get(mapping.birthday));
+    const customerSince  = toIsoDate(get(mapping.customerSince));
+    const gender         = toCategory(get(mapping.gender), GENDER_MAP);
+    const referralSource = toCategory(get(mapping.referralSource), REFERRAL_MAP);
+    const altPhoneRaw    = get(mapping.altPhone) || null;
+    const altPhone       = altPhoneRaw ? normalizePhone(altPhoneRaw) : null;
+
     const serviceName = get(mapping.service) || null;
     const priceRaw    = get(mapping.price) || null;
     const sessionPrice = priceRaw ? parseFloat(priceRaw.replace(/[^0-9.]/g, '')) : null;
@@ -235,7 +287,7 @@ export async function runClientImport(supabase, therapist, headers, rows, mappin
       let client = null;
 
       // Existing client lookup: email > phone > name (case-insensitive)
-      const selectCols = 'id, email, phone, address_line1, address_line2, city, state, zip, country';
+      const selectCols = 'id, email, phone, address_line1, address_line2, city, state, zip, country, birthday, customer_since, gender, referral_source, alt_phone';
       if (email) {
         const { data: byEmail } = await supabase
           .from('clients').select(selectCols)
@@ -270,6 +322,11 @@ export async function runClientImport(supabase, therapist, headers, rows, mappin
         if (state && !client.state) updates.state = state;
         if (zip && !client.zip) updates.zip = zip;
         if (country && !client.country) updates.country = country;
+        if (birthday && !client.birthday) updates.birthday = birthday;
+        if (customerSince && !client.customer_since) updates.customer_since = customerSince;
+        if (gender && !client.gender) updates.gender = gender;
+        if (referralSource && !client.referral_source) updates.referral_source = referralSource;
+        if (altPhone && !client.alt_phone) updates.alt_phone = altPhone;
         if (Object.keys(updates).length) {
           await supabase.from('clients').update(updates).eq('id', client.id);
         }
@@ -291,6 +348,11 @@ export async function runClientImport(supabase, therapist, headers, rows, mappin
         if (state) payload.state = state;
         if (zip) payload.zip = zip;
         if (country) payload.country = country;
+        if (birthday) payload.birthday = birthday;
+        if (customerSince) payload.customer_since = customerSince;
+        if (gender) payload.gender = gender;
+        if (referralSource) payload.referral_source = referralSource;
+        if (altPhone) payload.alt_phone = altPhone;
         // Stamp the import batch id so this row can be undone as
         // part of the whole batch (HK May 22 2026 item D).
         if (opts.importBatchId) payload.import_batch_id = opts.importBatchId;
@@ -553,6 +615,10 @@ export async function runAppointmentImport(supabase, therapist, headers, rows, m
       continue;
     }
 
+    // Scope B: appointment provenance fields, normalized to our pills.
+    const bookedBy = toCategory(get(row, mapping.bookedBy), BOOKED_BY_MAP);
+    const bookingMethod = toCategory(get(row, mapping.bookingMethod), BOOKING_METHOD_MAP);
+
     const date = parseDateFlexible(dateStr);
     if (!date) {
       failed++;
@@ -564,7 +630,7 @@ export async function runAppointmentImport(supabase, therapist, headers, rows, m
 
     prepared.push({
       row, clientName, clientEmail, clientPhone, service, price,
-      bookingDate, startTime, duration, notes,
+      bookingDate, startTime, duration, notes, bookedBy, bookingMethod,
     });
   }
 
@@ -803,6 +869,8 @@ export async function runAppointmentImport(supabase, therapist, headers, rows, m
         deposit_required: false,
         deposit_amount: 0,
         deposit_paid: false,
+        booked_by: p.bookedBy || null,
+        booking_method: p.bookingMethod || null,
         import_batch_id: opts.importBatchId || null,
       });
       if (error) {

@@ -59,6 +59,12 @@ export default function AboutCard({ client, onUpdated, pulse = false }) {
   const [city, setCity] = useState(client?.city || '');
   const [state, setState] = useState(client?.state || '');
   const [zip, setZip] = useState(client?.zip || '');
+  // Scope B (HK Jun 1 2026): extra client fields
+  const [birthday, setBirthday] = useState(client?.birthday || '');
+  const [customerSince, setCustomerSince] = useState(client?.customer_since || '');
+  const [altPhone, setAltPhone] = useState(client?.alt_phone || '');
+  const [gender, setGender] = useState(client?.gender || '');
+  const [referralSource, setReferralSource] = useState(client?.referral_source || '');
   // 'name' | 'email' | 'phone' | 'notes' | 'address_line1' | etc
   const [justSaved, setJustSaved] = useState(null);
   // 'name' | etc for inline error message
@@ -132,6 +138,11 @@ export default function AboutCard({ client, onUpdated, pulse = false }) {
     if (field === 'city')  payload.city  = value.trim() || null;
     if (field === 'state') payload.state = value.trim() || null;
     if (field === 'zip')   payload.zip   = value.trim() || null;
+    if (field === 'birthday')        payload.birthday        = value.trim() || null;
+    if (field === 'customer_since')  payload.customer_since  = value.trim() || null;
+    if (field === 'alt_phone')       payload.alt_phone       = value.trim() || null;
+    if (field === 'gender')          payload.gender          = value || null;
+    if (field === 'referral_source') payload.referral_source = value || null;
 
     const { error } = await supabase
       .from('clients')
@@ -151,6 +162,11 @@ export default function AboutCard({ client, onUpdated, pulse = false }) {
       if (field === 'city')  setCity(client?.city || '');
       if (field === 'state') setState(client?.state || '');
       if (field === 'zip')   setZip(client?.zip || '');
+      if (field === 'birthday')        setBirthday(client?.birthday || '');
+      if (field === 'customer_since')  setCustomerSince(client?.customer_since || '');
+      if (field === 'alt_phone')       setAltPhone(client?.alt_phone || '');
+      if (field === 'gender')          setGender(client?.gender || '');
+      if (field === 'referral_source') setReferralSource(client?.referral_source || '');
       return;
     }
 
@@ -201,6 +217,49 @@ export default function AboutCard({ client, onUpdated, pulse = false }) {
         error={errorOn === 'phone' ? errorMsg : ''}
         type="tel"
         placeholder="Add phone"
+      />
+      <Row
+        label="Alternate phone"
+        value={altPhone}
+        setValue={setAltPhone}
+        onSave={(v) => saveField('alt_phone', v)}
+        justSaved={justSaved === 'alt_phone'}
+        error={errorOn === 'alt_phone' ? errorMsg : ''}
+        type="tel"
+        placeholder="Add a second phone"
+      />
+      <Row
+        label="Birthday"
+        value={birthday}
+        setValue={setBirthday}
+        onSave={(v) => saveField('birthday', v)}
+        justSaved={justSaved === 'birthday'}
+        error={errorOn === 'birthday' ? errorMsg : ''}
+        type="date"
+        placeholder="Add birthday"
+      />
+      <Row
+        label="Customer since"
+        value={customerSince}
+        setValue={setCustomerSince}
+        onSave={(v) => saveField('customer_since', v)}
+        justSaved={justSaved === 'customer_since'}
+        type="date"
+        placeholder="Add date"
+      />
+      <PillRow
+        label="Gender"
+        value={gender}
+        options={['Female', 'Male', 'Non-binary', 'Prefer not to say']}
+        onSave={(v) => { setGender(v); saveField('gender', v); }}
+        justSaved={justSaved === 'gender'}
+      />
+      <PillRow
+        label="How they found you"
+        value={referralSource}
+        options={['Referred by someone', 'Found online', 'Social media', 'Returning client', 'Walk-in']}
+        onSave={(v) => { setReferralSource(v); saveField('referral_source', v); }}
+        justSaved={justSaved === 'referral_source'}
       />
       {/* Address (HK May 22 2026 item H). Collapsible because most
           therapists don't need to see it at a glance for every client.
@@ -370,6 +429,94 @@ function Row({ label, value, setValue, onSave, justSaved, error, required, type 
 
 // Multi-line textarea row for the Notes field. Same click-to-edit
 // pattern; Cmd/Ctrl + Enter commits, Esc cancels, blur commits.
+// Tappable-pill row with an Other option that reveals a text box.
+// HK Jun 1 2026 Scope B: no dropdowns, no free-text-only fields.
+// A stored value that is not one of the options (e.g. an imported
+// "Other: ..." value) shows as the Other pill pre-filled.
+function PillRow({ label, value, options, onSave, justSaved }) {
+  const isKnown = options.includes(value);
+  const otherText = (!isKnown && value) ? value.replace(/^Other:\s*/i, '') : '';
+  const [showOther, setShowOther] = useState(!isKnown && !!value);
+  const [draft, setDraft] = useState(otherText);
+  const inputRef = useRef(null);
+
+  useEffect(() => {
+    setShowOther(!options.includes(value) && !!value);
+    setDraft((!options.includes(value) && value) ? value.replace(/^Other:\s*/i, '') : '');
+  }, [value, options]);
+
+  useEffect(() => { if (showOther && inputRef.current) inputRef.current.focus(); }, [showOther]);
+
+  const otherSelected = showOther || (!isKnown && !!value);
+
+  return (
+    <div style={{ padding: '12px 14px', borderBottom: `1px solid ${C.lineSoft}` }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+        <span style={{ fontSize: 12, fontWeight: 700, color: C.inkSoft, textTransform: 'uppercase', letterSpacing: '0.04em' }}>{label}</span>
+        {justSaved && <span style={{ fontSize: 11, color: C.saved, fontWeight: 700 }}>Saved</span>}
+      </div>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+        {options.map(opt => {
+          const active = value === opt;
+          return (
+            <button
+              key={opt}
+              type="button"
+              onClick={() => { setShowOther(false); onSave(opt); }}
+              style={{
+                padding: '8px 14px',
+                borderRadius: 999,
+                border: `1.5px solid ${active ? C.forest : C.line}`,
+                background: active ? C.forest : C.paper,
+                color: active ? '#fff' : C.ink,
+                fontSize: 13,
+                fontWeight: 600,
+                cursor: 'pointer',
+              }}>
+              {opt}
+            </button>
+          );
+        })}
+        <button
+          type="button"
+          onClick={() => setShowOther(true)}
+          style={{
+            padding: '8px 14px',
+            borderRadius: 999,
+            border: `1.5px solid ${otherSelected ? C.forest : C.line}`,
+            background: otherSelected ? C.forest : C.paper,
+            color: otherSelected ? '#fff' : C.ink,
+            fontSize: 13,
+            fontWeight: 600,
+            cursor: 'pointer',
+          }}>
+          Other
+        </button>
+      </div>
+      {showOther && (
+        <input
+          ref={inputRef}
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          onBlur={() => { const t = draft.trim(); onSave(t ? `Other: ${t}` : ''); }}
+          onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur(); }}
+          placeholder="Type it in"
+          style={{
+            marginTop: 8,
+            width: '100%',
+            boxSizing: 'border-box',
+            padding: '8px 10px',
+            border: `1.5px solid ${C.line}`,
+            borderRadius: 8,
+            fontSize: 14,
+            fontFamily: F.sans,
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
 function RowMultiline({ label, value, setValue, onSave, justSaved, error, placeholder = 'Add notes' }) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(value);
