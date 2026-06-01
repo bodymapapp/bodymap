@@ -232,6 +232,7 @@ function hashApptForPanel(a) {
     a.deposit_required, a.deposit_paid, a.deposit_amount,
     a.reminder_sent, a.preview, a.notes,
     a.paid, a.paid_cents, a.paidCents, a.refundedCents,
+    a.package_purchase_id,
   ].join('|');
 }
 
@@ -8533,6 +8534,14 @@ export default function ScheduleDashboard({ therapist }) {
           addon_total_price: b.addon_total_price || 0,
           addon_extra_minutes: b.addon_extra_minutes || 0,
           booking_date: b.booking_date,
+          // HK May 31 2026: package_purchase_id MUST be on the appt
+          // object passed to DetailPanel. Without it, the package
+          // detection effect (useEffect at ~line 1665) can never
+          // identify the booking as already linked, so the green
+          // "Session N of M" badge never appears and the "Link to a
+          // package" picker re-shows after every refetch. This was
+          // the "infinite loop" symptom HK hit.
+          package_purchase_id: b.package_purchase_id || null,
           // Phase 14.3j: paid flag derived from session_payments rows.
           // Used by the timeline card style to color paid bookings.
           paid: (paidMap[b.id] || 0) > 0,

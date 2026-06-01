@@ -28,6 +28,12 @@ import { createPortal } from 'react-dom';
 import { supabase } from '../lib/supabase';
 import { getStripePublishableKey } from '../lib/paymentMode';
 import { findOrCreateClient } from '../lib/findOrCreateClient';
+// HK May 31 2026: single source of truth for payment method enum.
+// Replaces the hand-maintained list that drifted from the DB constraint
+// (the "trade" check-constraint error HK hit was the drift symptom).
+// CI guard in scripts/check-enum-drift.js fails the build if this
+// list ever diverges from the live constraint again.
+import { OFFLINE_PAYMENT_METHODS_FOR_PICKER as OFFLINE_METHODS_FROM_ENUM } from '../lib/enums';
 import SquareCardForm from './payments/SquareCardForm';
 import CloseButton from './CloseButton';
 
@@ -52,21 +58,11 @@ const C = {
 // Offline payment methods (folded in from MarkAsPaidModal).
 // Used when the therapist taps the 'Mark as paid' button and
 // the money was already collected outside the platform.
-// HK May 19 2026: added Trade and 'Paid before switchover' per
-// Candice ask. A $0 trade session (massage in exchange for hair)
-// or a session paid weeks ago before the therapist joined MBM
-// both record as legitimate offline payments.
-const OFFLINE_METHODS = [
-  { value: 'cash',           label: 'Cash' },
-  { value: 'venmo',          label: 'Venmo' },
-  { value: 'zelle',          label: 'Zelle' },
-  { value: 'cashapp',        label: 'Cash App' },
-  { value: 'check',          label: 'Check' },
-  { value: 'trade',          label: 'Trade or barter' },
-  { value: 'paid_elsewhere', label: 'Paid before switchover' },
-  { value: 'comped',         label: 'Comped' },
-  { value: 'other',          label: 'Other' },
-];
+// HK May 31 2026: OFFLINE_METHODS now sourced from src/lib/enums.js
+// instead of being maintained inline. Any change to offline payment
+// methods now happens in ONE place (enums.js) and is validated by CI
+// against the live DB constraint. See lib/enums.js header comment.
+const OFFLINE_METHODS = OFFLINE_METHODS_FROM_ENUM;
 
 export default function CheckoutModal({
   appt,

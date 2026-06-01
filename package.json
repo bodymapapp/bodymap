@@ -18,7 +18,8 @@
   "scripts": {
     "start": "react-scripts start",
     "audit:intake": "node scripts/audit-intake-schema-render.js",
-    "prebuild": "node scripts/audit-intake-schema-render.js && node scripts/build-help-articles.js",
+    "check:enums": "node scripts/check-enum-drift.js",
+    "prebuild": "node scripts/check-enum-drift.js && node scripts/audit-intake-schema-render.js && node scripts/build-help-articles.js",
     "build": "react-scripts build",
     "test": "react-scripts test",
     "eject": "react-scripts eject"

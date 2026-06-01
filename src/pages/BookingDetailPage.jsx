@@ -137,6 +137,11 @@ export default function BookingDetailPage({ therapist }) {
       addon_total_price: b.addon_total_price || 0,
       addon_extra_minutes: b.addon_extra_minutes || 0,
       booking_date: b.booking_date,
+      // HK May 31 2026: same fix as ScheduleDashboard. Without
+      // package_purchase_id on the appt object, the package detection
+      // effect never recognizes a linked booking and the green
+      // "Session N of M" badge never appears in page mode either.
+      package_purchase_id: b.package_purchase_id || null,
       paid: paidCents > 0,
       paid_cents: paidCents,
       paidCents,
