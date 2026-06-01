@@ -2703,8 +2703,26 @@ export function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelle
   //     audit link here.
   async function linkBookingToPackage(packagePurchaseId) {
     if (!packagePurchaseId || !appt?.id) return;
+    // HK May 31 2026: defensive reset of busy flag in case a previous
+    // attempt left it stuck true (would make the button silently
+    // disabled and look like "click does nothing").
     setPackageLinkBusy(true);
+    setServiceEditError(null);
     try {
+      // HK May 31 2026: if the booking is ALREADY linked to this
+      // package, don't re-run the redemption (would over-decrement
+      // sessions_remaining and add a duplicate redemption row). Just
+      // refresh state so the panel matches reality.
+      if (appt.package_purchase_id === packagePurchaseId) {
+        setShowPackageLinkPanel(false);
+        notify('This booking is already linked to that package');
+        // Optimistic local update so panel re-renders even if parent
+        // refetch is slow.
+        setDisplayAppt(prev => ({ ...prev, package_purchase_id: packagePurchaseId }));
+        onCancelled?.();
+        return;
+      }
+
       // Re-read the package to get current sessions_remaining
       const { data: pkg, error: pkgErr } = await supabase
         .from('package_purchases')
@@ -2749,6 +2767,13 @@ export function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelle
         console.warn('booking_history insert failed:', auditErr);
       }
 
+      // HK May 31 2026: optimistic local update FIRST so the side panel
+      // re-renders immediately without waiting for parent refetch. Then
+      // fire onCancelled for the parent to re-sync. This was the
+      // "click does nothing" symptom: the link DID succeed, but the
+      // panel never re-rendered because the parent refetch wasn't
+      // wired tightly to this action.
+      setDisplayAppt(prev => ({ ...prev, package_purchase_id: packagePurchaseId }));
       setShowPackageLinkPanel(false);
       notify('Package linked');
       onCancelled?.();

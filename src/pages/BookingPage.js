@@ -697,6 +697,10 @@ export default function BookingPage() {
       email: sp.get('email') || '',
       phone: sp.get('phone') || '',
       sms_opted_in: false,
+      // HK May 31 2026: MyBodyMap platform Terms of Service acceptance.
+      // Required to submit the booking. Persisted to
+      // clients.platform_terms_accepted_at after a successful booking.
+      platform_terms_accepted: false,
     };
   });
   const [partner,setPartner]=useState({name:'',email:''});
@@ -1933,7 +1937,7 @@ export default function BookingPage() {
         // is the same case-insensitive match used everywhere else.
         const { data: existingClientRow } = await supabase
           .from('clients')
-          .select('id, payment_method_id, card_brand, card_last4, card_saved_at, stripe_customer_id, square_customer_id')
+          .select('id, payment_method_id, card_brand, card_last4, card_saved_at, stripe_customer_id, square_customer_id, platform_terms_accepted_at')
           .eq('id', newBooking.client_id)
           .single();
         if (existingClientRow && !existingClientRow.payment_method_id) {
@@ -1951,6 +1955,20 @@ export default function BookingPage() {
           }
           await supabase.from('clients').update(patch).eq('id', newBooking.client_id);
           console.log('[card-on-file] linked saved card to client row', newBooking.client_id);
+        }
+        // HK May 31 2026: persist platform T&C acceptance on the client
+        // row. Non-blocking (the booking already succeeded; this is
+        // just the legal trail). Only writes if not already set so we
+        // don't keep stamping new dates on returning clients.
+        if (existingClientRow && !existingClientRow.platform_terms_accepted_at) {
+          try {
+            await supabase.from('clients').update({
+              platform_terms_accepted_at: new Date().toISOString(),
+              platform_terms_version: 'v1',
+            }).eq('id', newBooking.client_id);
+          } catch (tosErr) {
+            console.warn('[platform-tos] could not persist client acceptance', tosErr);
+          }
         }
       } catch (linkErr) {
         // Non-blocking. The booking already inserted successfully and
@@ -3329,6 +3347,22 @@ export default function BookingPage() {
                   </div>
                 </label>
               )}
+              {/* HK May 31 2026: MyBodyMap platform Terms of Service
+                  acceptance. Required to submit the booking. This is
+                  separate from the therapist's practice agreement
+                  (which the therapist sends to the client later).
+                  This is the platform's terms with the end client. */}
+              <label style={{display:'flex',alignItems:'flex-start',gap:10,padding:'12px 14px',background:'#FAFAF7',border:`1.5px solid ${form.platform_terms_accepted ? '#86EFAC' : (errors.platform_terms_accepted ? C.danger : C.light)}`,borderRadius:10,cursor:'pointer'}}>
+                <input type="checkbox" checked={!!form.platform_terms_accepted}
+                  onChange={e=>{setForm(f=>({...f,platform_terms_accepted:e.target.checked}));setErrors(er=>({...er,platform_terms_accepted:''}));}}
+                  style={{marginTop:2,accentColor:'#2A5741',width:16,height:16,flexShrink:0,cursor:'pointer'}}/>
+                <div style={{fontSize:12,color:C.gray,lineHeight:1.5}}>
+                  I agree to MyBodyMap's <a href="/terms" target="_blank" rel="noopener noreferrer" style={{color:'#2A5741',textDecoration:'underline',fontWeight:600}} onClick={e=>e.stopPropagation()}>Terms of Service</a> and <a href="/privacy" target="_blank" rel="noopener noreferrer" style={{color:'#2A5741',textDecoration:'underline',fontWeight:600}} onClick={e=>e.stopPropagation()}>Privacy Policy</a>. Required to book.
+                </div>
+              </label>
+              {errors.platform_terms_accepted && (
+                <div style={{fontSize:11,color:C.danger,marginTop:2}}>{errors.platform_terms_accepted}</div>
+              )}
             </div>
             {svc?.is_couples && (
               <div style={{background:'#F0FDF4',border:'1.5px solid #86EFAC',borderRadius:12,padding:'16px',marginBottom:8}}>
@@ -3352,6 +3386,11 @@ export default function BookingPage() {
               if(!form.name.trim()) errs.name='Required';
               if(!form.email.trim()||!/\S+@\S+\.\S+/.test(form.email)) errs.email='Valid email required';
               if(!form.phone.trim()) errs.phone='Required';
+              // HK May 31 2026: platform T&C is a hard gate. Without it
+              // we'd be capturing personal data with no legal basis on
+              // record. Better to fail fast than to silently let the
+              // checkbox slip.
+              if(!form.platform_terms_accepted) errs.platform_terms_accepted='Please accept MyBodyMap\'s Terms of Service to continue.';
               if(Object.keys(errs).length){setErrors(errs);return;}
               if(svc?.is_couples){
                 const perrs={};

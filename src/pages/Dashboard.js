@@ -23,6 +23,7 @@ import YearlyPlanner from '../components/YearlyPlanner';
 import SettingsHero from '../components/SettingsHero';
 import SettingsSectionHeader from '../components/SettingsSectionHeader';
 import SettingsErrorBoundary from '../components/SettingsErrorBoundary';
+import PlatformTermsModal from '../components/PlatformTermsModal';
 import InlineSaveNumberInput from '../components/InlineSaveNumberInput';
 import DisclosureRow from '../components/DisclosureRow';
 import CollapsibleSection from '../components/CollapsibleSection';
@@ -5955,6 +5956,25 @@ export default function Dashboard({ view }) {
     }
   }, [therapist?.id]);
 
+  // HK May 31 2026: platform Terms of Service one-time acceptance gate
+  // for existing therapists. Shows on first Dashboard load after this
+  // ships when therapist.platform_terms_accepted_at is null. Modal
+  // writes the timestamp + version to the row on accept and disappears.
+  // New signups also get this column populated server-side via the
+  // signup flow's terms checkbox; this modal is only for pre-existing
+  // accounts that never saw a signup gate.
+  const [showPlatformTermsModal, setShowPlatformTermsModal] = useState(false);
+  useEffect(() => {
+    if (!therapist?.id) return;
+    if (therapist.platform_terms_accepted_at) return;
+    // Don't pop the gate at the same time as the phone verify gate
+    // (above) or on the verify-phone route itself.
+    if (therapist.created_at >= '2026-05-12T00:00:00Z' && !therapist.phone_verified_at) return;
+    // Defer one tick so the rest of the dashboard chrome renders first.
+    const t = setTimeout(() => setShowPlatformTermsModal(true), 600);
+    return () => clearTimeout(t);
+  }, [therapist?.id, therapist?.platform_terms_accepted_at, therapist?.created_at, therapist?.phone_verified_at]);
+
   // Phone verification hard gate for new signups.
   // Therapists created on or after 2026-05-12 (the day this feature
   // shipped) must verify their phone before they can use the dashboard.
@@ -6152,6 +6172,22 @@ export default function Dashboard({ view }) {
           )}
         </div>
       </header>
+
+      {/* HK May 31 2026: platform T&C one-time acceptance gate.
+          Cannot be dismissed without accepting. Closes the legal gap
+          of pre-existing therapists who never explicitly accepted
+          MyBodyMap's terms at signup. */}
+      {showPlatformTermsModal && therapist?.id && (
+        <PlatformTermsModal
+          therapistId={therapist.id}
+          onAccepted={async () => {
+            setShowPlatformTermsModal(false);
+            if (typeof refreshTherapist === 'function') {
+              try { await refreshTherapist(); } catch (e) { /* swallow */ }
+            }
+          }}
+        />
+      )}
 
       {showBookmarkNudge && !isMobile && (
         <div style={{ background: '#2A5741', color: 'white', padding: '12px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 16 }}>
