@@ -68,7 +68,10 @@ export type CartItem = {
 
 export type CustomerInfo = {
   name?: string | null;
-  email: string;
+  // HK May 31 2026: email optional so pay-links can be SMS-only.
+  // Providers omit the prefill field when email is missing rather
+  // than passing empty string (which both Stripe and Square reject).
+  email?: string;
   phone?: string | null;
 };
 

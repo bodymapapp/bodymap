@@ -146,7 +146,13 @@ export class StripeProvider implements PaymentProvider {
     const body: Record<string, unknown> = {
       mode: 'payment',
       payment_method_types: ['card'],
-      customer_email: args.customer.email,
+      // HK May 31 2026: only include customer_email when actually
+      // present. Empty string causes Stripe to reject with a
+      // validation error, surfacing as "Invalid email address" when
+      // the therapist chose SMS-only pay-link delivery.
+      ...(args.customer?.email
+        ? { customer_email: args.customer.email }
+        : {}),
       success_url: `${args.redirectUrl}&checkout_complete=1&session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: args.cancelUrl || `${args.redirectUrl}&checkout_canceled=1`,
       line_items: args.items.map((it) => ({
@@ -219,7 +225,10 @@ export class StripeProvider implements PaymentProvider {
     const body: Record<string, unknown> = {
       mode: 'subscription',
       payment_method_types: ['card'],
-      customer_email: args.customer.email,
+      // HK May 31 2026: omit customer_email when empty (SMS-only delivery)
+      ...(args.customer?.email
+        ? { customer_email: args.customer.email }
+        : {}),
       success_url: `${args.redirectUrl}&checkout_complete=1&session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: args.cancelUrl || `${args.redirectUrl}&checkout_canceled=1`,
       line_items: [{ price: priceId, quantity: 1 }],

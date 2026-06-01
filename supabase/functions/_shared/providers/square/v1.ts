@@ -326,7 +326,14 @@ export class SquareV1Strategy implements SquareStrategy {
           ask_for_shipping_address: false,
           redirect_url: `${args.redirectUrl}&checkout_complete=1&processor=square`,
         },
-        pre_populated_data: { buyer_email: args.customer.email },
+        // HK May 31 2026: only include buyer_email when one is actually
+        // present. Square's API rejects an empty-string email with
+        // "Invalid email address" which surfaces as a confusing error
+        // when the therapist chose SMS-only delivery (no email on
+        // file). Omitting the field entirely is valid.
+        ...(args.customer?.email
+          ? { pre_populated_data: { buyer_email: args.customer.email } }
+          : {}),
         description: it.description || undefined,
       };
     } else {
@@ -346,7 +353,10 @@ export class SquareV1Strategy implements SquareStrategy {
           ask_for_shipping_address: false,
           redirect_url: `${args.redirectUrl}&checkout_complete=1&processor=square`,
         },
-        pre_populated_data: { buyer_email: args.customer.email },
+        // HK May 31 2026: same fix as quick_pay path above.
+        ...(args.customer?.email
+          ? { pre_populated_data: { buyer_email: args.customer.email } }
+          : {}),
       };
     }
 
@@ -428,7 +438,10 @@ export class SquareV1Strategy implements SquareStrategy {
           ask_for_shipping_address: false,
           redirect_url: `${args.redirectUrl}&checkout_complete=1&processor=square&mode=subscription&plan_variation_id=${planVariationId}&customer_id=${customerId}&start_date=${startDate}`,
         },
-        pre_populated_data: { buyer_email: args.customer.email },
+        // HK May 31 2026: omit buyer_email when empty (SMS-only delivery)
+        ...(args.customer?.email
+          ? { pre_populated_data: { buyer_email: args.customer.email } }
+          : {}),
       },
     });
 

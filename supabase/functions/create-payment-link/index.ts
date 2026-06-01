@@ -186,7 +186,9 @@ serve(async (req) => {
             }] : []),
           ],
           customer: {
-            email: client_email || '',
+            // HK May 31 2026: undefined (not empty string) so the
+            // provider's optional-spread correctly omits the field.
+            email: client_email || undefined,
           },
           redirectUrl,
           metadata: {

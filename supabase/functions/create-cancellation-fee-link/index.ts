@@ -157,7 +157,7 @@ serve(async (req) => {
               kind: 'cancellation_fee',
             },
           }],
-          customer: { email: booking.client_email || '' },
+          customer: { email: booking.client_email || undefined },
           redirectUrl,
           metadata: {
             cancellation_charge_id: chargeRow.id,
