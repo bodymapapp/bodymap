@@ -350,7 +350,7 @@ serve(async (req) => {
     const { therapist_id, action_type, custom_subject, custom_body } = body || {};
     if (!therapist_id) return fail("therapist_id required", "validation");
     if (!action_type) return fail("action_type required", "validation");
-    const validActions: ActionType[] = ["welcome", "checkin", "reminder", "testimonial", "first_session", "setup_nudge", "churned", "referral_thankyou", "activation_nudge"];
+    const validActions: ActionType[] = ["welcome", "checkin", "reminder", "testimonial", "first_session", "setup_nudge", "churned", "referral_thankyou", "activation_nudge", "product_update"];
     if (!validActions.includes(action_type)) {
       return fail(`action_type must be one of ${validActions.join(", ")}`, "validation");
     }
