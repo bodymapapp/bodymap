@@ -5138,13 +5138,10 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
                         });
                         const data = await res.json();
                         if (data?.url) {
-                          const popup = window.open(data.url, 'square-oauth', 'width=600,height=700');
-                          window.addEventListener('message', (e) => {
-                            if (e.data?.type === 'square-oauth-success') {
-                              try { popup?.close(); } catch (_) {}
-                              window.location.reload();
-                            }
-                          });
+                          // HK Jun 1 2026: redirect instead of window.open
+                          // popup. iPad Safari blocks popups opened after an
+                          // await. Callback redirects back to the dashboard.
+                          window.location.href = data.url;
                         }
                       }} style={{
                         marginTop: 10,
@@ -5169,15 +5166,16 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
               });
               const data = await res.json();
               if (data.url) {
-                const popup = window.open(data.url, 'square-oauth', 'width=600,height=700');
-                window.addEventListener('message', async (e) => {
-                  if (e.data?.type === 'square-oauth-success') {
-                    popup?.close();
-                    const { data: t } = await supabase.from('therapists').select('*').eq('id', therapist.id).single();
-                    if (t) await updateProfile(t);
-                    window.location.reload();
-                  }
-                }, { once: true });
+                // HK Jun 1 2026: was window.open popup, which iPad Safari
+                // silently blocks because it fires after the await (the
+                // user-gesture token is gone by then). Forward Motion's
+                // therapist tapped Connect Square and nothing happened.
+                // Stripe buttons work because they redirect the page.
+                // Match that: full-page redirect survives the async gap.
+                // The square-oauth-callback already redirects back to
+                // /dashboard?square=connected, so the therapist lands
+                // home with Square connected.
+                window.location.href = data.url;
               } else setSquareConnectError(data?.error ? String(data.error) : 'Could not start Square connection. Please try again.');
             }} style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:8, background:'#fff', color:'#000', border:'1.5px solid #000', borderRadius:10, padding:'12px 16px', fontSize:'13px', fontWeight:'600', cursor:'pointer', width:'100%' }}>
               ⬛ Connect Square
