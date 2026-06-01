@@ -184,6 +184,54 @@ export default function NotificationCompliance() {
   }
 
   // ─── Auto-fire all touchpoints via the founder edge function ───
+  // HK Jun 1 2026: fire the live 24h reminder job (the same function
+  // the 4am cron runs) on demand, so a reminder copy fix can be
+  // verified without waiting overnight. Sends only to bookings already
+  // eligible in the 24-48h window with an email on file; the function's
+  // own guards skip everyone else. Same tap-to-arm, tap-to-confirm
+  // pattern as fireAll.
+  async function fireReminders24h() {
+    if (firing !== 'arm_reminders') {
+      setFiring('arm_reminders');
+      setFireResult(null);
+      return;
+    }
+    setFiring(true);
+    setFireResult(null);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const accessToken = session?.access_token;
+      if (!accessToken) {
+        alert('No auth token. Re-login and retry.');
+        setFiring(false);
+        return;
+      }
+      const supabaseUrl = process.env.REACT_APP_SUPABASE_URL || '';
+      const res = await fetch(`${supabaseUrl}/functions/v1/send-reminders`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        alert(`Reminder run failed: ${data.error || 'unknown'}`);
+        setFiring(false);
+        return;
+      }
+      setFireResult({ batch: 'reminders24h', ...data });
+      for (let i = 0; i < 8; i++) {
+        await new Promise(r => setTimeout(r, 1000));
+        await refreshLogs();
+      }
+    } catch (e) {
+      alert(`Reminder run error: ${e.message}`);
+    } finally {
+      setFiring(false);
+    }
+  }
+
   async function fireAll() {
     if (!therapist?.id || !client?.id) {
       alert('Therapist or client account not loaded. Cannot run auto-fire.');
@@ -525,6 +573,27 @@ export default function NotificationCompliance() {
               {firing === 'arm_full' && 'Tap again to confirm full sweep'}
               {!firing && 'Full compliance sweep (legacy, all 28)'}
               {firing === 'arm_may26' && 'Full compliance sweep (legacy, all 28)'}
+            </button>
+
+            <button
+              type="button"
+              onClick={fireReminders24h}
+              disabled={firing === true}
+              style={{
+                background: firing === true ? COLORS.inkSoft
+                  : firing === 'arm_reminders' ? COLORS.gold
+                  : '#fff',
+                color: firing === 'arm_reminders' ? '#fff' : COLORS.ink,
+                border: `1px solid ${COLORS.border}`,
+                borderRadius: 999,
+                padding: '10px 18px',
+                fontSize: 12,
+                fontWeight: 700,
+                cursor: firing === true ? 'not-allowed' : 'pointer',
+              }}>
+              {firing === true && 'Running 24h reminders...'}
+              {firing === 'arm_reminders' && 'Tap again to send 24h reminders'}
+              {(!firing || firing === 'arm_full' || firing === 'arm_may26') && '⏰ Send 24h reminders now'}
             </button>
 
             {fireResult && fireResult.batch !== 'may26' && (
