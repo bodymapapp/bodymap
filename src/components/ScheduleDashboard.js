@@ -6678,35 +6678,89 @@ function MonthlyView({ therapist, appointments, today, onReschedule, onRefresh, 
           );
         })}
       </div>
-      <div style={{fontSize:12,fontWeight:700,color:'#6B7280',textTransform:'uppercase',letterSpacing:'0.06em',marginBottom:10}}>
-        {fmtShort(selDate)}, {selAppts.filter(a=>!a.preview).length} appointment{selAppts.filter(a=>!a.preview).length!==1?'s':''}
-      </div>
-      {selAppts.filter(a=>!a.preview).length===0
-        ?<div style={{background:'#fff',borderRadius:12,padding:24,textAlign:'center',color:'#9CA3AF',fontSize:14}}>No appointments on this day.</div>
-        :<div style={{display:'flex',flexDirection:'column',gap:8}}>
-          {selAppts.filter(a=>!a.preview).map(appt=>{
-            // HK May 29 2026: trace muting + annotation line
-            const ts = traceStyles(appt);
-            const ann = traceAnnotation(appt);
-            const st = STATUS[appt.status]||STATUS['pending-intake'];
-            return (
-            <div key={appt.id} onClick={()=>setSelected(appt)}
-              style={{background:st.bg,border:`1.5px solid ${st.dot}`,borderLeft:`4px solid ${st.dot}`,borderRadius:12,padding:'12px 16px',cursor:'pointer',display:'flex',alignItems:'center',gap:12,opacity:ts.opacity}}>
-              <div style={{width:36,height:36,borderRadius:'50%',background:ac(appt.client),color:'#fff',display:'flex',alignItems:'center',justifyContent:'center',fontSize:12,fontWeight:700,flexShrink:0}}>{initials(appt.client)}</div>
-              <div style={{flex:1}}>
-                <div style={{fontSize:14,fontWeight:700,color:'#1F2937',textDecoration:ts.textDecoration}}>{appt.client}</div>
-                <div style={{fontSize:12,color:'#6B7280',textDecoration:ts.textDecoration}}>{appt.time} · {appt.duration}min · {appt.service||'Session'}</div>
-                {ann && <div style={{fontSize:11,fontWeight:600,color:st.color,marginTop:3}}>{ann}</div>}
-              </div>
-              <div style={{display:'flex',flexDirection:'column',alignItems:'flex-end',gap:4}}>
-                <div style={{fontSize:11,fontWeight:700,color:st.color}}>{st.icon} {st.label}</div>
-                {appt.deposit_required&&!appt.deposit_paid&&<div style={{fontSize:10,fontWeight:700,color:'#D97706'}}>💳 Deposit due</div>}
-              </div>
+      {(() => {
+        // HK Jun 1 2026 v2 (Jacquie incident, post-crash retry): interleave
+        // partial blocks with appointments in the day-list. Re-do uses ONLY
+        // the proven module-level t2m for booking times and a small inline
+        // 24-hour parser for block times. Avoids new Date(string) parsing
+        // entirely since iOS Safari is strict about non-ISO date formats
+        // and returning Invalid Date triggered a downstream crash earlier
+        // (a.date.getHours() on what was actually a string).
+        const dateStrSel = `${selDate.getFullYear()}-${String(selDate.getMonth()+1).padStart(2,'0')}-${String(selDate.getDate()).padStart(2,'0')}`;
+        const dayBlocks = (blockedDays || []).filter(b => b.date === dateStrSel && b.start_time && b.end_time);
+        const realAppts = selAppts.filter(a => !a.preview);
+        const t24 = (s) => {
+          if (!s || typeof s !== 'string') return 0;
+          const [hStr, mStr] = s.slice(0, 5).split(':');
+          const h = parseInt(hStr, 10);
+          const m = parseInt(mStr, 10);
+          return (Number.isFinite(h) ? h : 0) * 60 + (Number.isFinite(m) ? m : 0);
+        };
+        const items = [
+          ...realAppts.map(a => ({ kind: 'appt', sortKey: t2m(a.time), data: a })),
+          ...dayBlocks.map(b => ({ kind: 'block', sortKey: t24(b.start_time), data: b })),
+        ].sort((x, y) => x.sortKey - y.sortKey);
+        return (
+          <>
+            <div style={{fontSize:12,fontWeight:700,color:'#6B7280',textTransform:'uppercase',letterSpacing:'0.06em',marginBottom:10}}>
+              {fmtShort(selDate)}, {realAppts.length} appointment{realAppts.length!==1?'s':''}{dayBlocks.length > 0 ? ` · ${dayBlocks.length} time off` : ''}
             </div>
-            );
-          })}
-        </div>
-      }
+            {items.length === 0
+              ? <div style={{background:'#fff',borderRadius:12,padding:24,textAlign:'center',color:'#9CA3AF',fontSize:14}}>No appointments on this day.</div>
+              : <div style={{display:'flex',flexDirection:'column',gap:8}}>
+                  {items.map((item, idx) => {
+                    if (item.kind === 'block') {
+                      const b = item.data;
+                      const startStr = (b.start_time || '00:00').slice(0,5);
+                      const endStr   = (b.end_time   || '00:00').slice(0,5);
+                      const reasonLabel = b.note || b.reason || 'Time off';
+                      return (
+                        <div key={`block-${b.id || idx}`}
+                          style={{
+                            background: 'repeating-linear-gradient(45deg,#FEF3C7,#FEF3C7 6px,#FDE68A 6px,#FDE68A 7px)',
+                            border: '1.5px solid #FCD34D',
+                            borderLeft: '4px solid #D97706',
+                            borderRadius: 12,
+                            padding: '12px 16px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 12,
+                          }}>
+                          <div style={{width:36,height:36,borderRadius:'50%',background:'#FFFBEB',color:'#92400E',display:'flex',alignItems:'center',justifyContent:'center',fontSize:18,flexShrink:0}}>🌿</div>
+                          <div style={{flex:1}}>
+                            <div style={{fontSize:14,fontWeight:700,color:'#92400E'}}>{reasonLabel}</div>
+                            <div style={{fontSize:12,color:'#92400E',opacity:0.85,marginTop:2}}>
+                              {fmt12(startStr)} - {fmt12(endStr)} · Blocked time off
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    }
+                    const appt = item.data;
+                    const ts = traceStyles(appt);
+                    const ann = traceAnnotation(appt);
+                    const st = STATUS[appt.status]||STATUS['pending-intake'];
+                    return (
+                      <div key={appt.id} onClick={()=>setSelected(appt)}
+                        style={{background:st.bg,border:`1.5px solid ${st.dot}`,borderLeft:`4px solid ${st.dot}`,borderRadius:12,padding:'12px 16px',cursor:'pointer',display:'flex',alignItems:'center',gap:12,opacity:ts.opacity}}>
+                        <div style={{width:36,height:36,borderRadius:'50%',background:ac(appt.client),color:'#fff',display:'flex',alignItems:'center',justifyContent:'center',fontSize:12,fontWeight:700,flexShrink:0}}>{initials(appt.client)}</div>
+                        <div style={{flex:1}}>
+                          <div style={{fontSize:14,fontWeight:700,color:'#1F2937',textDecoration:ts.textDecoration}}>{appt.client}</div>
+                          <div style={{fontSize:12,color:'#6B7280',textDecoration:ts.textDecoration}}>{appt.time} · {appt.duration}min · {appt.service||'Session'}</div>
+                          {ann && <div style={{fontSize:11,fontWeight:600,color:st.color,marginTop:3}}>{ann}</div>}
+                        </div>
+                        <div style={{display:'flex',flexDirection:'column',alignItems:'flex-end',gap:4}}>
+                          <div style={{fontSize:11,fontWeight:700,color:st.color}}>{st.icon} {st.label}</div>
+                          {appt.deposit_required&&!appt.deposit_paid&&<div style={{fontSize:10,fontWeight:700,color:'#D97706'}}>💳 Deposit due</div>}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+            }
+          </>
+        );
+      })()}
       {selected&&<DetailPanel appt={selected} therapist={therapist} onClose={()=>setSelected(null)} onReschedule={a=>{onReschedule&&onReschedule(a);}} onCancelled={()=>{if(typeof onRefresh==='function')onRefresh();}} showToast={moShowToast} onRequestCheckout={onRequestCheckout} paymentsRefreshTick={paymentsRefreshTick}/>}
       {moToast}
     </div>
