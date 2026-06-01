@@ -24,6 +24,7 @@ import React, { useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { renderTokens, AUDIENCE_LABELS } from '../lib/outreachQuicksend';
 import CloseButton from './CloseButton';
+import AutoGrowingTextarea from './AutoGrowingTextarea';
 
 const C = { forest:'#2A5741', sage:'#6B9E80', beige:'#F5F0E8', white:'#FFFFFF', dark:'#1A1A2E', gray:'#6B7280', light:'#E8E4DC', success:'#10B981' };
 
@@ -416,15 +417,15 @@ export default function QuickSendModal({ template, therapist, recipients: passed
             {/* Body */}
             <div style={{ marginBottom:14 }}>
               <label style={{ display:'block', fontSize:12, fontWeight:600, color:C.gray, textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:6 }}>Message</label>
-              <textarea
+              <AutoGrowingTextarea
                 value={body}
                 onChange={e => setBody(e.target.value)}
                 disabled={sending}
-                rows={10}
+                minRows={6}
+                maxRows={16}
                 style={{
-                  width:'100%', padding:'10px 12px', border:`1.5px solid ${C.light}`, borderRadius:10,
-                  fontSize:13, color:C.dark, outline:'none', boxSizing:'border-box',
-                  fontFamily:'system-ui', lineHeight:1.6, resize:'vertical',
+                  border: `1.5px solid ${C.light}`,
+                  fontSize: 13, color: C.dark,
                 }}
               />
               <div style={{ fontSize:11, color:C.gray, marginTop:6, lineHeight:1.5 }}>

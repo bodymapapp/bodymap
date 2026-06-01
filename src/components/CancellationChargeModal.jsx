@@ -23,6 +23,7 @@
 import React, { useMemo, useState, useRef, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { getStripePublishableKey } from '../lib/paymentMode';
+import AutoGrowingTextarea from './AutoGrowingTextarea';
 
 const C = {
   forest: '#2A5741',
@@ -699,17 +700,15 @@ export default function CancellationChargeModal({
                 <label style={{ fontSize: 11, fontWeight: 700, color: C.gray, textTransform: 'uppercase', letterSpacing: '0.06em', display: 'block', marginBottom: 6 }}>
                   Reason (optional)
                 </label>
-                <textarea
+                <AutoGrowingTextarea
                   value={reason}
                   onChange={e => setReasonText(e.target.value)}
                   placeholder={isNoShow ? 'Optional note for your records' : 'Optional: a brief reason. Shared with the client in the cancellation email.'}
-                  rows={2}
+                  minRows={2}
+                  maxRows={8}
                   style={{
-                    width: '100%', boxSizing: 'border-box',
-                    border: `1.5px solid ${C.light}`, borderRadius: 10,
-                    padding: '10px 12px', fontSize: 13.5, color: C.text,
-                    fontFamily: 'inherit', resize: 'vertical', minHeight: 56,
-                    outline: 'none', background: '#FAFAF7',
+                    border: `1.5px solid ${C.light}`,
+                    fontSize: 13.5, color: C.text,
                   }}
                 />
               </div>

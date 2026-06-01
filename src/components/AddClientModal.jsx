@@ -14,6 +14,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "../lib/supabase";
 import CloseButton from "./CloseButton";
+import AutoGrowingTextarea from "./AutoGrowingTextarea";
 
 const C = {
   cream: "#FAF4E8",
@@ -429,12 +430,13 @@ export default function AddClientModal({ therapist, onClose, onSaved }) {
                 />
               </Field>
               <Field label="Notes">
-                <textarea
+                <AutoGrowingTextarea
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
                   placeholder="Anything you want to remember about them. Medical history, preferences, family context."
-                  rows={3}
-                  style={{ ...inputStyle, resize: "vertical", fontFamily: "inherit" }}
+                  minRows={3}
+                  maxRows={10}
+                  style={inputStyle}
                 />
               </Field>
             </div>
@@ -480,12 +482,13 @@ export default function AddClientModal({ therapist, onClose, onSaved }) {
                   </div>
 
                   <Field label="Booking notes">
-                    <textarea
+                    <AutoGrowingTextarea
                       value={bookingNotes}
                       onChange={(e) => setBookingNotes(e.target.value)}
                       placeholder="Optional. e.g. 'Picked up by daughter, prefers morning sessions'"
-                      rows={2}
-                      style={{ ...inputStyle, resize: "vertical", fontFamily: "inherit" }}
+                      minRows={2}
+                      maxRows={8}
+                      style={inputStyle}
                     />
                   </Field>
 
@@ -577,12 +580,13 @@ export default function AddClientModal({ therapist, onClose, onSaved }) {
               </Field>
 
               <Field label="Anything else">
-                <textarea
+                <AutoGrowingTextarea
                   value={intakeNotes}
                   onChange={(e) => setIntakeNotes(e.target.value)}
                   placeholder="Optional. Sensitivities, prior injuries, emotional context, anything you want to remember."
-                  rows={3}
-                  style={{ ...inputStyle, resize: "vertical", fontFamily: "inherit" }}
+                  minRows={3}
+                  maxRows={12}
+                  style={inputStyle}
                 />
               </Field>
             </div>

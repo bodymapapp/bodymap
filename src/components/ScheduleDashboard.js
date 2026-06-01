@@ -12,6 +12,7 @@ import CheckoutModal from './CheckoutModal';
 // MarkAsPaidModal deleted in Phase 19 (May 18 2026). Functionality
 // folded into CheckoutModal's offline payment path. See commit history.
 import RefundModal from './RefundModal';
+import AutoGrowingTextarea from './AutoGrowingTextarea';
 import DocumentJourney from './DocumentJourney';
 import { ChevronIcon as SharedChevronIcon, RoundIconButton } from './ChevronIcon';
 import CalendarGrid, { CalendarHelpButton } from './CalendarGrid';
@@ -1113,25 +1114,30 @@ function RecordEditor({ session, parsedSoap, onSaved, therapist, allSessions }) 
         <Label>S, Subjective</Label>
         <MicDictationButton onAppend={(t) => setS(prev => (prev ? prev + ' ' : '') + t)} label="Dictate Subjective" />
       </div>
-      <textarea value={S} onChange={e => setS(e.target.value)} placeholder="What the client reports: pain, history, what they want" style={fieldStyle} />
+      {/* HK May 31 2026: AutoGrowingTextarea replaces fixed-height
+          textarea. Fields start at 2 rows and grow as the therapist
+          types up to maxRows=10, then scroll internally. SOAP fields
+          can take long entries from older clients without forcing
+          the therapist to scroll inside a tiny window. */}
+      <AutoGrowingTextarea value={S} onChange={e => setS(e.target.value)} placeholder="What the client reports: pain, history, what they want" style={fieldStyle} minRows={2} maxRows={10} />
 
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
         <Label>O, Objective</Label>
         <MicDictationButton onAppend={(t) => setO(prev => (prev ? prev + ' ' : '') + t)} label="Dictate Objective" />
       </div>
-      <textarea value={O} onChange={e => setO(e.target.value)} placeholder="What you observed: range of motion, tissue, posture" style={fieldStyle} />
+      <AutoGrowingTextarea value={O} onChange={e => setO(e.target.value)} placeholder="What you observed: range of motion, tissue, posture" style={fieldStyle} minRows={2} maxRows={10} />
 
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
         <Label>A, Assessment</Label>
         <MicDictationButton onAppend={(t) => setA(prev => (prev ? prev + ' ' : '') + t)} label="Dictate Assessment" />
       </div>
-      <textarea value={A} onChange={e => setA(e.target.value)} placeholder="Your professional read on the situation" style={fieldStyle} />
+      <AutoGrowingTextarea value={A} onChange={e => setA(e.target.value)} placeholder="Your professional read on the situation" style={fieldStyle} minRows={2} maxRows={10} />
 
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
         <Label>P, Plan</Label>
         <MicDictationButton onAppend={(t) => setP(prev => (prev ? prev + ' ' : '') + t)} label="Dictate Plan" />
       </div>
-      <textarea value={P} onChange={e => setP(e.target.value)} placeholder="What you did this session and what comes next" style={fieldStyle} />
+      <AutoGrowingTextarea value={P} onChange={e => setP(e.target.value)} placeholder="What you did this session and what comes next" style={fieldStyle} minRows={2} maxRows={10} />
 
       {/* Therapist's private notes - SUMMARY of the SOAP work above.
           PracticeIQ can draft from the SOAP fields when
@@ -1189,11 +1195,13 @@ function RecordEditor({ session, parsedSoap, onSaved, therapist, allSessions }) 
           </button>
         )}
       </div>
-      <textarea
+      <AutoGrowingTextarea
         value={privateNotes}
         onChange={e => setPrivateNotes(e.target.value)}
         placeholder="Quick note for yourself: what you worked on, what to remember next time. Tap 'Draft from SOAP' to have the PracticeIQ write a summary."
-        style={{ ...fieldStyle, minHeight: 72 }}
+        style={fieldStyle}
+        minRows={3}
+        maxRows={14}
       />
       {draftError && (
         <div style={{ fontSize: 12, color: '#B91C1C', marginBottom: 10, marginTop: -4 }}>
@@ -1410,25 +1418,13 @@ function RecapEditor({ session, parsedSoap, therapist, allSessions, onSaved, onR
         </div>
       </div>
 
-      <textarea
+      <AutoGrowingTextarea
         value={text}
         onChange={e => setText(e.target.value)}
         placeholder="Thanks for coming in today. I worked on your right shoulder and gave you a doorway stretch to take home..."
-        style={{
-          width: '100%',
-          minHeight: 120,
-          padding: '10px 12px',
-          border: '1px solid #E5DDD2',
-          borderRadius: 8,
-          fontSize: 13,
-          lineHeight: 1.55,
-          fontFamily: 'inherit',
-          outline: 'none',
-          resize: 'vertical',
-          boxSizing: 'border-box',
-          background: '#FAFAF7',
-          marginBottom: 10,
-        }}
+        style={{ marginBottom: 10 }}
+        minRows={5}
+        maxRows={14}
       />
       {draftError && (
         <div style={{ fontSize: 12, color: '#B91C1C', marginBottom: 10, marginTop: -4 }}>

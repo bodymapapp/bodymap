@@ -21,6 +21,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../../lib/supabase';
+import AutoGrowingTextarea from '../AutoGrowingTextarea';
 
 const C = {
   paper:  '#FFFFFF',
@@ -416,7 +417,7 @@ function RowMultiline({ label, value, setValue, onSave, justSaved, error, placeh
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'stretch', gap: 4, minWidth: 0 }}>
         {editing ? (
-          <textarea
+          <AutoGrowingTextarea
             ref={inputRef}
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
@@ -425,17 +426,14 @@ function RowMultiline({ label, value, setValue, onSave, justSaved, error, placeh
               if (e.key === 'Escape') { e.preventDefault(); cancel(); }
               if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); commit(); }
             }}
-            rows={3}
+            minRows={3}
+            maxRows={12}
             placeholder={placeholder}
             style={{
               padding: '8px 10px',
               border: `1.5px solid ${C.focus}`,
-              borderRadius: 8,
               fontSize: 14,
               lineHeight: 1.45,
-              fontFamily: 'inherit',
-              outline: 'none',
-              resize: 'vertical',
               background: C.paper,
               color: C.ink,
               boxSizing: 'border-box',

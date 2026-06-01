@@ -19,6 +19,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { ensureCustomAnchor } from '../lib/outreachQuicksend';
+import AutoGrowingTextarea from './AutoGrowingTextarea';
 
 const C = {
   forest: '#2A5741', sage: '#6B9E80', cream: '#F5F0E8',
@@ -326,15 +327,14 @@ export default function CustomQuickSendModal({ therapist, onClose, onSent }) {
             <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: C.ink, marginBottom: 6 }}>
               Message
             </label>
-            <textarea
+            <AutoGrowingTextarea
               value={body}
               onChange={e => setBody(e.target.value)}
               placeholder={`Hi {{first_name}},\n\nWrite anything here. Use {{first_name}}, {{therapist_name}}, and {{rebook_link}} to personalize for each recipient.\n\nTake care,\n{{therapist_name}}`}
-              rows={10}
+              minRows={6}
+              maxRows={18}
               style={{
-                width: '100%', padding: '10px 12px', borderRadius: 10,
-                border: `1.5px solid ${C.light}`, fontSize: 14, fontFamily: 'inherit',
-                boxSizing: 'border-box', resize: 'vertical', lineHeight: 1.55,
+                border: `1.5px solid ${C.light}`, fontSize: 14,
               }}
             />
             <div style={{ fontSize: 11.5, color: C.gray, marginTop: 6, lineHeight: 1.5 }}>

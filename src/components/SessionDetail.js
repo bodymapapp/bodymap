@@ -5,6 +5,7 @@ import { getSampleSessions } from "../data/sampleClients";
 import { AFTERCARE_PRESETS } from "../lib/sessionIntelligence";
 import DocumentJourney from "./DocumentJourney";
 import DocumentDrawer from "./DocumentDrawer";
+import AutoGrowingTextarea from "./AutoGrowingTextarea";
 import IntakeBrief from "../pages/IntakeBrief";
 import PreSessionBrief from "../pages/PreSessionBrief";
 import PostSessionBrief from "../pages/PostSessionBrief";
@@ -812,20 +813,22 @@ export default function SessionDetail({ session, client, onBack, onUpdate }) {
                 {/* Long-form text fields full-width */}
                 <div style={{ padding: "8px 10px", background: C.beige, borderRadius: "8px", border: "1px solid " + C.lightGray }}>
                   <label style={{ fontSize: "10px", color: C.gray, display: "block", marginBottom: "4px", textTransform: "uppercase", letterSpacing: "0.5px" }}>🩺 Medical Note</label>
-                  <textarea
+                  <AutoGrowingTextarea
                     value={intakeDraft.med_note ?? ""}
                     onChange={e => setIntakeDraft(d => ({ ...d, med_note: e.target.value || null }))}
-                    rows={2}
-                    style={{ width: "100%", padding: "5px 7px", border: "1px solid " + C.lightGray, borderRadius: "5px", fontSize: "13px", fontFamily: "system-ui", resize: "vertical" }}
+                    minRows={2}
+                    maxRows={10}
+                    style={{ padding: "5px 7px", border: "1px solid " + C.lightGray, fontSize: "13px", background: "transparent" }}
                   />
                 </div>
                 <div style={{ padding: "8px 10px", background: C.beige, borderRadius: "8px", border: "1px solid " + C.lightGray }}>
                   <label style={{ fontSize: "10px", color: C.gray, display: "block", marginBottom: "4px", textTransform: "uppercase", letterSpacing: "0.5px" }}>📝 Client Notes</label>
-                  <textarea
+                  <AutoGrowingTextarea
                     value={intakeDraft.client_notes ?? ""}
                     onChange={e => setIntakeDraft(d => ({ ...d, client_notes: e.target.value || null }))}
-                    rows={2}
-                    style={{ width: "100%", padding: "5px 7px", border: "1px solid " + C.lightGray, borderRadius: "5px", fontSize: "13px", fontFamily: "system-ui", resize: "vertical" }}
+                    minRows={2}
+                    maxRows={12}
+                    style={{ padding: "5px 7px", border: "1px solid " + C.lightGray, fontSize: "13px", background: "transparent" }}
                   />
                 </div>
               </div>
@@ -1082,11 +1085,13 @@ export default function SessionDetail({ session, client, onBack, onUpdate }) {
                 ].map(({ key, label, hint }) => (
                   <div key={key}>
                     <label style={{ fontSize: "12px", fontWeight: 700, color: C.darkGray, display: "block", marginBottom: "6px", textTransform: "uppercase", letterSpacing: "0.05em" }}>{label}</label>
-                    <textarea
+                    <AutoGrowingTextarea
                       value={soap[key] || ""}
                       onChange={e => setSoap(s => ({ ...s, [key]: e.target.value }))}
                       placeholder={hint}
-                      style={{ ...therapistInputStyle(soap[key]), minHeight: "100px" }}
+                      minRows={3}
+                      maxRows={12}
+                      style={therapistInputStyle(soap[key])}
                     />
                   </div>
                 ))}
@@ -1098,11 +1103,13 @@ export default function SessionDetail({ session, client, onBack, onUpdate }) {
                   💌 Note to Client
                   <span style={{ marginLeft: 8, fontWeight: 500, color: C.gray, textTransform: "none", letterSpacing: 0 }}>(appears in their summary, tap the mic on your keyboard to dictate)</span>
                 </label>
-                <textarea
+                <AutoGrowingTextarea
                   value={publicNotes}
                   onChange={e => setPublicNotes(e.target.value)}
                   placeholder="A warm note for your client. Example: 'Loved having you today, your shoulder felt much looser by the end. Try a few minutes of the neck rolls we talked about this week.'"
-                  style={{ ...therapistInputStyle(publicNotes), minHeight: "90px" }}
+                  minRows={3}
+                  maxRows={14}
+                  style={therapistInputStyle(publicNotes)}
                 />
               </div>
 
@@ -1142,11 +1149,13 @@ export default function SessionDetail({ session, client, onBack, onUpdate }) {
                     );
                   })}
                 </div>
-                <textarea
+                <AutoGrowingTextarea
                   value={soap.aftercareCustom || ""}
                   onChange={e => setSoap(s => ({ ...s, aftercareCustom: e.target.value }))}
                   placeholder="Anything specific to this client (optional, e.g. 'Ice the right hamstring for 10 minutes tonight')"
-                  style={{ ...therapistInputStyle(soap.aftercareCustom), minHeight: "60px" }}
+                  minRows={2}
+                  maxRows={8}
+                  style={therapistInputStyle(soap.aftercareCustom)}
                 />
               </div>
 
