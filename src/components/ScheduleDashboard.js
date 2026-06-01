@@ -1657,6 +1657,11 @@ export function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelle
   // Inline manage-link expander toggle. Hidden by default; shows
   // candidate package radios + Unlink + Save when expanded.
   const [showPackageLinkPanel, setShowPackageLinkPanel] = useState(false);
+  // HK May 31 2026: optional session-number override picker. Keyed by
+  // package_purchase_id so each row in the picker has its own input.
+  // Therapist enters "this is session 3 of 5" before tapping the row.
+  // Null/empty = let the system auto-compute by chronological order.
+  const [sessionNumberDraft, setSessionNumberDraft] = useState({});
   // HK May 27 2026 Phase Pkg-C: detect the active package this
   // booking is part of. Resolution order:
   //   1. If booking has explicit package_purchase_id, use it.
@@ -1735,19 +1740,25 @@ export function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelle
           .order('booking_date', { ascending: true })
           .order('start_time', { ascending: true });
 
+        // HK May 31 2026: pull session_number_override from redemptions
+        // so we can show "Session 3 of 5" when the therapist explicitly
+        // entered the number rather than auto-computing chronological
+        // order. One query covers all packages.
+        const packageIds = allPurchases.map(p => p.id);
+        let redemptionsByBooking = {};
+        if (packageIds.length > 0 && appt?.id) {
+          const { data: reds } = await supabase
+            .from('package_redemptions')
+            .select('booking_id, package_purchase_id, session_number_override')
+            .in('package_purchase_id', packageIds)
+            .eq('booking_id', appt.id);
+          (reds || []).forEach(r => {
+            redemptionsByBooking[r.package_purchase_id] = r.session_number_override;
+          });
+        }
+
         if (!alive) return;
 
-        // Enrich each purchase with session position info FOR THIS
-        // BOOKING and used-count overall. For session_number, we
-        // count bookings ordered chronologically that are explicitly
-        // linked to this package via bookings.package_purchase_id.
-        // HK May 29 2026: removed inferred-matching by date+service
-        // because it was double-counting unrelated bookings as "in the
-        // package" (Joy's 30 test bookings were all showing as "Session
-        // 18 of 6"). A booking belongs to a package only when the
-        // therapist explicitly redeems it via Checkout, which sets the
-        // FK on the bookings row. If a redemption is missing, the
-        // therapist can still link it from the booking detail panel.
         const enriched = allPurchases.map(p => {
           const purchasedDate = p.purchased_at
             ? new Date(p.purchased_at).toISOString().split('T')[0]
@@ -1767,8 +1778,13 @@ export function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelle
             if (b.id === appt.id) thisSessionNumber = i + 1;
             if (b.status === 'completed') usedCount += 1;
           }
+          // HK May 31 2026: explicit override takes precedence over
+          // chronological auto-computation. Fixes the "Session ? of 5"
+          // display where chronology wasn't yielding a number.
+          if (redemptionsByBooking[p.id]) {
+            thisSessionNumber = redemptionsByBooking[p.id];
+          }
           // Is this booking eligible to attach to this package?
-          // (date >= purchased AND service covered, OR already linked)
           const eligible = appt.package_purchase_id === p.id
             || (appt.booking_date >= purchasedDate && serviceCovered(appt.service_id));
 
@@ -2266,6 +2282,68 @@ export function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelle
     setOpenSections(prev => ({ ...prev, [key]: !prev[key] }));
   }
 
+  // HK May 31 2026 round 5: SOAP-without-intake regression fix.
+  //
+  // Earlier today the auto-create-session on panel mount was removed
+  // to stop a refresh storm (was firing a sessions INSERT every time
+  // the therapist opened a booking, triggering realtime, triggering
+  // fetchBookings, blocking the UI). The intent was for the notes
+  // editor to create the session on first save. But RecordEditor.save()
+  // only UPDATEs an existing session.id; it never creates one. So
+  // when there's no intake, currentSession stays null forever and the
+  // SOAP card just shows "Loading session..." with no recovery.
+  //
+  // Fix: create the session row when the Record section is OPENED,
+  // not on panel mount. Tracked per-booking-id via a ref so we don't
+  // double-fire. Only fires on intentional section toggle, which means
+  // it happens once per therapist intent (open SOAP to write notes),
+  // not once per panel open. Refresh storm avoided AND SOAP is
+  // actually usable without intake.
+  const recordSessionEnsuredRef = useRef(new Set());
+  useEffect(() => {
+    if (!openSections.record) return;
+    if (!appt?.id || appt.preview) return;
+    if (currentSession?.id) return;
+    if (recordSessionEnsuredRef.current.has(appt.id)) return;
+    recordSessionEnsuredRef.current.add(appt.id);
+
+    let alive = true;
+    (async () => {
+      // Double-check no session was created in the meantime (panel
+      // opened twice, race between toggleSection and effect).
+      const { data: existing } = await supabase
+        .from('sessions')
+        .select('*')
+        .eq('booking_id', appt.id)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (!alive) return;
+      if (existing) { setCurrentSession(existing); return; }
+
+      const { data: created, error } = await supabase
+        .from('sessions')
+        .insert({
+          booking_id: appt.id,
+          client_id: appt.clientId || null,
+          therapist_id: therapist.id,
+          completed: false,
+        })
+        .select('*')
+        .single();
+      if (!alive) return;
+      if (error) {
+        console.error('[SOAP open] session create failed', error);
+        // Allow retry on next open.
+        recordSessionEnsuredRef.current.delete(appt.id);
+        return;
+      }
+      setCurrentSession(created);
+    })();
+    return () => { alive = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [openSections.record, appt?.id]);
+
   // ─── Pattern signal: the highest-impact insight to surface ───
   // Order of priority: medical flag > cadence drift > zone recurrence
   // > newcomer. We compute the single strongest one and show it
@@ -2709,7 +2787,7 @@ export function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelle
   //     touch it. The therapist might still want to refund + redeem
   //     separately; that is a separate workflow. We just record the
   //     audit link here.
-  async function linkBookingToPackage(packagePurchaseId) {
+  async function linkBookingToPackage(packagePurchaseId, sessionNumberOverride = null) {
     if (!packagePurchaseId || !appt?.id) return;
     // HK May 31 2026: defensive reset of busy flag in case a previous
     // attempt left it stuck true (would make the button silently
@@ -2747,11 +2825,17 @@ export function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelle
         .eq('id', appt.id);
       if (bkErr) throw new Error(bkErr.message);
 
-      // Audit: redemption row
+      // Audit: redemption row. HK May 31 2026: session_number_override
+      // lets the therapist explicitly say "this is session 3 of 5",
+      // not chronological order. Useful when linking an older booking
+      // that they know fits in the middle of the package.
       await supabase.from('package_redemptions').insert({
         package_purchase_id: packagePurchaseId,
         booking_id: appt.id,
-        notes: `Linked retroactively by therapist on ${new Date().toISOString().split('T')[0]}.`,
+        session_number_override: sessionNumberOverride || null,
+        notes: sessionNumberOverride
+          ? `Linked as session ${sessionNumberOverride} by therapist on ${new Date().toISOString().split('T')[0]}.`
+          : `Linked retroactively by therapist on ${new Date().toISOString().split('T')[0]}.`,
       });
 
       // Decrement remaining counter (floor at 0)
@@ -2768,19 +2852,13 @@ export function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelle
           therapist_id: therapist.id,
           change_type: 'package_link',
           before_snapshot: { package_purchase_id: appt.package_purchase_id || null },
-          after_snapshot: { package_purchase_id: packagePurchaseId },
+          after_snapshot: { package_purchase_id: packagePurchaseId, session_number: sessionNumberOverride },
           changed_by_user_id: user?.id || null,
         });
       } catch (auditErr) {
         console.warn('booking_history insert failed:', auditErr);
       }
 
-      // HK May 31 2026: optimistic local update FIRST so the side panel
-      // re-renders immediately without waiting for parent refetch. Then
-      // fire onCancelled for the parent to re-sync. This was the
-      // "click does nothing" symptom: the link DID succeed, but the
-      // panel never re-rendered because the parent refetch wasn't
-      // wired tightly to this action.
       setDisplayAppt(prev => ({ ...prev, package_purchase_id: packagePurchaseId }));
       setShowPackageLinkPanel(false);
       notify('Package linked');
@@ -3567,53 +3645,94 @@ export function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelle
                     {availablePackages.map(p => {
                       const isCurrent = activePackage?.id === p.id && p.linked;
                       const remaining = p.sessions_purchased - p.used_count;
+                      const canPick = !isCurrent && !packageLinkBusy && (p.eligible || p.linked);
+                      const sessionNumVal = sessionNumberDraft[p.id] || '';
+                      const parsedNum = parseInt(sessionNumVal, 10);
+                      const numValid = !sessionNumVal || (parsedNum >= 1 && parsedNum <= p.sessions_purchased);
                       return (
-                        <button
-                          key={p.id}
-                          type="button"
-                          disabled={packageLinkBusy || (!p.eligible && !p.linked)}
-                          onClick={() => {
-                            if (p.linked) return;
-                            linkBookingToPackage(p.id);
-                          }}
-                          style={{
-                            display: 'flex',
-                            alignItems: 'flex-start',
-                            gap: 10,
-                            padding: '10px 12px',
-                            background: isCurrent ? '#2A5741' : '#fff',
-                            border: `1.5px solid ${isCurrent ? '#2A5741' : '#9DBEA1'}`,
-                            borderRadius: 10,
-                            cursor: (packageLinkBusy || (!p.eligible && !p.linked)) ? 'not-allowed' : 'pointer',
-                            textAlign: 'left',
-                            fontFamily: 'inherit',
-                            opacity: (!p.eligible && !p.linked) ? 0.5 : 1,
-                            width: '100%',
-                          }}>
-                          <span style={{ fontSize: 16, lineHeight: 1.2 }}>
-                            {isCurrent ? '✓' : '○'}
-                          </span>
-                          <div style={{ flex: 1, minWidth: 0 }}>
-                            <div style={{
-                              fontSize: 13,
-                              fontWeight: 700,
-                              color: isCurrent ? '#fff' : '#1F4030',
-                              marginBottom: 2,
-                            }}>
-                              {p.name}
-                            </div>
-                            <div style={{
-                              fontSize: 11,
-                              color: isCurrent ? '#D6E0D4' : '#2A5741',
-                              lineHeight: 1.4,
-                            }}>
-                              {remaining} of {p.sessions_purchased} left
-                              {p.status === 'exhausted' ? ' · fully used' : ''}
-                              {!p.eligible && !p.linked ? ' · service not covered' : ''}
-                              {p.purchased_at ? ` · purchased ${new Date(p.purchased_at).toLocaleDateString()}` : ''}
+                        <div key={p.id} style={{
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: 6,
+                          padding: '10px 12px',
+                          background: isCurrent ? '#2A5741' : '#fff',
+                          border: `1.5px solid ${isCurrent ? '#2A5741' : '#9DBEA1'}`,
+                          borderRadius: 10,
+                          opacity: (!p.eligible && !p.linked) ? 0.5 : 1,
+                        }}>
+                          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+                            <span style={{ fontSize: 16, lineHeight: 1.2, color: isCurrent ? '#fff' : '#1F4030' }}>
+                              {isCurrent ? '✓' : '○'}
+                            </span>
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div style={{
+                                fontSize: 13,
+                                fontWeight: 700,
+                                color: isCurrent ? '#fff' : '#1F4030',
+                                marginBottom: 2,
+                              }}>
+                                {p.name}
+                              </div>
+                              <div style={{
+                                fontSize: 11,
+                                color: isCurrent ? '#D6E0D4' : '#2A5741',
+                                lineHeight: 1.4,
+                              }}>
+                                {remaining} of {p.sessions_purchased} left
+                                {p.status === 'exhausted' ? ' · fully used' : ''}
+                                {!p.eligible && !p.linked ? ' · service not covered' : ''}
+                                {p.purchased_at ? ` · purchased ${new Date(p.purchased_at).toLocaleDateString()}` : ''}
+                              </div>
                             </div>
                           </div>
-                        </button>
+                          {/* HK May 31 2026: inline session-number override.
+                              Shown only for non-current, eligible rows. Empty
+                              = let auto-compute by chronological order. */}
+                          {canPick && (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, paddingLeft: 26 }}>
+                              <span style={{ fontSize: 11, color: '#2A5741', fontWeight: 600 }}>This is session</span>
+                              <input
+                                type="number"
+                                inputMode="numeric"
+                                min={1}
+                                max={p.sessions_purchased}
+                                value={sessionNumVal}
+                                onChange={(e) => setSessionNumberDraft(prev => ({ ...prev, [p.id]: e.target.value }))}
+                                placeholder="auto"
+                                style={{
+                                  width: 48,
+                                  padding: '4px 6px',
+                                  border: `1px solid ${numValid ? '#9DBEA1' : '#DC2626'}`,
+                                  borderRadius: 6,
+                                  fontSize: 12,
+                                  textAlign: 'center',
+                                  fontFamily: 'inherit',
+                                }}
+                              />
+                              <span style={{ fontSize: 11, color: '#2A5741' }}>of {p.sessions_purchased}</span>
+                              <button
+                                type="button"
+                                disabled={!canPick || !numValid}
+                                onClick={() => linkBookingToPackage(p.id, parsedNum || null)}
+                                style={{
+                                  marginLeft: 'auto',
+                                  background: '#2A5741',
+                                  color: '#fff',
+                                  border: 'none',
+                                  borderRadius: 999,
+                                  padding: '5px 12px',
+                                  fontSize: 11,
+                                  fontWeight: 700,
+                                  cursor: canPick && numValid ? 'pointer' : 'not-allowed',
+                                  opacity: canPick && numValid ? 1 : 0.5,
+                                  fontFamily: 'inherit',
+                                }}
+                              >
+                                {packageLinkBusy ? '...' : 'Link'}
+                              </button>
+                            </div>
+                          )}
+                        </div>
                       );
                     })}
 
@@ -4555,10 +4674,21 @@ export function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelle
                     </button>
                   </>
                 ) : (
-                  <EmptyStateCard
-                    icon="🌿"
-                    body="Loading session..."
-                  />
+                  <div style={{
+                    padding: '20px 16px',
+                    background: '#FAFAF7',
+                    border: '1px dashed #D6E0D4',
+                    borderRadius: 10,
+                    textAlign: 'center',
+                  }}>
+                    <div style={{ fontSize: 28, marginBottom: 8 }}>📝</div>
+                    <div style={{ fontSize: 13, color: '#475569', lineHeight: 1.5, marginBottom: 12 }}>
+                      No notes yet. Start a session record to begin writing.
+                    </div>
+                    <div style={{ fontSize: 11, color: '#9CA3AF', lineHeight: 1.5 }}>
+                      Setting up the record. This usually takes a second.
+                    </div>
+                  </div>
                 )}
               </CockpitSection>
 
