@@ -1062,7 +1062,118 @@ touched for other reasons, or in dedicated cleanup passes.
 
 ---
 
-## How to use this document
+## 32. Customer broadcast emails follow a fixed shape. Open with thanks and "stays free." Close with sign-in + a real-person reply. Five items, one line each.
+
+HK iterated through the same email three or four times to land on the
+voice. Future drafts must start from this template, not from scratch.
+
+### The canonical shape
+
+```
+Subject: <five-words-or-fewer, action-oriented>
+
+Hi {name},
+
+We've been listening. A lot of these came straight from therapists
+like you, and we shipped them within a week. Thank you.
+
+The platform stays free for you while we keep adding.
+
+1. <Action-shaped one-line heading.>
+<Path → Card name (taxonomy ID).> <One sentence on what it does.>
+
+2. <Action-shaped one-line heading.>
+<Path → Card name (taxonomy ID).> <One sentence on what it does.>
+While you're there, take a peek at <related feature>, <related>,
+and <related>.
+
+3. <Action-shaped one-line heading.>
+<Path.> <One sentence.> <One short benefit clause.>
+
+4. <Action-shaped one-line heading.>
+<Action verb.> <What it does.> <Conversational "no more X" line.>
+
+5. <Action-shaped one-line heading.>
+<Path.> <What it surfaces.> <How they use it.>
+
+Sign in: mybodymap.app
+
+Reply and a real person answers.
+
+- MyBodyMap
+```
+
+### Why this shape
+
+- **Opening thanks + listening signal.** The 70yo persona is wary of
+  software companies. Acknowledging "we listened, we shipped in a week"
+  reframes the relationship from vendor-buyer to colleague-colleague.
+- **"Stays free for you."** Anchors the cohort that signed up early.
+  They worry every email is leading to a price hike. Defuse it on line 2.
+- **Numbered list, action-shaped headings.** "Block your year in one go"
+  is doable. "Improvements to vacation scheduling" is corporate noise.
+- **Path + taxonomy ID in parens.** When the feature lives in a Settings
+  card, include the ID like `Plan your year (2.6)` so customer support
+  has a shared shorthand if she replies asking where it is. When the
+  feature is a Schedule action (not a setting), no ID, just the path.
+- **"While you're there" cross-promotion.** When pointing at a Settings
+  area with multiple related cards, mention 2 or 3 nearby features by
+  name. Maximizes the visit value.
+- **Conversational "no more X?" line.** Reuses her own framing back to
+  her. "No more 'wait, did I refund?'" lands harder than
+  "automatic refund tracking shipped."
+- **Single bare URL CTA.** `mybodymap.app`, no `[Watch button]`, no
+  query strings, no link decoration. She types or copy-pastes.
+- **"Reply and a real person answers."** Reused verbatim across every
+  email. It's the most important line for retention; never paraphrase.
+- **Sign-off**: `- MyBodyMap` (single hyphen, no em dash, no
+  "The MyBodyMap Team"). Compact, brand-consistent.
+
+### Rules
+
+- **One screenful on mobile.** ~150 words. If it doesn't fit, cut.
+- **Five items max.** Six items become a feature dump. Pick the five
+  that bring clients or save time.
+- **Action verbs in headings.** "Block your year," "Two locations,"
+  "Recurring weekly clients." Not "Vacation feature," "Locations
+  feature," "Recurring bookings."
+- **No em dashes anywhere.** Standing rule, applies here too. Use
+  commas or rephrase.
+- **No "AI," no "PracticeIQ" namedrops** unless the feature literally
+  is PracticeIQ. The persona doesn't care about the engine; she cares
+  about the outcome.
+- **No "Behind the scenes" section** mentioning reliability, speed,
+  privacy, or refactors. Therapists do not buy infrastructure; they
+  buy outcomes. Anything backend-flavored gets cut.
+- **Never reframe the persona's voice as marketing.** "We made setup
+  easier" is marketing; "Block your year in one go" is concrete.
+
+### Anti-patterns (rejected during iteration on this very email)
+
+- ❌ "Behind the scenes: reliability for 1,000+ clients" → cut. She
+  doesn't think about scale.
+- ❌ "Square and Stripe now do the same things" → cut. She doesn't
+  know which she uses; both should "just work."
+- ❌ "Nothing you have to do" → cut. Patronizing. She wants to know
+  what's new, not be told it's automatic.
+- ❌ Settings paths without taxonomy IDs → ambiguous. She doesn't
+  see IDs in the UI, but support uses them, so include in parens.
+- ❌ Long sign-off ("Cheers, / The MyBodyMap Team / [logo]") → cut
+  to `- MyBodyMap` per HK style.
+
+### When this rule applies
+
+- **Every product-update broadcast** (E2.10 in `BATCH_EMAIL_OPTIONS`).
+- **Monthly digest emails** when we ship them.
+- **Cohort announcements** (new feature launches, beta invites, etc.).
+- **NOT** transactional emails (booking confirmations, intake reminders,
+  receipts) — those are different shape, run by the platform's
+  notification system, not by founder outreach.
+- **NOT** single-customer support replies — those follow the principle
+  in the user-memory note about HK's voice (brief ack, direct action,
+  no hedging).
+
+---
 
 - **Before opening a new file or section:** check rule #1.
 - **Before writing code that sends a message:** check rules #2, #5.
@@ -1087,6 +1198,7 @@ touched for other reasons, or in dedicated cleanup passes.
 - **Before composing a notification template that fires across multiple booking statuses:** check rule #22.
 - **Before planning a flow that emails a payment link later:** check rule #23.
 - **Before writing copy that tells the user "tap the mic":** check rule #24.
+- **Before drafting any customer broadcast email (product update, monthly digest, cohort announcement):** check rule #32.
 
 When breaking a rule is the right move (it sometimes is), document
 the exception inline AND add the rule's incident log here. The
