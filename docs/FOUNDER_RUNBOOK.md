@@ -35,14 +35,14 @@ This is a LIVING document. Updated at the end of any session that introduces new
 ### Mission
 Help solo licensed massage therapists retain and grow their client base by automating the practice-management work they currently do manually or through expensive, clunky competitors (Vagaro, MassageBook, ClinicSense). The northstar: make it impossible for a client not to return.
 
-### Current state (as of May 25, 2026)
+### Current state (as of Jun 1, 2026)
 - **Stage:** Pre-revenue beta with first real customers actively using the platform.
 - **Users:** Single-digit founding therapists onboarded for testing. Active real customers and contacts:
   - **Candice Peek (Grounded Grace)**: signed up May 15. Real testimonial customer. Multiple bugs reported and fixed May 19-25. May 23 incident: comprehensive wipe ran against her therapist_id believing it was Jackie's; recovery took 7 hours via Supabase Pro daily backup. May 25 surfaced approve+deposit silent revenue bug (her config triggered the discovery); Phase 25a warning banner shipped, Phase 25b auto-charge fix queued.
-  - **Jackie Bodkin (Back2Life Restorative Massage)**: signed up May 20. By May 21 evening she had 466 clients + 124 confirmed appointments stretching to April 2027. Her single first import surfaced 10+ real bugs and UX gaps; every one became a shipped fix across May 21-22. May 25: asked how to change default `mailto:` handler to Gmail on iPhone; full Settings preference for custom email composer queued as BLOCK_PLAN item 34.
+  - **Jackie Bodkin (Back2Life Restorative Massage)**: signed up May 20. **Jun 1 2026:** reported blocks "kept disappearing" on Jun 3 timeline. Root-caused to Timeline gap-calc rendering "Open · 2h available" overlay on top of her amber-striped block. Fix shipped same day plus crash-prevention trio (ViewErrorBoundary, SW v35 update-banner, mobile-preview route). Three duplicate Facial blocks retained as evidence per HK instruction.
   - **Terra Irving (Under the Trees / Healing Touch / Ponder Place Retreat)**: May 24 triage resolved 9 of 11 broken bookings (NULL client_id), 2 held for her input (Kare, Maria Cruz). Driver of Phase 13.9-13.11 findOrCreateClient rewrite. Reports continue to be acted on same-day.
 - **Business form:** BodyMap LLC (Wyoming, Texas operator HK). May 25: ToS + Privacy hardened additively (commit `bb2c0494`). E&O insurance + TX attorney consult queued as Priority 0.
-- **Engineering:** Solo build via Claude. No human engineers retained. The schedule slide-over is now the single primary work surface for the therapist between sessions (24 commits across Phases 20-25a delivered May 24-25).
+- **Engineering:** Solo build via Claude. No human engineers retained. The schedule slide-over is now the single primary work surface for the therapist between sessions (24 commits across Phases 20-25a delivered May 24-25). Jun 1: 10 commits, mostly Jacquie-incident response + crash-prevention infrastructure.
 - **Funding:** Self-funded by HK from IBM income.
 
 ### What's working
@@ -51,10 +51,13 @@ Help solo licensed massage therapists retain and grow their client base by autom
 - Automated client retention: post-session AI brief, lapsed-client outreach, cancellation policy with auto-charge
 - Marketing surface: home + features pages with seven-ribbon taxonomy
 - **CSV import** (clients + appointments) with Maria-persona safety: pre-flight checks, strict column matching, phone normalization, downloadable skipped/failed rows, **client-side resumable on interrupt via localStorage**, **undo-last-import via batch id within 10 minutes**, **fuzzy service matching with one-tap merge**, multi-file orchestration with preview, address fields, smart currency-content detection. Survived Jackie's catastrophic-mapping case May 21 and now meaningfully prevents the next one.
-- **Schedule** loads 365 days back + 365 days forward. Four scope tabs (today, weekly, monthly, yearly) all real and visually consistent. Desktop weekly is Outlook-style time grid. Mobile weekly has horizontal time-strips per day card. Monthly + Yearly show blocked days visually. Yearly is a 12-month sage-gradient heatmap.
+- **Schedule** loads 365 days back + 365 days forward. Four scope tabs (today, weekly, monthly, yearly) all real and visually consistent. Desktop weekly is Outlook-style time grid. Mobile weekly has horizontal time-strips per day card. **Monthly day-list now interleaves blocks with appointments (Jun 1).** Yearly is a 12-month sage-gradient heatmap. **Every subview wrapped in ViewErrorBoundary so a crash in one shows a contained "View hit a snag" card, not white screen (Jun 1).**
+- **PWA update banner (Jun 1)**: SW v35 posts SW_UPDATE_READY; page renders a sage-green "Refresh" banner the user controls instead of force-reloading mid-flow.
+- **Mobile preview at /founder/mobile-preview (Jun 1)**: iPhone-class 380x720 iframe for verifying Schedule + Booking-page changes at mobile viewport before push. Catches iOS Safari issues that desktop hides.
 - **Schedule growth insights**: 7 care-framed practice observations fire from real data on the "Ways to use this" surface. Deep-link to outreach with named clients pre-selected.
 - **Outreach Quick send**: 5 preset templates plus a Custom card for picking any clients and writing anything.
 - **Notification system** Phase 15 wired for bookings, payments, refunds (May 18). Awaiting first real customer-driven activity to verify end-to-end.
+- **Founder customer broadcast** (Jun 1): /admin BatchSendBar always visible with email-template dropdown + select-all shortcut. SendModal persists drafts to localStorage. Customer broadcast email voice locked in as Design Principle #32.
 
 ### What's not working / unproven
 - No real revenue yet. Need 100 founding therapists to validate retention metrics before pricing rollout.
@@ -62,6 +65,7 @@ Help solo licensed massage therapists retain and grow their client base by autom
 - Therapist acquisition channel: currently word-of-mouth only via founder DMs (Katelynn et al.)
 - **Twilio A2P 10DLC Brand registration** stuck in review with TCR. Blocks all US SMS until cleared.
 - **Two pending migrations to apply** in Supabase SQL Editor before HK's testing covers everything from May 22: `2026-05-21-clients-address-fields.sql` (address columns) and `2026-05-22-import-batch-id.sql` (batch tracking). Until applied, address fields don't save on client profile and undo-last-import fails on insert. Both idempotent (`IF NOT EXISTS`).
+- **Side panel intermittent failure (Jun 1)**: DetailPanel scroll, close, edit affordances inconsistent on mobile. Reproduction inconsistent. Queued as Risk Register item #7.
 - **Insight iteration after real-data review** pending: HK to view the 7 deep insights firing against the live account, prune any weak ones, tune copy, wire actions on currently-text-only entries (C, E, F, G).
 
 ---
@@ -429,6 +433,29 @@ Full competitive analysis: `research/competitive-analysis-2026-04.md` and `resea
 ## 14. Decision log
 
 Major decisions made and the reasoning behind them. Append to this rather than overwriting.
+
+### Jun 1, 2026 (Jacquie incident + crash-prevention trio)
+
+- **Jacquie Bodkin's "blocks keep disappearing" complaint root-caused to a Timeline visual bug, not a data bug.** Her three duplicate 2:45-4 PM "Facial" block rows came from her recreating the block each time she saw "Open · 2h available" overlaid on the amber-striped block. Timeline `gaps` computation considered bookings only, not partial blocks. The booking-page slot generator DID respect blocks correctly, so no client ever booked into her blocked window. Fix in commit `525eac1f`: gap-calc subtracts blocks, sub-segments under 90 min suppressed. **Duplicates retained as evidence per HK explicit instruction**, not deleted. UNIQUE constraint on blocked_days queued as Risk Register item #6.
+
+- **Monthly view day-list now interleaves partial blocks with appointments (commit `f9998d73`).** Pre-fix: the 8:51 AM Monthly snapshot showed 7 appointments and zero indication that 2-4 PM was blocked. 70-year-old persona could open Monthly, see appointments, and never know a block existed. Now blocks render as amber "🌿 Time off · 2:00 PM - 4:00 PM" cards interleaved with appointments sorted by start time. Header reads "X appointments · Y time off." First-attempt fix at commit `58e2bb60` crashed iOS Safari (rule #33 violation: used `new Date("2000-01-01 1:30 PM")` which iOS rejects). Reverted in two stages, re-shipped with safe regex-based parsing.
+
+- **Three-deep crash-prevention infrastructure shipped (commit `6691d2fb`).**
+  1. **ViewErrorBoundary** wraps every Schedule subview (Today, Weekly, Monthly, Yearly, Insights). A crash now shows a contained "View hit a snag" sage-cream card with reload button. Rest of app stays alive. Aligns with rule #11 "Never show error pages to customers."
+  2. **SW v35 update-ready banner** replaces v34 silent force-reload. v34 worked but interrupted mid-flow users. v35 posts `SW_UPDATE_READY` and the page renders a sage-green non-blocking "Refresh" pill at the top with Refresh + Later buttons. User controls the reload moment. Still uses skipWaiting + claim so the message reaches every open client.
+  3. **`/founder/mobile-preview` iframe** at 380x720 with path presets (Home, Schedule, Clients, Settings, Joy booking page) and live-vs-localhost toggle. Lets HK verify Schedule + Booking-page changes at mobile viewport before push. Codified as rule #35 (iOS Safari is the canary).
+
+- **Founder broadcast email validator bug (commit `47741f37`).** All 62 sends of the May/June re-engagement broadcast failed silently because `product_update` was in the `ActionType` TypeScript union but missing from the `validActions` runtime array. Last successful product_update was Apr 29 2026: that one ran before someone tightened the validator without updating it. One-line fix; permanent mitigation queued as Risk Register item #10 (refactor to `validActions = Object.keys(templates)` so they stay in sync by construction).
+
+- **Customer broadcast email voice locked in as Design Principle #32 (commit `1d065994`).** After 5 turns of HK feedback on a single broadcast draft, captured the canonical shape: open with "We've been listening...shipped within a week. Thank you" + "Platform stays free for you," five numbered action-shaped items with path + taxonomy ID in parens for Settings cards, "While you're there..." cross-promotion, conversational "no more X?" lines, close with "Sign in: mybodymap.app" + "Reply and a real person answers," sign-off `- MyBodyMap` single hyphen, ~150 words, no backend mentions. Anti-patterns from this iteration logged in the principle.
+
+- **NEW Design Principle #33: Never use `new Date(string)` for non-ISO inputs.** iOS Safari rejects non-ISO date strings as Invalid Date; downstream `.getHours()` on what becomes a string crashes the whole tree. Use regex-based parsing for 12-hour times, `.split(":") + parseInt + isFinite` for 24-hour times.
+
+- **NEW Design Principle #34: JSX render blocks have a temporal dead zone for `const`.** Reading a `const` before its declaration in the same function body throws ReferenceError at runtime. Build doesn't catch it (no ESLint `no-use-before-define`). Manual care required.
+
+- **NEW Design Principle #35: iOS Safari is the canary.** Before pushing any change to Schedule, Booking page, or any date/time-parsing surface, view at mobile viewport via `/founder/mobile-preview`. Most therapists and clients use mobile. Most crashes are mobile-only.
+
+- **Risk Register on /founder page now has 10 open items.** Added: 14 .in() unbounded array sites (Medium), notification routing C2/C11 (High), BookingManage broken (High), PWA force-reload edge case (Medium), SendModal image-URL friction (Low), block dedup at DB level (Medium), **side panel intermittent failure on mobile (High, reproduction inconsistent, queued for screen-recording QA pass)**, mobile PWA stale-bundle during deploy windows (High), no ESLint `no-use-before-define` (Medium), edge function validActions/templates dual source of truth (Medium).
 
 ### May 25, 2026 (evening, slide-over Phase 22-25a + deposit gap discovery)
 
@@ -1593,6 +1620,72 @@ If you see 401s with no function-level entries, it's the gateway rejecting befor
 GitHub Actions only deploys functions whose source files changed. If you ONLY edit the workflow yaml (to add a function to the allowlist), the function's source code didn't change, so the deploy may skip it. To force a redeploy, make a trivial source edit (touch a comment) alongside the workflow change.
 
 **End of edge function JWT section.**
+
+---
+
+## Procedure 12: White screen on mobile after a deploy (added Jun 1 2026)
+
+### Symptom
+Desktop works, mobile PWA crashes to white screen. Or: after a successful push, mobile users report broken Schedule / Booking page while HK on Mac sees nothing wrong.
+
+### First-pass triage (60 seconds)
+1. **Is it a stale-cache problem?** Have the affected user pull-to-refresh in Safari (not the installed PWA). If that fixes it: SW v35's update banner didn't trigger. Move to step 4.
+2. **Is it a real iOS Safari runtime bug?** Open `/founder/mobile-preview`. Load the affected route at 380x720. If it crashes there too, the bug is in current code, not caching.
+3. **Verify in DevTools mobile emulation** (iPhone 14 Pro profile) on desktop Safari with Develop > User Agent > Safari iOS. Chrome's iPhone emulation does NOT catch iOS-Safari-specific bugs.
+
+### If the bug is real (not just caching)
+- **First check rule #33** in DESIGN_PRINCIPLES.md: any `new Date(someString)` in the code that touched the broken view? iOS Safari rejects non-ISO strings as Invalid Date. Replace with regex parsing or strict ISO format.
+- **Then check rule #34**: any `const` referenced before its declaration in the function body? Build won't catch this; runtime throws ReferenceError on first render.
+- If neither matches, paste the exact stack trace from the user's DevTools (Safari > Develop > [device] > Console) and grep the bundle for the throwing function name.
+
+### Recovery if mobile is broken in production
+- **Revert the offending commit immediately.** Don't try to fix forward under time pressure.
+  ```
+  cd ~/Documents/bodymap && git revert --no-edit <commit-sha>
+  npm run build 2>&1 | grep -iE "compiled|failed" | head -3
+  git push
+  ```
+- If multiple commits are tangled, restore individual files from a known-good commit:
+  ```
+  git checkout <good-sha> -- src/components/<file>.js
+  git add -A && git commit -m "EMERGENCY REVERT: restore <file> to <good-sha>" && git push
+  ```
+- Vercel deploy takes 90-120 seconds. Tell affected users to pull-to-refresh in Safari (not the PWA).
+
+### Why this happens
+iOS Safari is the strictest runtime in our stack. Desktop Chrome runs a more permissive engine that silently coerces bad inputs (Invalid Date, undefined destructured values, NaN sort keys) into something that doesn't crash. iOS Safari throws. The fix is process (rule #35: preview on mobile before push) plus code hygiene (rules #33 and #34).
+
+### Service-worker recovery if SW itself is stuck
+If a user is stuck on an old SW that won't pick up the new bundle even after pull-to-refresh:
+1. Settings > Safari > Advanced > Website Data
+2. Find `mybodymap.app`, swipe left, Delete
+3. Open the PWA again. Forces fresh fetch of HTML + JS + SW.
+
+Last resort: delete the PWA from the home screen, reopen Safari, navigate to mybodymap.app, Share > Add to Home Screen.
+
+---
+
+## Procedure 13: Edge function passes type check but fails at runtime validation (added Jun 1 2026)
+
+### Symptom
+You add a new template to a Supabase edge function (founder-outreach, notify-payment-event, etc.). The TypeScript type accepts your value (`ActionType` includes it). Builds clean. Deploys green. But every send fails with `action_type must be one of [list that doesn't include your new value]`.
+
+### Root cause
+The function has two sources of truth for valid values: the TypeScript type AND a runtime `validActions` array. Adding to one without updating the other creates a silent-failure trap.
+
+### Fix
+Find the validator array (grep for `validActions` or similar). Add the missing entry. Push.
+
+### Permanent mitigation (queued)
+Refactor to one source of truth:
+```ts
+const templates = { welcome: {...}, checkin: {...}, product_update: {...} };
+const validActions = Object.keys(templates);
+```
+This way the type, the validator, and the dispatch all agree by construction.
+
+### Incident
+Jun 1 2026: founder-outreach broadcast to 62 therapists failed all 62 sends. `product_update` was in the ActionType union but not in the validActions array. Last successful product_update send was Apr 29 2026 (before the validator was tightened).
 
 **End of runbook.**
 

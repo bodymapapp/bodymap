@@ -1199,7 +1199,72 @@ Reply and a real person answers.
 - **Before planning a flow that emails a payment link later:** check rule #23.
 - **Before writing copy that tells the user "tap the mic":** check rule #24.
 - **Before drafting any customer broadcast email (product update, monthly digest, cohort announcement):** check rule #32.
+- **Before parsing a date or time string with `new Date(string)`:** check rule #33.
+- **Before adding a `const` reference inside a JSX render block:** check rule #34.
+- **Before shipping any Schedule, Booking page, or modal change:** check rule #35.
 
 When breaking a rule is the right move (it sometimes is), document
 the exception inline AND add the rule's incident log here. The
 rule's value comes from the cost being remembered.
+
+---
+
+## 33. Never use `new Date(string)` for non-ISO date or time inputs. iOS Safari is strict, desktop hides the failure.
+
+**The trap.** `new Date("2000-01-01 1:30 PM")` returns a valid Date in Chrome and Safari macOS. It returns `Invalid Date` in iOS Safari. The downstream code then calls `.toTimeString().slice(0,5)` and gets `"Inval"`, which gets `.split(":")` into `["Inval"]`, which destructured `[hh, mm]` gives `hh = "Inval"`, `mm = undefined`. Any later code that assumed numeric types crashes.
+
+**The rule.** For 12-hour AM/PM times, use the module-level `t2m` helper (regex-based, returns 0 on bad input). For 24-hour HH:MM times, use `.split(":")` and guard each `parseInt` against `NaN`. For dates, accept only strict ISO-8601 (`YYYY-MM-DDTHH:mm:ss`) into the Date constructor; build any other format manually.
+
+**Incident log.**
+- **Jun 1 2026 (Jacquie incident, Monthly view interleave):** new Date("2000-01-01 " + appt.time) returned Invalid Date on iOS Safari only. The downstream fallback expression called `.getHours()` on what was actually a string, crashing the whole Schedule tab. White screen on mobile, fine on desktop. Took two reverts to land. Cost: 90 minutes of HK time, two emergency reverts, customer-facing PWA broken during peak hour.
+
+---
+
+## 34. JSX render blocks have a temporal dead zone for `const`. Declare hoisted variables BEFORE the render expressions that use them, even if both live inside the same function body.
+
+**The trap.** Inside a React function component, `const myBlocksToday = ...` at line 5371 and `const blockRanges = (myBlocksToday || []).map(...)` at line 5276 look fine. The build passes. But `const` is hoisted-but-not-initialized: reading `myBlocksToday` before its declaration throws `ReferenceError: Cannot access 'myBlocksToday' before initialization` at runtime. Nothing in the build pipeline catches this.
+
+**The rule.** When adding logic that reads a derived value, scan upward to confirm the value is already declared at that point. If not, either hoist the declaration or compute the value inline at the use site from primitive props. ESLint's `no-use-before-define` (default off) would have caught this; we're not running it. So manual care is required.
+
+**Incident log.**
+- **Jun 1 2026 (Jacquie incident, Timeline gap-calc fix):** added `const blockRanges = (myBlocksToday || []).map(...)` at line 5276 of ScheduleDashboard.js. `myBlocksToday` was declared at line 5371. Build passed. Schedule tab white-screened on every device. First-attempt fix moved blockRanges to compute inline from `blockedDays` + `viewDate` directly, no later-bound reference. Cost: full revert + re-fix.
+
+---
+
+## 35. iOS Safari is the canary. If a change touches Schedule, Booking page, or any time/date-parsing surface, view it at mobile viewport BEFORE pushing.
+
+**The trap.** Desktop Chrome on a 27-inch monitor is the most forgiving runtime in the lineup. iOS Safari is the strictest. Most therapists use mobile. Most clients use mobile. Most crashes that bite us are mobile-only.
+
+**The rule.** Before pushing any change to ScheduleDashboard, BookingPage, or any code that touches date/time strings, open `/founder/mobile-preview` and load the affected route in the 380x720 iframe. If the route can't be tested via iframe (X-Frame-Options), open the route directly in a phone-sized browser window or in DevTools mobile emulation set to iPhone 14 Pro.
+
+This is a process rule, not a code rule. The cost of skipping is a customer-visible white screen on the device 80%+ of users use.
+
+**Incident log.**
+- **Jun 1 2026 (Jacquie incident):** pushed gap-calc + interleave changes after passing build + desktop check. Mobile crashed immediately. Three rounds of revert + fix because the bugs were iOS-specific (rules #33 and #34). The /founder/mobile-preview iframe would have caught both before push.
+
+---
+
+## Risk register (current open items, as of Jun 1 2026)
+
+Items here are known live risks. Each entry: severity, what could go wrong, what's queued to mitigate.
+
+1. **14 .in() sites with unbounded arrays may 400 at scale**: Medium. SQL .in() builds the array into a URL; 650+ IDs hits 30 KB URL and Postgres returns 400 silently. Mitigation: Option B (chunked queries) queued. Affected files: 14 grep hits across src/. Trigger: any therapist with 650+ clients.
+
+2. **Notification routing fires wrong template when outcome flag not read**: High. C2 (no-show with charge) fires as C1 (regular reminder); C11 (paid-deposit no-show) fires as no_show_notice_no_fee instead of payment-request. Fix: gate by `bookings.outcome` + `cancellation_charges.status` in send-notification before template selection.
+
+3. **Client BookingManage page broken**: High. Magic link in client emails points to /booking/manage but the page renders a 404-like empty state. Blocks client self-cancel flow entirely. Fix: build real page or remove links.
+
+4. **PWA force-reload required if SW gets stuck**: Medium. SW v35 ships an update-ready banner instead of auto-reload, but if a user is on SW v33 or earlier and that SW is itself cached badly, they may never receive v35. Recovery requires Settings > Safari > Website Data delete. Documented in FOUNDER_RUNBOOK Procedure 12.
+
+5. **SendModal image insert requires manually-pasted public URLs**: Low. No Supabase Storage upload UI yet; HK must host images elsewhere and paste the URL. Acceptable for current volume.
+
+6. **Block create has no DB-level dedup**: Medium. Two identical block rows can insert without error. UI gap-calc fix (Jun 1) removes the trigger behavior, but defense in depth requires UNIQUE constraint (therapist_id, date, start_time, end_time, note). Queued.
+
+7. **Side panel scroll/close affordances intermittently fail**: High. HK has reported the side panel (DetailPanel) closing unexpectedly, losing scroll position, or not surfacing edit affordances on mobile. Reproduction inconsistent. Suspected cause: `position: fixed` + flexbox children fighting overflow boundary (rule #20), plus possible re-render races. Mitigation queued: full mobile QA pass with screen recording, then targeted fix.
+
+8. **Mobile PWA stale-bundle risk**: High during deploy windows. iOS Safari aggressively caches the installed PWA. Even with SW v35 banner, users who don't tap Refresh stay on the old bundle. After a critical bug fix, they remain exposed. Mitigation: SW skipWaiting + claim minimizes the window, but the user-controlled refresh is by design (rule #35 process compensates).
+
+9. **No ESLint `no-use-before-define`**: Medium. Rule #34's class of bug (temporal dead zone) is not caught at build time. Enabling the rule will surface ~30 false positives that need triage. Queued.
+
+10. **Edge function `validActions` and `templates` are two sources of truth**: Medium. Adding a new template to one without updating the other causes silent send failures (62/62 failed product_update broadcast on Jun 1). Mitigation: refactor `validActions = Object.keys(templates)` so they stay in sync by construction. ~30 min.
+
