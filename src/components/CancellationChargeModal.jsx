@@ -570,11 +570,29 @@ export default function CancellationChargeModal({
         zIndex: 1100, overflowY: 'auto',
         display: 'flex', flexDirection: 'column', alignItems: 'center',
         WebkitOverflowScrolling: 'touch',
+        paddingTop: 'env(safe-area-inset-top, 0px)',
+        paddingBottom: 'env(safe-area-inset-bottom, 0px)',
       }}>
         <div style={{
           width: '100%', maxWidth: 480, margin: '0 auto',
           minHeight: '100%', display: 'flex', flexDirection: 'column',
         }}>
+        {/* Top bar: clears the status bar and gives a always-visible way
+            out so the therapist never feels trapped on the full page. */}
+        <div style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'flex-end',
+          padding: '12px 16px 4px', minHeight: 44,
+        }}>
+          <button onClick={onClose} disabled={busy}
+            aria-label="Close"
+            style={{
+              background: '#fff', border: `1.5px solid ${C.light}`,
+              borderRadius: 999, width: 40, height: 40, fontSize: 20,
+              color: C.muted, cursor: busy ? 'wait' : 'pointer', lineHeight: 1,
+            }}>
+            ×
+          </button>
+        </div>
         {step === 'confirm' && (
           <>
             <div style={{ padding: '20px 22px 14px', borderBottom: `1px solid ${C.light}` }}>
