@@ -3043,15 +3043,15 @@ export function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelle
           the user hits top/bottom of the panel, the main page doesn't
           scroll behind it. */}
       <div style={mode === 'page' ? {
-        // HK May 31 2026 (Side panel A): full-page container for the
-        // booking detail route. Same internals as the slide-over.
-        // Inline flow, max-width comfortable, no fixed positioning.
+        // HK May 31 2026 round 2 (Side panel A): page mode now fills the
+        // Dashboard's card width fully. The earlier 720 cap left a sea
+        // of empty space on desktop and made the page look unfinished.
+        // No outer background or border because Dashboard already wraps
+        // us in a white card; doubling up looked like a modal-in-modal.
+        // overflow:visible lets the page scroll naturally with body
+        // scroll, since the DetailPanel internals are tall.
         width: '100%',
-        maxWidth: 720,
-        margin: '0 auto',
-        background: '#fff',
-        borderRadius: 14,
-        border: '1px solid #F3F4F6',
+        background: 'transparent',
         overflow: 'visible',
         paddingTop: 'env(safe-area-inset-top, 0px)',
       } : {
@@ -3237,6 +3237,42 @@ export function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelle
               </div>
             </div>
           </div>
+
+          {/* HK May 31 2026: trace banner. When a booking has been marked
+              no-show / cancelled / refunded / rescheduled, the status pill
+              alone (small, in the corner of the header) was easy to miss.
+              This banner makes the trace state unmistakable so therapists
+              don't wonder "did my no-show actually save?". Strong color,
+              clear copy, never hides. Only shows for trace states; normal
+              statuses (paid, intake-done, complete, pending-intake) skip it. */}
+          {(() => {
+            const traceStates = {
+              no_show:     { bg:'#FEF3C7', border:'#FCD34D', color:'#92400E', icon:'⚠', label:'Marked as no-show' },
+              cancelled:   { bg:'#FEE2E2', border:'#FCA5A5', color:'#B91C1C', icon:'✕', label:'This booking was cancelled' },
+              refunded:    { bg:'#EDE9FE', border:'#C4B5FD', color:'#6D28D9', icon:'↩', label:'Payment was refunded' },
+              rescheduled: { bg:'#E0F2FE', border:'#7DD3FC', color:'#0369A1', icon:'↻', label:'This booking was rescheduled' },
+            };
+            const tr = traceStates[displayAppt.status];
+            if (!tr) return null;
+            return (
+              <div style={{
+                margin: '10px 0 6px',
+                padding: '12px 14px',
+                background: tr.bg,
+                border: `1.5px solid ${tr.border}`,
+                borderRadius: 10,
+                color: tr.color,
+                fontSize: 13,
+                fontWeight: 700,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 10,
+              }}>
+                <span style={{ fontSize: 18 }}>{tr.icon}</span>
+                <span>{tr.label}</span>
+              </div>
+            );
+          })()}
 
           {/* HK May 29 2026: Quick-send actions at the TOP of the booking
               detail panel. One pair of channel-explicit buttons per

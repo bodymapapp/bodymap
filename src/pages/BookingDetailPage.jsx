@@ -197,11 +197,15 @@ export default function BookingDetailPage({ therapist }) {
   }
 
   return (
-    <div style={{ minHeight: '100vh', background: C.beige, padding: '20px 16px 60px' }}>
-      <div style={{ maxWidth: 720, margin: '0 auto 16px', display: 'flex', alignItems: 'center', gap: 12 }}>
+    <div>
+      {/* HK May 31 2026 round 2: removed the beige outer + 720px max-width
+          that made the page feel narrow and crowded. Dashboard already
+          wraps us in a white card at 1200px; we use that real estate
+          instead of adding our own padding/background. */}
+      <div style={{ marginBottom: 14, display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
         <button onClick={handleBack}
           style={{
-            background: C.white, border: `1px solid ${C.line}`,
+            background: '#fff', border: `1px solid ${C.line}`,
             borderRadius: 999, padding: '8px 16px',
             fontSize: 13, fontWeight: 600, color: C.ink,
             cursor: 'pointer',
