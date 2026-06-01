@@ -5273,11 +5273,24 @@ function TimelineView({ therapist, allAppts, dayOffset, setDayOffset, today, onR
   // blocks are folded into the occupied set just like bookings:
   // gaps split around them. A gap that's fully inside a block is
   // suppressed entirely.
-  const blockRanges = (myBlocksToday || []).map(b => {
-    const [sh, sm] = (b.start_time || '00:00').slice(0, 5).split(':').map(Number);
-    const [eh, em] = (b.end_time   || '00:00').slice(0, 5).split(':').map(Number);
-    return { start: sh * 60 + sm, end: eh * 60 + em };
-  }).filter(r => r.end > r.start);
+  const blockRanges = (() => {
+    // HK Jun 1 2026 fix: compute date string inline so this runs BEFORE
+    // viewDateStr/myBlocksToday are declared further down. The earlier
+    // reference to myBlocksToday triggered a ReferenceError (temporal
+    // dead zone) and white-screened the whole Schedule tab.
+    const yyyy = viewDate.getFullYear();
+    const mm = String(viewDate.getMonth() + 1).padStart(2, '0');
+    const dd = String(viewDate.getDate()).padStart(2, '0');
+    const ds = `${yyyy}-${mm}-${dd}`;
+    return (blockedDays || [])
+      .filter(b => b.date === ds && b.start_time && b.end_time)
+      .map(b => {
+        const [sh, sm] = (b.start_time || '00:00').slice(0, 5).split(':').map(Number);
+        const [eh, em] = (b.end_time   || '00:00').slice(0, 5).split(':').map(Number);
+        return { start: sh * 60 + sm, end: eh * 60 + em };
+      })
+      .filter(r => r.end > r.start);
+  })();
 
   // Helper: subtract block ranges from a raw gap. Returns 0+ open
   // sub-ranges in minutes-since-midnight.
