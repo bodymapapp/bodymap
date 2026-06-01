@@ -2049,7 +2049,7 @@ export default function Features() {
             <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(260px,1fr))", gap:24, marginBottom:40 }}>
               {[
                 { icon:"📋", title:"Client list import", desc:"Upload a CSV from any platform. Names, emails, phones, notes, all mapped automatically. Duplicates are detected and merged." },
-                { icon:"📅", title:"Appointment history", desc:"Import past sessions so lapsed detection and pattern intelligence work from day one, not after months of building new data." },
+                { icon:"📅", title:"Appointments", desc:"Import past and upcoming sessions so lapsed detection and pattern intelligence work from day one, not after months of building new data." },
                 { icon:"📆", title:"Upcoming bookings", desc:"Import your upcoming appointment schedule so your calendar isn't empty on day one. Clients are notified via your new MyBodyMap link." },
                 { icon:"🔗", title:"Supported platforms", desc:"MassageBook, Vagaro, GlossGenius, Mindbody, Square, or any CSV file. If it exports a spreadsheet, MyBodyMap can import it." },
               ].map(({ icon, title, desc }) => (

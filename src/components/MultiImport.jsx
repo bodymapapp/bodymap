@@ -65,7 +65,7 @@ function FileCard({ file, onRemove, onSetType }) {
   const { fileName, headers, rows, detected, error, checkpoint } = file;
   const typeColor = {
     clients: { bg: '#E0F2FE', border: '#7DD3FC', text: '#075985', label: '👥 Client roster' },
-    appointments: { bg: '#FEF3C7', border: '#FCD34D', text: '#92400E', label: '📅 Appointment history' },
+    appointments: { bg: '#FEF3C7', border: '#FCD34D', text: '#92400E', label: '📅 Appointments' },
     services: { bg: '#FCE7F3', border: '#F9A8D4', text: '#9F1239', label: '🔧 Services list' },
     unknown: { bg: '#FEE2E2', border: '#FCA5A5', text: '#991B1B', label: '❓ Unknown' },
   }[detected?.type || 'unknown'];
@@ -157,7 +157,7 @@ function FileCard({ file, onRemove, onSetType }) {
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
             {[
               { type: 'clients', label: 'Client roster' },
-              { type: 'appointments', label: 'Appointment history' },
+              { type: 'appointments', label: 'Appointments' },
               { type: 'services', label: 'Services list' },
             ].map(opt => {
               const isCurrent = detected?.type === opt.type;
@@ -708,7 +708,7 @@ export default function MultiImport({ therapist, onComplete }) {
             ) : (
               <>
                 <div style={{ fontSize: 12, color: C.gray, marginBottom: 8 }}>
-                  {pf.type === 'clients' ? 'Client roster' : 'Appointment history'}: {pf.created} created, {pf.skipped} skipped, {pf.failed} failed
+                  {pf.type === 'clients' ? 'Client roster' : 'Appointments'}: {pf.created} created, {pf.skipped} skipped, {pf.failed} failed
                 </div>
                 <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                   {pf.skippedRows?.length > 0 && (
@@ -983,7 +983,7 @@ export default function MultiImport({ therapist, onComplete }) {
             <div>📋 <strong>{clientFileCount}</strong> client roster file{clientFileCount === 1 ? '' : 's'}</div>
           )}
           {apptFileCount > 0 && (
-            <div>📅 <strong>{apptFileCount}</strong> appointment history file{apptFileCount === 1 ? '' : 's'}</div>
+            <div>📅 <strong>{apptFileCount}</strong> appointments file{apptFileCount === 1 ? '' : 's'}</div>
           )}
           <div style={{ marginTop: 6 }}>
             <strong>{totalRows}</strong> total row{totalRows === 1 ? '' : 's'} across all files
@@ -1397,7 +1397,7 @@ export default function MultiImport({ therapist, onComplete }) {
             Most practice platforms let you export your data as CSV files. Usually under <strong>Settings → Export</strong> or <strong>Reports → Export</strong>. The CSVs typically come as:
             <ul style={{ margin: '6px 0 0 18px', padding: 0 }}>
               <li>A <strong>client list</strong> with names, emails, phones, addresses</li>
-              <li>An <strong>appointment history</strong> with past sessions and dates</li>
+              <li>An <strong>appointments file</strong> with sessions and dates (past or upcoming)</li>
               <li>Sometimes both, sometimes split into multiple files</li>
             </ul>
           </div>
@@ -1572,7 +1572,7 @@ export default function MultiImport({ therapist, onComplete }) {
           background: C.amberLight, border: `1.5px solid ${C.amberBorder}`,
           borderRadius: 10, padding: 12, marginBottom: 14, fontSize: 13, color: '#78350F',
         }}>
-          We could not figure out the type of one or more files. On each file above, tap whether it is a client roster, appointment history, or services list. Then keep going.
+          We could not figure out the type of one or more files. On each file above, tap whether it is a client roster, appointments, or services list. Then keep going.
         </div>
       )}
 
