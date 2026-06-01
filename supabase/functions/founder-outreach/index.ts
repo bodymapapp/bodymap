@@ -406,11 +406,36 @@ serve(async (req) => {
     // Append CAN-SPAM-compliant footer to both text and HTML
     const text = bodyText + unsubscribeFooterText(unsubUrl);
 
+    // HK Jun 1 2026: parse [[img:URL]] and [[video:URL|label]] markers
+    // from the body into safe HTML before rendering. Markers are inserted
+    // by the founder UI (FounderDashboard SendModal). Keeping the marker
+    // syntax means the edge function controls the exact HTML output, so
+    // arbitrary HTML in the body (XSS, malformed paste) cannot reach the
+    // recipient. Anything that doesn't match the marker pattern is
+    // escaped normally.
+    const renderBodyLine = (l: string): string => {
+      if (l === "") return "<br/>";
+      // Image marker: [[img:https://...]]
+      const imgMatch = l.trim().match(/^\[\[img:(https?:\/\/[^\]]+)\]\]$/);
+      if (imgMatch) {
+        const safeUrl = encodeURI(imgMatch[1]);
+        return `<div style="text-align:center;margin:18px 0"><img src="${safeUrl}" alt="" style="max-width:100%;border-radius:8px;display:block;margin:0 auto" /></div>`;
+      }
+      // Video marker: [[video:https://...|Optional label]]
+      const videoMatch = l.trim().match(/^\[\[video:(https?:\/\/[^|\]]+)(?:\|([^\]]+))?\]\]$/);
+      if (videoMatch) {
+        const safeUrl = encodeURI(videoMatch[1]);
+        const label = videoMatch[2] ? escapeHtml(videoMatch[2]) : '▶ Watch video';
+        return `<div style="text-align:center;margin:18px 0"><a href="${safeUrl}" style="display:inline-block;background:#2A5741;color:#fff;text-decoration:none;padding:12px 24px;border-radius:8px;font-weight:700;font-size:14px">${label}</a></div>`;
+      }
+      return `<div>${escapeHtml(l)}</div>`;
+    };
+
     // Regenerate HTML from potentially edited text (preserves the branded card).
     const html = `
 <div style="font-family:Georgia,serif;max-width:560px;margin:24px auto;padding:32px 28px;background:#FFF9F3;border:1px solid #E8E4DC;border-radius:12px;color:#1F2937;line-height:1.6;font-size:15px">
   <div style="font-size:11px;font-weight:700;letter-spacing:0.14em;color:#6B9E80;text-transform:uppercase;margin-bottom:16px">🌿 MyBodyMap</div>
-  ${bodyText.split("\n").map((l: string) => (l === "" ? "<br/>" : `<div>${escapeHtml(l)}</div>`)).join("")}
+  ${bodyText.split("\n").map(renderBodyLine).join("")}
   <div style="margin-top:28px;padding-top:18px;border-top:1px solid #E8E4DC;font-size:12px;color:#9CA3AF">
     Reply to this email and it reaches me directly.
   </div>

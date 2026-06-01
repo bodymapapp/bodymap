@@ -7,7 +7,7 @@
 //   last activity is derived from max(sessions.created_at, clients.created_at, created_at)
 //   since last_sign_in_at lives in auth.users, not therapists.
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../contexts/AuthContext";
@@ -1997,14 +1997,55 @@ function ActionCell({ t, onAfterSend }) {
 }
 
 function SendModal({ t, action, sending, errorMsg, onClose, onSend }) {
-  const [subject, setSubject] = useState(action.subject);
-  const [body, setBody] = useState(action.body);
+  // HK Jun 1 2026: persist draft to localStorage keyed by action.key so a
+  // careful edit isn't lost when the modal closes by accident (Esc tap,
+  // tab switch on iOS, backdrop click). Restore on reopen. Clear on
+  // successful send. Also: backdrop tap no longer closes (was data-loss
+  // landmine).
+  const DRAFT_KEY = `founder_outreach_draft_${action.key || 'default'}`;
 
-  // Keyboard shortcuts for speed: Cmd/Ctrl+Enter = send, Esc = cancel
+  // Initial state: localStorage draft wins over template default so HK
+  // doesn't lose work between sessions.
+  const [subject, setSubject] = useState(() => {
+    try {
+      const saved = localStorage.getItem(DRAFT_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed?.subject) return parsed.subject;
+      }
+    } catch (_e) {}
+    return action.subject;
+  });
+  const [body, setBody] = useState(() => {
+    try {
+      const saved = localStorage.getItem(DRAFT_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed?.body) return parsed.body;
+      }
+    } catch (_e) {}
+    return action.body;
+  });
+  const [savedAt, setSavedAt] = useState(null);
+  const [insertError, setInsertError] = useState(null);
+  const bodyRef = useRef(null);
+
+  // Persist every keystroke. Throttled by React batching, fine for our
+  // edit pace. Avoids losing edits even if the page crashes mid-compose.
+  useEffect(() => {
+    try {
+      localStorage.setItem(DRAFT_KEY, JSON.stringify({ subject, body, at: Date.now() }));
+      setSavedAt(new Date());
+    } catch (_e) {}
+  }, [subject, body, DRAFT_KEY]);
+
+  // Cmd/Ctrl+Enter = send, Esc = ASK before closing (don't insta-close).
   useEffect(() => {
     const handler = (e) => {
       if (e.key === "Escape") {
-        onClose();
+        // Confirm before losing work. Soft guard, no harsh modal.
+        const ok = window.confirm("Close without sending? Your draft is saved and will be here when you reopen.");
+        if (ok) onClose();
       } else if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
         if (subject.trim() && body.trim()) onSend({ subject, body });
       }
@@ -2013,9 +2054,90 @@ function SendModal({ t, action, sending, errorMsg, onClose, onSend }) {
     return () => document.removeEventListener("keydown", handler);
   }, [subject, body, onClose, onSend]);
 
+  // Insert a marker at the cursor position in the body textarea. The
+  // marker syntax [[img:URL]] and [[video:URL]] gets parsed by the
+  // founder-outreach edge function into safe HTML on send. Keeping it
+  // as a marker means the textarea stays plain-text editable, no
+  // contenteditable complexity, and the edge function controls the
+  // exact HTML output (no XSS risk from raw paste).
+  function insertAtCursor(marker) {
+    const el = bodyRef.current;
+    if (!el) {
+      // Fallback: append to end
+      setBody(prev => (prev || '') + (prev?.endsWith('\n') ? '' : '\n\n') + marker + '\n');
+      return;
+    }
+    const start = el.selectionStart;
+    const end = el.selectionEnd;
+    const before = body.slice(0, start);
+    const after = body.slice(end);
+    // Always wrap markers in their own paragraph so they render cleanly.
+    const needsLineBefore = before.length > 0 && !before.endsWith('\n');
+    const needsLineAfter = after.length > 0 && !after.startsWith('\n');
+    const wrapped = (needsLineBefore ? '\n\n' : '') + marker + (needsLineAfter ? '\n\n' : '');
+    const next = before + wrapped + after;
+    setBody(next);
+    // Move cursor to end of inserted marker
+    setTimeout(() => {
+      if (el) {
+        const pos = (before + wrapped).length;
+        el.setSelectionRange(pos, pos);
+        el.focus();
+      }
+    }, 0);
+  }
+
+  async function handleImageInsert() {
+    setInsertError(null);
+    const url = window.prompt(
+      'Paste an image URL (must be publicly accessible, https://...).\n\nTip: upload to Imgur, Google Drive (shared), or any image host first.',
+      ''
+    );
+    if (!url) return;
+    if (!/^https?:\/\//i.test(url)) {
+      setInsertError('Image URL must start with http:// or https://');
+      setTimeout(() => setInsertError(null), 4000);
+      return;
+    }
+    insertAtCursor(`[[img:${url.trim()}]]`);
+  }
+
+  function handleVideoInsert() {
+    setInsertError(null);
+    const url = window.prompt(
+      'Paste a video link (Loom, YouTube, Vimeo, or any URL).\n\nThe email will show a "Watch video" button that opens this link.',
+      ''
+    );
+    if (!url) return;
+    if (!/^https?:\/\//i.test(url)) {
+      setInsertError('Video URL must start with http:// or https://');
+      setTimeout(() => setInsertError(null), 4000);
+      return;
+    }
+    const label = window.prompt('Button label?', '▶ Watch video (45 seconds)') || '▶ Watch video';
+    insertAtCursor(`[[video:${url.trim()}|${label}]]`);
+  }
+
+  // Wrap onSend so we clear the draft after a successful send. The
+  // parent calls onSend and then closes the modal; if the send fails
+  // (errorMsg surfaces), the draft is still there.
+  const handleSend = () => {
+    onSend({ subject, body });
+    try { localStorage.removeItem(DRAFT_KEY); } catch (_e) {}
+  };
+
+  // Confirm before closing if there are unsaved-to-server changes.
+  const handleClose = () => {
+    const hasDraftChanges = subject !== action.subject || body !== action.body;
+    if (hasDraftChanges) {
+      const ok = window.confirm("Close without sending? Your draft is saved and will be here when you reopen.");
+      if (!ok) return;
+    }
+    onClose();
+  };
+
   return (
     <div
-      onClick={onClose}
       style={{
         position: "fixed",
         inset: 0,
@@ -2028,7 +2150,6 @@ function SendModal({ t, action, sending, errorMsg, onClose, onSend }) {
       }}
     >
       <div
-        onClick={(e) => e.stopPropagation()}
         style={{
           background: "#fff",
           borderRadius: 14,
@@ -2077,12 +2198,61 @@ function SendModal({ t, action, sending, errorMsg, onClose, onSend }) {
           />
         </div>
 
+        {/* Insert image / video buttons. Sit above the body textarea so
+            HK doesn't have to scroll to find them. */}
+        <div style={{ padding: "10px 20px 0", display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+          <button
+            type="button"
+            onClick={handleImageInsert}
+            style={{
+              background: '#fff', border: `1.5px solid ${C.light}`,
+              color: C.dark, padding: '6px 12px',
+              borderRadius: 8, fontSize: 12, fontWeight: 600,
+              cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6,
+            }}
+            title="Insert image URL. Image must be publicly accessible."
+          >
+            🖼 Insert image
+          </button>
+          <button
+            type="button"
+            onClick={handleVideoInsert}
+            style={{
+              background: '#fff', border: `1.5px solid ${C.light}`,
+              color: C.dark, padding: '6px 12px',
+              borderRadius: 8, fontSize: 12, fontWeight: 600,
+              cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6,
+            }}
+            title="Insert link to a video (Loom/YouTube/Vimeo). Renders as a Watch button."
+          >
+            ▶ Insert video link
+          </button>
+          {savedAt && (
+            <span style={{ fontSize: 10, color: C.gray, marginLeft: 'auto', fontStyle: 'italic' }}>
+              Draft saved · safe to close
+            </span>
+          )}
+        </div>
+
+        {insertError && (
+          <div style={{ padding: '6px 20px 0' }}>
+            <div style={{
+              background: '#FEF2F1', border: `1px solid ${C.fall}`,
+              color: C.fall, padding: '6px 10px', borderRadius: 6,
+              fontSize: 11.5, fontWeight: 600,
+            }}>
+              {insertError}
+            </div>
+          </div>
+        )}
+
         {/* Body */}
         <div style={{ padding: "10px 20px 0" }}>
           <textarea
+            ref={bodyRef}
             value={body}
             onChange={(e) => setBody(e.target.value)}
-            rows={10}
+            rows={14}
             style={{
               width: "100%",
               padding: "8px 10px",
@@ -2095,6 +2265,9 @@ function SendModal({ t, action, sending, errorMsg, onClose, onSend }) {
               resize: "vertical",
             }}
           />
+          <div style={{ fontSize: 10.5, color: C.gray, marginTop: 4, lineHeight: 1.5 }}>
+            Use <code style={{ background: C.softCream, padding: '1px 4px', borderRadius: 3 }}>{'{name}'}</code> for first name substitution. Tap Insert image or Insert video link above to add media. Image URLs must be publicly accessible (https://).
+          </div>
         </div>
 
         {/* Error inline */}
@@ -2109,7 +2282,7 @@ function SendModal({ t, action, sending, errorMsg, onClose, onSend }) {
         {/* Footer: Send prominent, Cancel quiet */}
         <div style={{ padding: "14px 20px 16px", display: "flex", justifyContent: "flex-end", gap: 8 }}>
           <button
-            onClick={onClose}
+            onClick={handleClose}
             style={{
               background: "transparent",
               color: C.gray,
@@ -2124,7 +2297,7 @@ function SendModal({ t, action, sending, errorMsg, onClose, onSend }) {
             Cancel
           </button>
           <button
-            onClick={() => onSend({ subject, body })}
+            onClick={handleSend}
             disabled={sending || !subject.trim() || !body.trim()}
             style={{
               background: sending ? C.stale : C.forest,
