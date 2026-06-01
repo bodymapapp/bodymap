@@ -1,39 +1,32 @@
 // BodyMap service worker
 // IMPORTANT: bumping CACHE_NAME forces all clients to rebuild cache on next visit.
-// HK Jun 1 2026: bumped to v34 + TEMPORARILY re-enabled skipWaiting + claim
-// + post-activate broadcast to force every open client to reload. PWA was
-// stuck on stale bundle after v32 deploys; new SW activated but the page
-// kept rendering the old JS. Reverting to wait-for-close after this
-// recovery deploy stabilizes.
-const CACHE_NAME = 'bodymap-v34';
+//
+// HK Jun 1 2026 v35: replaced silent force-reload (v34) with an
+// "update ready" banner pattern. v34 worked but was disruptive:
+// users could be mid-flow when their tab forcibly reloaded. v35
+// posts SW_UPDATE_READY when a new SW activates; the page renders
+// a non-blocking banner ("Update ready, tap to refresh") and the
+// user controls the refresh moment. Still uses skipWaiting + claim
+// so the message reaches every open client immediately, but the
+// reload itself is user-triggered.
+const CACHE_NAME = 'bodymap-v35';
 
-// HK Jun 1 2026 (recovery deploy v2): skipWaiting + claim + broadcast.
-// Why broadcast: when v34 SW activates and claims clients, the page is
-// still rendering the OLD bundle that v32 SW loaded. The new SW only
-// affects FUTURE network requests. So we send each open client a
-// postMessage telling it to reload. The client-side handler in src/index.js
-// listens for this and calls window.location.reload(). One round-trip,
-// no manual user action needed.
 self.addEventListener('install', event => {
   self.skipWaiting();
 });
 
-// Activate — clean old caches, claim all clients, then BROADCAST so any
-// open page reloads itself to pick up the new bundle. Without this, the
-// new SW is active but the user sees stale UI until they manually quit.
 self.addEventListener('activate', event => {
   event.waitUntil((async () => {
-    // Clear all caches except the current one
     const keys = await caches.keys();
     await Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k)));
-    // Take over any open pages
     await self.clients.claim();
-    // Broadcast a reload command to all clients. They'll listen via the
-    // navigator.serviceWorker.onmessage handler registered in src/index.js.
+    // Notify open pages that a fresh bundle is ready. Page-side
+    // listener (in src/index.js) shows a sage-green banner that
+    // the user can tap to reload. We no longer auto-reload.
     const clients = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
     for (const client of clients) {
       try {
-        client.postMessage({ type: 'SW_FORCE_RELOAD', version: CACHE_NAME });
+        client.postMessage({ type: 'SW_UPDATE_READY', version: CACHE_NAME });
       } catch (_e) { /* noop */ }
     }
   })());

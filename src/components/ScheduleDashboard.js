@@ -18,6 +18,7 @@ import { ChevronIcon as SharedChevronIcon, RoundIconButton } from './ChevronIcon
 import CalendarGrid, { CalendarHelpButton } from './CalendarGrid';
 import DocumentDrawer from './DocumentDrawer';
 import DocErrorBoundary from './DocErrorBoundary';
+import ViewErrorBoundary from './ViewErrorBoundary';
 import BodyDiagram from './BodyDiagram';
 import { zoneLabel, zonesToBodyDiagram, pressureLabel, goalLabel, preferenceLabel } from '../lib/bodyZones';
 
@@ -9259,11 +9260,11 @@ export default function ScheduleDashboard({ therapist }) {
 
             {/* RIGHT PANE: tab-selected calendar/insights view. */}
             <div style={{ minWidth: 0 }}>
-              {subView==='today'   &&<TimelineView therapist={therapist} allAppts={allAppts} dayOffset={dayOffset} setDayOffset={setDayOffset} today={today} onReschedule={setRescheduleAppt} onRefresh={fetchBookings} blockedDays={blockedDays} onCreateBlock={addBlockedDay} onScheduleAtTime={setPendingBookingTime} selectedBookingId={selectedBookingId} setSelectedBookingId={setSelectedBookingId} onRequestCheckout={requestCheckout} paymentsRefreshTick={paymentsRefreshTick}/>}
-              {subView==='weekly'  &&<WeeklyView therapist={therapist} appointments={allAppts} today={today} onReschedule={setRescheduleAppt} onRefresh={fetchBookings} blockedDays={blockedDays} selectedBookingId={selectedBookingId} setSelectedBookingId={setSelectedBookingId} onRequestCheckout={requestCheckout} paymentsRefreshTick={paymentsRefreshTick}/>}
-              {subView==='monthly' &&<MonthlyView therapist={therapist} appointments={allAppts} today={today} onReschedule={setRescheduleAppt} onRefresh={fetchBookings} blockedDays={blockedDays} selectedBookingId={selectedBookingId} setSelectedBookingId={setSelectedBookingId} onRequestCheckout={requestCheckout} paymentsRefreshTick={paymentsRefreshTick}/>}
-              {subView==='yearly'  &&<YearlyView therapist={therapist} appointments={allAppts} today={today} blockedDays={blockedDays}/>}
-              {subView==='insights'&&<InsightsView appointments={allAppts}/>}
+              {subView==='today'   &&<ViewErrorBoundary viewName="Today"><TimelineView therapist={therapist} allAppts={allAppts} dayOffset={dayOffset} setDayOffset={setDayOffset} today={today} onReschedule={setRescheduleAppt} onRefresh={fetchBookings} blockedDays={blockedDays} onCreateBlock={addBlockedDay} onScheduleAtTime={setPendingBookingTime} selectedBookingId={selectedBookingId} setSelectedBookingId={setSelectedBookingId} onRequestCheckout={requestCheckout} paymentsRefreshTick={paymentsRefreshTick}/></ViewErrorBoundary>}
+              {subView==='weekly'  &&<ViewErrorBoundary viewName="Weekly"><WeeklyView therapist={therapist} appointments={allAppts} today={today} onReschedule={setRescheduleAppt} onRefresh={fetchBookings} blockedDays={blockedDays} selectedBookingId={selectedBookingId} setSelectedBookingId={setSelectedBookingId} onRequestCheckout={requestCheckout} paymentsRefreshTick={paymentsRefreshTick}/></ViewErrorBoundary>}
+              {subView==='monthly' &&<ViewErrorBoundary viewName="Monthly"><MonthlyView therapist={therapist} appointments={allAppts} today={today} onReschedule={setRescheduleAppt} onRefresh={fetchBookings} blockedDays={blockedDays} selectedBookingId={selectedBookingId} setSelectedBookingId={setSelectedBookingId} onRequestCheckout={requestCheckout} paymentsRefreshTick={paymentsRefreshTick}/></ViewErrorBoundary>}
+              {subView==='yearly'  &&<ViewErrorBoundary viewName="Yearly"><YearlyView therapist={therapist} appointments={allAppts} today={today} blockedDays={blockedDays}/></ViewErrorBoundary>}
+              {subView==='insights'&&<ViewErrorBoundary viewName="Insights"><InsightsView appointments={allAppts}/></ViewErrorBoundary>}
             </div>
           </div>
         )

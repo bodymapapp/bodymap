@@ -155,19 +155,43 @@
 
       // Register service worker. If a broken older SW is present, force unregister first.
       if ('serviceWorker' in navigator) {
-        // HK Jun 1 2026: listen for force-reload broadcast from the SW.
-        // When the SW activates a new version (v34+), it postMessages every
-        // open client with type SW_FORCE_RELOAD. The client reloads itself
-        // so the new bundle takes effect immediately. Without this, the
-        // page keeps rendering the OLD bundle even after SW upgrades,
-        // until the user manually quits the PWA. Set a 5-second guard so
-        // we don't loop-reload if something goes wrong.
-        let __sw_reload_armed = true;
+        // HK Jun 1 2026 v35: SW now posts SW_UPDATE_READY (not the old
+        // SW_FORCE_RELOAD). We show a sage-green non-blocking banner at
+        // the top of the screen. User taps Refresh, we reload. This
+        // avoids the disruption of force-reloading users mid-flow.
+        // We still listen for the legacy SW_FORCE_RELOAD so users
+        // briefly running the v34 SW don't get stuck if their next
+        // session lands on v35's page-side listener.
+        function __showUpdateBanner() {
+          if (document.getElementById('mbm-update-banner')) return;
+          const bar = document.createElement('div');
+          bar.id = 'mbm-update-banner';
+          bar.style.cssText = [
+            'position:fixed', 'top:0', 'left:0', 'right:0', 'z-index:99999',
+            'background:#E6F0E9', 'color:#1F3A2A',
+            'border-bottom:1.5px solid #B5D4BE',
+            'padding:12px 16px', 'font-family:Georgia,serif',
+            'font-size:14px', 'font-weight:600',
+            'display:flex', 'align-items:center', 'justify-content:center', 'gap:14px',
+            'box-shadow:0 2px 12px rgba(0,0,0,0.08)',
+          ].join(';');
+          bar.innerHTML = ''
+            + '<span>🌿 A new version of MyBodyMap is ready.</span>'
+            + '<button id="mbm-update-refresh" style="background:#2A5741;color:#fff;border:none;padding:8px 18px;border-radius:8px;font-weight:700;font-size:13px;cursor:pointer;font-family:inherit;min-height:40px">Refresh</button>'
+            + '<button id="mbm-update-dismiss" style="background:transparent;color:#5C7A66;border:none;padding:6px 8px;font-size:13px;cursor:pointer;font-family:inherit">Later</button>';
+          document.body.appendChild(bar);
+          document.getElementById('mbm-update-refresh').onclick = () => {
+            window.location.reload();
+          };
+          document.getElementById('mbm-update-dismiss').onclick = () => {
+            bar.remove();
+          };
+        }
         try {
           navigator.serviceWorker.addEventListener('message', (event) => {
-            if (event?.data?.type === 'SW_FORCE_RELOAD' && __sw_reload_armed) {
-              __sw_reload_armed = false;
-              setTimeout(() => { window.location.reload(); }, 200);
+            const t = event && event.data && event.data.type;
+            if (t === 'SW_UPDATE_READY' || t === 'SW_FORCE_RELOAD') {
+              __showUpdateBanner();
             }
           });
         } catch (e) {}
