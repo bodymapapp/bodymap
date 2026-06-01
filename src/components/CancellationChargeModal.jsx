@@ -557,28 +557,24 @@ export default function CancellationChargeModal({
 
   return (
     <>
-      {/* HK May 30 2026: backdrop no longer captures clicks. Previously
-          any tap outside the modal content closed it, which meant
-          miss-taps on small buttons inside the modal (Charge fee, Skip
-          fee, Cancel) dismissed the whole action sheet. For our 70yo
-          persona this read as "the app keeps crashing" because the
-          carefully-opened modal kept disappearing after one wrong tap.
-          Now: backdrop dims for visual hierarchy but does not consume
-          taps. Close requires the explicit X (line 755) or one of the
-          action buttons. While the modal is busy, the legacy
-          onClick={onClose} guard is preserved by way of the modal
-          becoming non-interactive (busy state disables both the
-          backdrop and the X via the disabled={busy} prop). */}
+      {/* HK Jun 1 2026: full-screen page, not a floating modal. For the
+          70-year-old therapist persona, a single screen that takes over
+          the whole view (Amazon-style) is clearer than a card hovering
+          over a busy schedule, and it cannot be torn down by the
+          schedule refreshing behind it. Rendered at the ScheduleDashboard
+          root (via cancelContext), so nothing unmounts it mid-flow.
+          Content sits in a centered column that is full-bleed on a phone
+          and a comfortable reading width on desktop. */}
       <div style={{
-        position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)',
-        zIndex: 1100, pointerEvents: 'none',
-      }} />
-      <div style={{
-        position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
-        width: 'min(440px, 92vw)', maxHeight: '88vh', overflowY: 'auto',
-        background: '#fff', borderRadius: 16, zIndex: 1101,
-        boxShadow: '0 20px 60px rgba(0,0,0,0.25)',
+        position: 'fixed', inset: 0, background: '#fff',
+        zIndex: 1100, overflowY: 'auto',
+        display: 'flex', flexDirection: 'column', alignItems: 'center',
+        WebkitOverflowScrolling: 'touch',
       }}>
+        <div style={{
+          width: '100%', maxWidth: 480, margin: '0 auto',
+          minHeight: '100%', display: 'flex', flexDirection: 'column',
+        }}>
         {step === 'confirm' && (
           <>
             <div style={{ padding: '20px 22px 14px', borderBottom: `1px solid ${C.light}` }}>
@@ -983,6 +979,7 @@ export default function CancellationChargeModal({
             </button>
           </div>
         )}
+        </div>
       </div>
     </>
   );
