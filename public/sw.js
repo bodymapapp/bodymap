@@ -1,32 +1,33 @@
 // BodyMap service worker
 // IMPORTANT: bumping CACHE_NAME forces all clients to rebuild cache on next visit.
-// HK May 29 2026: bumped to v10 for inline notification consolidation.
-const CACHE_NAME = 'bodymap-v32';
+// HK Jun 1 2026: bumped to v33 + TEMPORARILY re-enabled skipWaiting + claim
+// for ONE deploy. PWA was not loading for HK (priority 1). Stale SW serving
+// dead cache was the prime suspect. Reverting to wait-for-close after this
+// recovery deploy stabilizes.
+const CACHE_NAME = 'bodymap-v33';
 
-// Install — no precache. CRA hashes filenames (main.abc123.js), so we can't
-// precache by known path. We cache opportunistically in the fetch handler.
-// HK May 30 2026: removed skipWaiting() AND clients.claim() from activate
-// below. Previously the SW would skip-waiting on install + claim clients
-// on activate, which means every deploy IMMEDIATELY took over any active
-// browser tab. HK was reporting "works 2-3 min then crashes" during
-// development: he was testing mobile while I was shipping fixes every
-// few minutes. Each ship triggered SW takeover -> bundle swap mid-tap ->
-// React re-mount with new code -> looked like a random crash from his POV.
-// The new behavior: SW updates wait for the next time the user fully closes
-// and reopens the PWA, which is the standard CRA + SW pattern. No more
-// mid-session bundle replacement.
+// HK Jun 1 2026 (recovery deploy): skipWaiting re-enabled for THIS deploy
+// only. Reason: HK's PWA was not loading. Likely cause = SW stuck serving
+// cached references to chunks that no longer exist on the server. The only
+// way to recover stuck clients in the field is to force-activate a new SW
+// that immediately takes over and clears the old cache. After this deploy
+// stabilizes, revert this block to the wait-for-close behavior.
 self.addEventListener('install', event => {
-  // Intentionally NOT calling skipWaiting(). New SW waits in 'waiting'
-  // state until all clients are closed. Standard PWA update behavior.
+  self.skipWaiting();
 });
 
-// Activate — clean old caches. NO clients.claim() so existing pages
-// continue using the old SW until they reload.
+// Activate — clean old caches AND claim all clients so the new SW takes
+// effect on the very next request. This is the recovery path; without
+// clients.claim() a stuck client would never pick up the new SW until
+// the user fully quits the PWA, which they may not know how to do.
 self.addEventListener('activate', event => {
   event.waitUntil(
-    caches.keys().then(keys =>
-      Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k)))
-    )
+    Promise.all([
+      caches.keys().then(keys =>
+        Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k)))
+      ),
+      self.clients.claim(),
+    ])
   );
 });
 
