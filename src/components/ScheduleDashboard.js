@@ -1598,11 +1598,18 @@ export function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelle
   // cursor onto the side panel but their wheel still scrolls the
   // main page, which feels broken. Combined with overscroll-behavior:
   // contain on the panel itself, scrolls now stay where the cursor is.
+  // HK May 25 2026: lock body scroll when the slide-over is open so
+  // wheel/touch events on the panel don't cascade to the page behind.
+  // HK May 31 2026 round 3: gated to mode==='slide' only. In page mode
+  // the panel IS the page — locking body scroll there made the entire
+  // /dashboard/schedule/booking/:id route unscrollable, which is what
+  // HK hit. Backdrop + overlay logic only applies to the slide-over.
   useEffect(() => {
+    if (mode !== 'slide') return;
     const prevOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
     return () => { document.body.style.overflow = prevOverflow; };
-  }, []);
+  }, [mode]);
 
   const st = STATUS[displayAppt.status]||STATUS['pending-intake'];
   const intakeUrl = `${window.location.origin}/${therapist?.custom_url}`;
