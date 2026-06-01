@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 import { formatUSPhone } from '../lib/formatters/phone';
+import { parseCSV } from '../lib/imports/detectCsvType';
 
 const C = { forest:'#2A5741', sage:'#6B9E80', beige:'#F5F0E8', white:'#FFFFFF', dark:'#1A1A2E', gray:'#6B7280', light:'#E8E4DC' };
 
@@ -140,25 +141,10 @@ function detectMapping(headers) {
   };
 }
 
-function parseCSV(text) {
-  const lines = text.trim().split('\n');
-  if (lines.length < 2) return { headers: [], rows: [] };
-  const parseRow = (line) => {
-    const result = [];
-    let cur = '', inQ = false;
-    for (let i = 0; i < line.length; i++) {
-      const c = line[i];
-      if (c === '"') { inQ = !inQ; continue; }
-      if (c === ',' && !inQ) { result.push(cur.trim()); cur = ''; continue; }
-      cur += c;
-    }
-    result.push(cur.trim());
-    return result;
-  };
-  const headers = parseRow(lines[0]);
-  const rows = lines.slice(1).map(parseRow).filter(r => r.some(c => c));
-  return { headers, rows };
-}
+// parseCSV now lives in ../lib/imports/detectCsvType so there is a
+// single quoted-newline-safe, banner-skipping parser. HK Jun 1 2026:
+// the old local copy here did not handle escaped quotes or banner
+// rows, which is the bug that hid Sophie May's MassageBook export.
 
 export default function ImportClients({ therapist, onComplete }) {
   const [step, setStep] = useState(1);

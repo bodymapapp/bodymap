@@ -382,7 +382,7 @@ export default function MultiImport({ therapist, onComplete }) {
         try {
           const text = ev.target.result;
           const fileHash = hashCsvContent(text);
-          const { headers, rows } = parseCSV(text);
+          const { headers, rows, headerRowNumber } = parseCSV(text);
           if (headers.length === 0 || rows.length === 0) {
             resolve({ fileName: f.name, fileHash, headers: [], rows: [], detected: null, error: 'File appears empty' });
             return;
@@ -390,7 +390,7 @@ export default function MultiImport({ therapist, onComplete }) {
           const detected = detectCsvType(headers, rows);
           // Check if this exact file was partially imported before
           const checkpoint = loadCheckpoint(therapist?.id, fileHash);
-          resolve({ fileName: f.name, fileHash, headers, rows, detected, error: null, checkpoint });
+          resolve({ fileName: f.name, fileHash, headers, rows, detected, headerRowNumber, error: null, checkpoint });
         } catch (e) {
           resolve({ fileName: f.name, fileHash: null, headers: [], rows: [], detected: null, error: 'Could not parse CSV' });
         }
@@ -1037,6 +1037,11 @@ export default function MultiImport({ therapist, onComplete }) {
                 <div style={{ fontSize: 11.5, color: C.gray }}>
                   showing first {preview.length} of {f.rows.length} rows
                 </div>
+                {f.headerRowNumber > 1 && (
+                  <div style={{ fontSize: 11.5, color: C.sage, fontWeight: 600 }}>
+                    Detected header on row {f.headerRowNumber} (skipped {f.headerRowNumber - 1} rows above it)
+                  </div>
+                )}
               </div>
               <div style={{ overflowX: 'auto' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
