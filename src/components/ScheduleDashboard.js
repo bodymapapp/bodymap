@@ -1559,7 +1559,7 @@ function RecapEditor({ session, parsedSoap, therapist, allSessions, onSaved, onR
 
 // HK May 31 2026 (Side panel A): DetailPanel exported so BookingDetailPage
 // can render it in mode='page' as a full-page route.
-export function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled, showToast, onRequestCheckout, paymentsRefreshTick = 0, mode = 'slide' }) {
+export function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled, showToast, onRequestCheckout, onRequestCancel, paymentsRefreshTick = 0, mode = 'slide' }) {
   const notify = showToast || (() => {});
   // Mobile detection for paddingBottom that clears the mobile bottom nav
   // (74px) so the Cancel button doesn't get cut off. HK reported May 25
@@ -3041,6 +3041,15 @@ export function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelle
     // Compute session price from the appointment data we have, or
     // fall back to therapist's default service price.
     const sessionPriceCents = Math.round((appt.priceUsd || appt.price || 0) * 100);
+    // HK Jun 1 2026: hoisted out of the side panel. Dispatch the
+    // cancel/no-show flow to the ScheduleDashboard root so the modal
+    // survives any re-render or refresh of this panel (mirrors the
+    // CheckoutModal fix from May 31). Falls back to the in-panel modal
+    // only if the root dispatcher was not provided.
+    if (typeof onRequestCancel === 'function') {
+      onRequestCancel({ booking: bookingRow, client: clientRow, sessionPriceCents, isNoShow });
+      return;
+    }
     setChargeContext({ booking: bookingRow, client: clientRow, sessionPriceCents, isNoShow });
     setShowChargeModal(true);
   }
@@ -5111,6 +5120,12 @@ export function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelle
         </div>
       </div>
 
+      {/* HK Jun 1 2026: CancellationChargeModal moved to ScheduleDashboard
+          root via onRequestCancel (same fix as CheckoutModal). It used to
+          render here inside DetailPanel, where a schedule refresh after
+          marking a no-show tore it down mid-flow. The in-panel
+          showChargeModal/chargeContext state remains only as a fallback
+          for any caller that does not pass onRequestCancel. */}
       {showChargeModal && chargeContext && (
         <CancellationChargeModal
           booking={chargeContext.booking}
@@ -5123,7 +5138,6 @@ export function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelle
             setShowChargeModal(false);
             notify(chargeContext?.isNoShow ? 'Marked as no-show' : 'Appointment cancelled');
             onCancelled?.();
-            // HK May 31 2026: don't close the panel: stay in-place.
           }}
         />
       )}
@@ -5205,7 +5219,7 @@ export function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelle
   );
 }
 
-function TimelineView({ therapist, allAppts, dayOffset, setDayOffset, today, onReschedule, onRefresh, blockedDays = [], onCreateBlock, onScheduleAtTime, selectedBookingId = '', setSelectedBookingId, onRequestCheckout, paymentsRefreshTick = 0 }) {
+function TimelineView({ therapist, allAppts, dayOffset, setDayOffset, today, onReschedule, onRefresh, blockedDays = [], onCreateBlock, onScheduleAtTime, selectedBookingId = '', setSelectedBookingId, onRequestCheckout, onRequestCancel, paymentsRefreshTick = 0 }) {
   const { toast: tlToast, showToast: tlShowToast } = useToast();
 
   // HK May 31 2026: selected booking is DERIVED from selectedBookingId
@@ -5888,13 +5902,13 @@ function TimelineView({ therapist, allAppts, dayOffset, setDayOffset, today, onR
         </>
       )}
 
-      {selected&&<DetailPanel appt={selected} therapist={therapist} onClose={()=>setSelected(null)} onReschedule={a=>{onReschedule&&onReschedule(a);}} onCancelled={()=>{if(typeof onRefresh==='function')onRefresh();}} showToast={tlShowToast} onRequestCheckout={onRequestCheckout} paymentsRefreshTick={paymentsRefreshTick}/>}
+      {selected&&<DetailPanel appt={selected} therapist={therapist} onClose={()=>setSelected(null)} onReschedule={a=>{onReschedule&&onReschedule(a);}} onCancelled={()=>{if(typeof onRefresh==='function')onRefresh();}} showToast={tlShowToast} onRequestCheckout={onRequestCheckout} onRequestCancel={onRequestCancel} paymentsRefreshTick={paymentsRefreshTick}/>}
       {tlToast}
     </div>
   );
 }
 
-function WeeklyView({ therapist, appointments, today, onReschedule, onRefresh, blockedDays = [], selectedBookingId = '', setSelectedBookingId, onRequestCheckout, paymentsRefreshTick = 0 }) {
+function WeeklyView({ therapist, appointments, today, onReschedule, onRefresh, blockedDays = [], selectedBookingId = '', setSelectedBookingId, onRequestCheckout, onRequestCancel, paymentsRefreshTick = 0 }) {
   const { toast: wkToast, showToast: wkShowToast } = useToast();
   const APPTS=appointments||[];
   const weekStartsOn = therapist?.week_starts_on ?? 0;
@@ -6516,12 +6530,12 @@ function WeeklyView({ therapist, appointments, today, onReschedule, onRefresh, b
         })()
       )}
       {wkToast}
-      {selected&&<DetailPanel appt={selected} therapist={therapist} onClose={()=>setSelected(null)} onReschedule={a=>{onReschedule&&onReschedule(a);}} onCancelled={()=>{if(typeof onRefresh==='function')onRefresh();}} showToast={wkShowToast} onRequestCheckout={onRequestCheckout} paymentsRefreshTick={paymentsRefreshTick}/>}
+      {selected&&<DetailPanel appt={selected} therapist={therapist} onClose={()=>setSelected(null)} onReschedule={a=>{onReschedule&&onReschedule(a);}} onCancelled={()=>{if(typeof onRefresh==='function')onRefresh();}} showToast={wkShowToast} onRequestCheckout={onRequestCheckout} onRequestCancel={onRequestCancel} paymentsRefreshTick={paymentsRefreshTick}/>}
     </div>
   );
 }
 
-function MonthlyView({ therapist, appointments, today, onReschedule, onRefresh, blockedDays = [], selectedBookingId = '', setSelectedBookingId, onRequestCheckout, paymentsRefreshTick = 0 }) {
+function MonthlyView({ therapist, appointments, today, onReschedule, onRefresh, blockedDays = [], selectedBookingId = '', setSelectedBookingId, onRequestCheckout, onRequestCancel, paymentsRefreshTick = 0 }) {
   const { toast: moToast, showToast: moShowToast } = useToast();
   const APPTS=appointments||[];
   const weekStartsOn = therapist?.week_starts_on ?? 0; // 0 = Sunday, 1 = Monday
@@ -6762,7 +6776,7 @@ function MonthlyView({ therapist, appointments, today, onReschedule, onRefresh, 
           </>
         );
       })()}
-      {selected&&<DetailPanel appt={selected} therapist={therapist} onClose={()=>setSelected(null)} onReschedule={a=>{onReschedule&&onReschedule(a);}} onCancelled={()=>{if(typeof onRefresh==='function')onRefresh();}} showToast={moShowToast} onRequestCheckout={onRequestCheckout} paymentsRefreshTick={paymentsRefreshTick}/>}
+      {selected&&<DetailPanel appt={selected} therapist={therapist} onClose={()=>setSelected(null)} onReschedule={a=>{onReschedule&&onReschedule(a);}} onCancelled={()=>{if(typeof onRefresh==='function')onRefresh();}} showToast={moShowToast} onRequestCheckout={onRequestCheckout} onRequestCancel={onRequestCancel} paymentsRefreshTick={paymentsRefreshTick}/>}
       {moToast}
     </div>
   );
@@ -8075,6 +8089,13 @@ export default function ScheduleDashboard({ therapist }) {
   const [checkoutContext, setCheckoutContext] = useState(null);
   const [paymentsRefreshTick, setPaymentsRefreshTick] = useState(0);
   const requestCheckout = (payload) => setCheckoutContext(payload);
+  // HK Jun 1 2026: cancel/no-show flow hoisted out of the side panel
+  // (same fix as CheckoutModal on May 31). The side panel calls
+  // requestCancel(...) and the modal renders at this root level, so a
+  // panel re-render or schedule refresh can no longer tear it down
+  // mid-flow (the "lands back on side panel" glitch).
+  const [cancelContext, setCancelContext] = useState(null);
+  const requestCancel = (payload) => setCancelContext(payload);
 
   // Preview-data toggle (HK May 18 2026, simplified per HK May 18
   // feedback): one boolean. Therapist taps to flip. Persists to
@@ -9260,9 +9281,9 @@ export default function ScheduleDashboard({ therapist }) {
 
             {/* RIGHT PANE: tab-selected calendar/insights view. */}
             <div style={{ minWidth: 0 }}>
-              {subView==='today'   &&<ViewErrorBoundary viewName="Today"><TimelineView therapist={therapist} allAppts={allAppts} dayOffset={dayOffset} setDayOffset={setDayOffset} today={today} onReschedule={setRescheduleAppt} onRefresh={fetchBookings} blockedDays={blockedDays} onCreateBlock={addBlockedDay} onScheduleAtTime={setPendingBookingTime} selectedBookingId={selectedBookingId} setSelectedBookingId={setSelectedBookingId} onRequestCheckout={requestCheckout} paymentsRefreshTick={paymentsRefreshTick}/></ViewErrorBoundary>}
-              {subView==='weekly'  &&<ViewErrorBoundary viewName="Weekly"><WeeklyView therapist={therapist} appointments={allAppts} today={today} onReschedule={setRescheduleAppt} onRefresh={fetchBookings} blockedDays={blockedDays} selectedBookingId={selectedBookingId} setSelectedBookingId={setSelectedBookingId} onRequestCheckout={requestCheckout} paymentsRefreshTick={paymentsRefreshTick}/></ViewErrorBoundary>}
-              {subView==='monthly' &&<ViewErrorBoundary viewName="Monthly"><MonthlyView therapist={therapist} appointments={allAppts} today={today} onReschedule={setRescheduleAppt} onRefresh={fetchBookings} blockedDays={blockedDays} selectedBookingId={selectedBookingId} setSelectedBookingId={setSelectedBookingId} onRequestCheckout={requestCheckout} paymentsRefreshTick={paymentsRefreshTick}/></ViewErrorBoundary>}
+              {subView==='today'   &&<ViewErrorBoundary viewName="Today"><TimelineView therapist={therapist} allAppts={allAppts} dayOffset={dayOffset} setDayOffset={setDayOffset} today={today} onReschedule={setRescheduleAppt} onRefresh={fetchBookings} blockedDays={blockedDays} onCreateBlock={addBlockedDay} onScheduleAtTime={setPendingBookingTime} selectedBookingId={selectedBookingId} setSelectedBookingId={setSelectedBookingId} onRequestCheckout={requestCheckout} onRequestCancel={requestCancel} paymentsRefreshTick={paymentsRefreshTick}/></ViewErrorBoundary>}
+              {subView==='weekly'  &&<ViewErrorBoundary viewName="Weekly"><WeeklyView therapist={therapist} appointments={allAppts} today={today} onReschedule={setRescheduleAppt} onRefresh={fetchBookings} blockedDays={blockedDays} selectedBookingId={selectedBookingId} setSelectedBookingId={setSelectedBookingId} onRequestCheckout={requestCheckout} onRequestCancel={requestCancel} paymentsRefreshTick={paymentsRefreshTick}/></ViewErrorBoundary>}
+              {subView==='monthly' &&<ViewErrorBoundary viewName="Monthly"><MonthlyView therapist={therapist} appointments={allAppts} today={today} onReschedule={setRescheduleAppt} onRefresh={fetchBookings} blockedDays={blockedDays} selectedBookingId={selectedBookingId} setSelectedBookingId={setSelectedBookingId} onRequestCheckout={requestCheckout} onRequestCancel={requestCancel} paymentsRefreshTick={paymentsRefreshTick}/></ViewErrorBoundary>}
               {subView==='yearly'  &&<ViewErrorBoundary viewName="Yearly"><YearlyView therapist={therapist} appointments={allAppts} today={today} blockedDays={blockedDays}/></ViewErrorBoundary>}
               {subView==='insights'&&<ViewErrorBoundary viewName="Insights"><InsightsView appointments={allAppts}/></ViewErrorBoundary>}
             </div>
@@ -9302,6 +9323,29 @@ export default function ScheduleDashboard({ therapist }) {
                 phone: picked.phone || prev.appt.phone,
               },
             }) : null);
+          }}
+        />
+      )}
+      {/* HK Jun 1 2026: cancel/no-show + payment-link modal at root.
+          Hoisted out of DetailPanel so marking a no-show (which
+          refreshes the schedule) cannot unmount it before the
+          therapist finishes the SMS/email/payment-link step. */}
+      {cancelContext && (
+        <CancellationChargeModal
+          booking={cancelContext.booking}
+          client={cancelContext.client}
+          therapist={therapist}
+          sessionPriceCents={cancelContext.sessionPriceCents}
+          isNoShow={!!cancelContext.isNoShow}
+          onClose={() => setCancelContext(null)}
+          onCancelled={() => {
+            showScheduleToast(cancelContext?.isNoShow ? 'Marked as no-show' : 'Appointment cancelled');
+            setPaymentsRefreshTick((n) => n + 1);
+            fetchBookings();
+            // Do not clear cancelContext here: the modal stays open on
+            // its result/payment-link step until the therapist taps
+            // Done (which calls onClose). The schedule refresh above
+            // runs underneath without tearing the modal down.
           }}
         />
       )}
