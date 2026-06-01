@@ -120,9 +120,23 @@ export function parsePlaceAddress(place) {
  *   const { placesReady, placesError } = useGooglePlaces();
  */
 export function useGooglePlaces() {
-  const [placesReady, setPlacesReady] = useState(
-    Boolean(window.google && window.google.maps && window.google.maps.places)
-  );
+  // HK May 31 2026: lazy initializer + defensive try/catch. Previously
+  // this was an eager expression that could throw if a polyfill or
+  // third-party script left `window.google` in a partially-loaded
+  // state. Lazy init runs once per mount and try/catch absorbs any
+  // surprise read errors so the parent component never crashes here.
+  const [placesReady, setPlacesReady] = useState(() => {
+    try {
+      return Boolean(
+        typeof window !== 'undefined' &&
+        window.google &&
+        window.google.maps &&
+        window.google.maps.places
+      );
+    } catch (_e) {
+      return false;
+    }
+  });
   const [placesError, setPlacesError] = useState(null);
 
   useEffect(() => {

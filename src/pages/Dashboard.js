@@ -22,6 +22,7 @@ import EventsCard from '../components/EventsCard';
 import YearlyPlanner from '../components/YearlyPlanner';
 import SettingsHero from '../components/SettingsHero';
 import SettingsSectionHeader from '../components/SettingsSectionHeader';
+import SettingsErrorBoundary from '../components/SettingsErrorBoundary';
 import InlineSaveNumberInput from '../components/InlineSaveNumberInput';
 import DisclosureRow from '../components/DisclosureRow';
 import CollapsibleSection from '../components/CollapsibleSection';
@@ -1996,6 +1997,7 @@ function ServicesAndAvailability({ therapist }) {
         open={openSubRow === 'locations'}
         onToggle={() => { setOpenSubRow(openSubRow === 'locations' ? null : 'locations'); locResetDraft(); }}
       >
+        <SettingsErrorBoundary section="locations">
         <p style={{ fontSize:'12px', color:C2.gray, margin:'0 0 14px', lineHeight:1.5 }}>
           Where you see clients. Add a second location if you practice in more than one place, and clients will pick which one when booking.
         </p>
@@ -2072,6 +2074,7 @@ function ServicesAndAvailability({ therapist }) {
             C2={C2}
           />
         )}
+        </SettingsErrorBoundary>
       </DisclosureRow>
 
 

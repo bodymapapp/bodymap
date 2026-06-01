@@ -58,34 +58,50 @@ export default function AddressAutocompleteInput({
     if (!placesReady || !inputRef.current) return;
     if (autocompleteRef.current) return; // already initialized
 
-    const google = window.google;
-    const allowed = countries && countries.length ? countries : ['us', 'ca'];
-    const ac = new google.maps.places.Autocomplete(inputRef.current, {
-      types: ['address'],
-      fields: ['address_components', 'formatted_address', 'geometry'],
-      componentRestrictions: { country: allowed },
-    });
+    // HK May 31 2026: wrap construction in try/catch so a Google API
+    // surprise (deprecated constructor in a future SDK rev, restricted
+    // API key returning a malformed object) does not bring down the
+    // entire Settings page. On any error we fall through to the
+    // manual-entry input below.
+    let ac;
+    try {
+      const google = window.google;
+      if (!google || !google.maps || !google.maps.places) return;
+      const allowed = countries && countries.length ? countries : ['us', 'ca'];
+      ac = new google.maps.places.Autocomplete(inputRef.current, {
+        types: ['address'],
+        fields: ['address_components', 'formatted_address', 'geometry'],
+        componentRestrictions: { country: allowed },
+      });
 
-    ac.addListener('place_changed', () => {
-      const place = ac.getPlace();
-      const parsed = parsePlaceAddress(place);
-      if (parsed && onSelect) {
-        onSelect(parsed);
-        setDisplayValue(parsed.formatted || formatDisplayFromParts(parsed));
-      }
-    });
+      ac.addListener('place_changed', () => {
+        try {
+          const place = ac.getPlace();
+          const parsed = parsePlaceAddress(place);
+          if (parsed && onSelect) {
+            onSelect(parsed);
+            setDisplayValue(parsed.formatted || formatDisplayFromParts(parsed));
+          }
+        } catch (err) {
+          console.warn('[AddressAutocompleteInput] place_changed handler error', err);
+        }
+      });
 
-    autocompleteRef.current = ac;
+      autocompleteRef.current = ac;
+    } catch (err) {
+      console.warn('[AddressAutocompleteInput] Autocomplete init failed', err);
+      return;
+    }
 
-    // Cleanup: Google's autocomplete adds a .pac-container div to
-    // <body> outside React's tree. It auto-removes when the input is
-    // removed from the DOM, but if multiple instances mount/unmount,
-    // we want to make sure the listener is detached.
+    // Cleanup: defensively guard the listener clear so a stale or
+    // missing google.maps reference at unmount time does not throw.
     return () => {
-      if (autocompleteRef.current) {
-        google.maps.event.clearInstanceListeners(autocompleteRef.current);
-        autocompleteRef.current = null;
-      }
+      try {
+        if (autocompleteRef.current && window.google && window.google.maps) {
+          window.google.maps.event.clearInstanceListeners(autocompleteRef.current);
+        }
+      } catch (_e) { /* swallow */ }
+      autocompleteRef.current = null;
     };
   }, [placesReady, onSelect, countries]);
 
