@@ -10,6 +10,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { logNotification } from "../_shared/notifications.ts";
 import { emailWrapper, ctaButton, eyebrow, factBox, fromFor, replyToFor, formatApptDateTime } from "../_shared/emailTemplate.ts";
+import { renderClientEmail } from "../_shared/clientEmail.ts";
 import { resolveClientFirstName } from "../_shared/clientName.ts";
 
 const cors = {
