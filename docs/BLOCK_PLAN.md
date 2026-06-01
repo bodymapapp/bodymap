@@ -1458,3 +1458,12 @@ Implementation order:
 Scope estimate: ~4.5 hours. Pays back across every future date-picker need in the app since SelectableMonthView is now a reusable primitive.
 
 Replaces the prior "Recurring appointments" and "Outlook integration" entries. We are NOT building Outlook calendar sync today, period.
+
+## Side-panel tears down the no-show/cancel modal mid-flow (CRITICAL CX, HK Jun 1 2026)
+Root cause found Jun 1. CancellationChargeModal is rendered INSIDE DetailPanel. When a booking is marked no-show/cancelled, onCancelled fires onRefresh, the appointments array is rebuilt with new object refs, DetailPanel re-derives `selected`, and the modal inside it is torn down before the therapist sees the payment-link/result step. Symptom HK reported: "click send payment link, lands back on side panel," glitchy for 24h. Same bug class already fixed once for CheckoutModal (moved to ScheduleDashboard root, see May 31 comment). PROPER FIX: hoist CancellationChargeModal out of DetailPanel up to the Schedule root so a refresh cannot unmount it mid-flow; keep its state (step=link_sent/done) alive until the therapist dismisses. Rule #35 surface (Schedule), mobile-preview before push. Estimated 1-1.5 hrs. This blocks C11 end-to-end testing.
+
+## no_show_recorded therapist notification double-fires (HK Jun 1 2026)
+notification_log shows two no_show_recorded therapist emails/push/sms for the same booking (No-Show Test 1, 22:31:16 and 22:31:27). Likely the inline notifyTherapist path AND a downstream/fan-out path both fire, or the modal posts notify-booking-event while another path also posts. Dedupe so a single no-show fires one therapist notification per channel. Queued, ~45 min.
+
+## Two cancellation-policy "enabled" flags can disagree (HK Jun 1 2026)
+therapists.cancellation_policy_enabled (column) and therapists.cancellation_policy->>'enabled' (JSON) are independent. The no-show modal reads the JSON flag; the Settings toggle may write the column. Demo had column=true but JSON enabled=false, so the modal said "policy disabled, no fee applies" and the fee/payment-link path never appeared. Make the modal and the Settings toggle read/write the SAME flag, or keep them in lockstep. Queued, ~30 min. Until fixed, a real therapist who thinks their policy is on may silently collect no fees.
