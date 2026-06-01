@@ -3193,156 +3193,160 @@ export function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelle
               pointer + hover underline. Falls back to plain text when
               the booking has no client_id (orphan booking that will
               show the inline ClientPicker on Charge). */}
-          {/* HK May 25 2026 (Phase 24): confident header. The 'Tap
-              to open profile' hint felt apologetic. Now: a real
-              outline button on the right says 'View profile' so the
-              affordance is visible and unambiguous. Avatar + name
-              are still tappable for fast access. */}
-          <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:12}}>
+          {/* HK May 31 2026 round 6: clean header redesign (Mockup A).
+              Replaces the cluttered original where avatar + name + View
+              profile + Close fought on one row (forcing name truncation
+              like "Joy Tes..."), date + time + edit pencils + Open as
+              full page + No Intake pill all stacked below in mismatched
+              fonts.
+
+              New hierarchy:
+                Row 1: avatar + name + small dismiss X icon (no "Close"
+                       text). Full width = no truncation.
+                Row 2: subtle "New client · View profile" subline.
+                Card:  "Thursday, June 18" is the anchor. Time + service
+                       below it, edit pencils tucked inline. Status pill
+                       (No Intake / Signed / etc) right-aligned at top
+                       of card balancing the date. "Open full page" link
+                       at bottom right corner, quiet. */}
+          <div style={{display:'flex',alignItems:'flex-start',gap:12,marginBottom:10}}>
             {displayAppt.clientId ? (
-              <>
-                <a
-                  href={`/dashboard/clients/${displayAppt.clientId}`}
-                  style={{
-                    display:'flex',
-                    alignItems:'center',
-                    gap:10,
-                    flex:1,
-                    minWidth:0,
-                    textDecoration:'none',
-                    color:'inherit',
-                    cursor:'pointer',
-                  }}
-                  title="Open client profile"
-                >
-                  <div style={{width:42,height:42,borderRadius:'50%',background:ac(displayAppt.client),color:'#fff',display:'flex',alignItems:'center',justifyContent:'center',fontSize:14,fontWeight:700,flexShrink:0}}>{initials(displayAppt.client)}</div>
-                  <div style={{flex:1,minWidth:0}}>
-                    <div style={{fontSize:16,fontWeight:700,color:SO.ink,fontFamily:'Georgia,serif',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
-                      {displayAppt.client}
-                    </div>
-                    {displayAppt.is_couples && displayAppt.partner_name && (
-                      <div style={{fontSize:12,color:SO.sage,fontWeight:600}}>💑 with {displayAppt.partner_name}</div>
-                    )}
-                    <div style={{fontSize:12,color:SO.inkMute}}>
-                      {appt.sessions>0?`${appt.sessions} sessions`:appt.preview?'Preview client':'New client'}
-                    </div>
-                  </div>
-                </a>
-                <a
-                  href={`/dashboard/clients/${displayAppt.clientId}`}
-                  style={{
-                    background: '#fff',
-                    color: SO.forest,
-                    border: '1.5px solid #D6E0D4',
-                    borderRadius: 999,
-                    padding: '6px 12px',
-                    fontSize: 11,
-                    fontWeight: 600,
-                    textDecoration: 'none',
-                    whiteSpace: 'nowrap',
-                    fontFamily: 'inherit',
-                    flexShrink: 0,
-                  }}
-                  title="Open client profile"
-                >
-                  View profile ›
-                </a>
-              </>
-            ) : (
-              <>
-                <div style={{width:42,height:42,borderRadius:'50%',background:ac(displayAppt.client),color:'#fff',display:'flex',alignItems:'center',justifyContent:'center',fontSize:14,fontWeight:700,flexShrink:0}}>{initials(displayAppt.client)}</div>
+              <a
+                href={`/dashboard/clients/${displayAppt.clientId}`}
+                style={{display:'flex',alignItems:'center',gap:12,flex:1,minWidth:0,textDecoration:'none',color:'inherit'}}
+                title="Open client profile"
+              >
+                <div style={{width:44,height:44,borderRadius:'50%',background:ac(displayAppt.client),color:'#fff',display:'flex',alignItems:'center',justifyContent:'center',fontSize:15,fontWeight:700,flexShrink:0}}>{initials(displayAppt.client)}</div>
                 <div style={{flex:1,minWidth:0}}>
-                  <div style={{fontSize:16,fontWeight:700,color:SO.ink,fontFamily:'Georgia,serif',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{displayAppt.client}</div>
+                  <div style={{fontSize:18,fontWeight:700,color:SO.ink,fontFamily:'Georgia,serif',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',lineHeight:1.2}}>
+                    {displayAppt.client}
+                  </div>
                   {displayAppt.is_couples && displayAppt.partner_name && (
-                    <div style={{fontSize:12,color:SO.sage,fontWeight:600}}>💑 with {displayAppt.partner_name}</div>
+                    <div style={{fontSize:12,color:SO.sage,fontWeight:600,marginTop:2}}>💑 with {displayAppt.partner_name}</div>
                   )}
-                  <div style={{fontSize:12,color:SO.inkMute}}>{appt.sessions>0?`${appt.sessions} sessions`:appt.preview?'Preview client':'New client'}</div>
+                  <div style={{fontSize:12,color:SO.inkMute,marginTop:3,display:'flex',alignItems:'center',gap:6,flexWrap:'wrap'}}>
+                    <span>{appt.sessions>0?`${appt.sessions} sessions`:appt.preview?'Preview client':'New client'}</span>
+                    <span style={{color:'#D1D5DB'}}>·</span>
+                    <span style={{color:SO.forest,fontWeight:600}}>View profile ›</span>
+                  </div>
                 </div>
-              </>
+              </a>
+            ) : (
+              <div style={{display:'flex',alignItems:'center',gap:12,flex:1,minWidth:0}}>
+                <div style={{width:44,height:44,borderRadius:'50%',background:ac(displayAppt.client),color:'#fff',display:'flex',alignItems:'center',justifyContent:'center',fontSize:15,fontWeight:700,flexShrink:0}}>{initials(displayAppt.client)}</div>
+                <div style={{flex:1,minWidth:0}}>
+                  <div style={{fontSize:18,fontWeight:700,color:SO.ink,fontFamily:'Georgia,serif',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',lineHeight:1.2}}>{displayAppt.client}</div>
+                  {displayAppt.is_couples && displayAppt.partner_name && (
+                    <div style={{fontSize:12,color:SO.sage,fontWeight:600,marginTop:2}}>💑 with {displayAppt.partner_name}</div>
+                  )}
+                  <div style={{fontSize:12,color:SO.inkMute,marginTop:3}}>{appt.sessions>0?`${appt.sessions} sessions`:appt.preview?'Preview client':'New client'}</div>
+                </div>
+              </div>
             )}
-            {/* HK May 31 2026: Close hidden in mode='page' since the
-                full-page route uses its own back button. Slide mode
-                keeps Close as the dismissal affordance. */}
-            {mode === 'slide' && <CloseButton onClick={onClose} label="Close" />}
+            {mode === 'slide' && (
+              <button
+                onClick={onClose}
+                aria-label="Close"
+                title="Close"
+                style={{
+                  background:'transparent',
+                  border:'1px solid #E5E7EB',
+                  borderRadius:'50%',
+                  width:36,
+                  height:36,
+                  fontSize:16,
+                  color:'#6B7280',
+                  cursor:'pointer',
+                  fontFamily:'inherit',
+                  flexShrink:0,
+                  display:'flex',
+                  alignItems:'center',
+                  justifyContent:'center',
+                  lineHeight:1,
+                }}
+              >
+                ✕
+              </button>
+            )}
           </div>
-          <div style={{background:'#F9FAFB',borderRadius:10,padding:'10px 14px'}}>
-            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:8,flexWrap:'wrap'}}>
+
+          {/* Date + time + service card. The visual anchor. Date is the
+              biggest type; time and service nest below. Status pill on
+              the right top corner. Open-as-full-page link bottom right. */}
+          <div style={{background:'#F9FAFB',borderRadius:12,padding:'14px 16px'}}>
+            <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',gap:12,marginBottom:10}}>
               <div style={{flex:1,minWidth:0}}>
-                {/* HK May 31 2026: booking date shown explicitly above
-                    the time so therapists do not have to navigate back
-                    to the schedule view to see WHICH day this booking
-                    is on. Time + duration stay on their own line below.
-                    Adjacent: small "Open as full page" link, slide mode
-                    only, to switch to the deep-work surface without
-                    crowding the top ribbon. */}
                 {appt.date && (
-                  <div style={{display:'flex',alignItems:'baseline',gap:10,flexWrap:'wrap',marginBottom:2}}>
-                    <div style={{fontSize:12,fontWeight:600,color:'#6B7280',letterSpacing:'0.01em'}}>
-                      {appt.date.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
-                    </div>
-                    {mode === 'slide' && !appt.preview && (
-                      <a
-                        href={`/dashboard/schedule/booking/${appt.id}`}
-                        title="Open this booking as a full page"
-                        style={{
-                          fontSize: 11, fontWeight: 500, color: SO.forest,
-                          textDecoration: 'underline', whiteSpace: 'nowrap',
-                        }}
-                      >
-                        Open as full page ↗
-                      </a>
-                    )}
+                  <div style={{fontSize:14,fontWeight:700,color:SO.ink,letterSpacing:'0.01em',lineHeight:1.3}}>
+                    {appt.date.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
                   </div>
                 )}
-                <div style={{display:'flex',alignItems:'center',gap:8,flexWrap:'wrap'}}>
-                  <div style={{fontSize:15,fontWeight:700,color:'#1F2937'}}>{appt.time} · {appt.duration} min</div>
-                  {!appt.preview && (
-                    <button onClick={()=>setEditTime(v=>!v)}
-                      title={editTime ? 'Cancel time edit' : 'Edit time'}
-                      aria-label={editTime ? 'Cancel time edit' : 'Edit time'}
-                      style={{
-                        background:'transparent',
-                        border:'1px solid #D1D5DB',
-                        borderRadius:8,
-                        padding:'3px 7px',
-                        fontSize:12,
-                        lineHeight:1,
-                        color:'#6B7280',
-                        cursor:'pointer',
-                        fontFamily:'inherit',
-                        flexShrink:0,
-                      }}>
-                      {editTime ? '✕' : '✏️'}
-                    </button>
-                  )}
-                </div>
-                <div style={{display:'flex',alignItems:'center',gap:6,marginTop:2}}>
-                  <div style={{fontSize:12,color:'#6B7280'}}>{appt.service||'Session'}</div>
-                  {!appt.preview && (
-                    <button onClick={toggleServiceEditor}
-                      title={editService ? 'Cancel service edit' : 'Edit service, duration, location, add-ons'}
-                      aria-label={editService ? 'Cancel service edit' : 'Edit service'}
-                      style={{
-                        background:'transparent',
-                        border:'1px solid #D1D5DB',
-                        borderRadius:8,
-                        padding:'2px 6px',
-                        fontSize:10,
-                        lineHeight:1,
-                        color:'#6B7280',
-                        cursor:'pointer',
-                        fontFamily:'inherit',
-                        flexShrink:0,
-                      }}>
-                      {editService ? '✕' : '✏️'}
-                    </button>
-                  )}
-                </div>
               </div>
-              <div style={{display:'flex',alignItems:'center',gap:6,flexWrap:'wrap'}}>
-                <div style={{background:st.bg,color:st.color,borderRadius:20,padding:'4px 10px',fontSize:11,fontWeight:700}}>{st.icon} {st.label}</div>
+              <div style={{flexShrink:0}}>
+                <div style={{background:st.bg,color:st.color,borderRadius:20,padding:'5px 11px',fontSize:11,fontWeight:700,whiteSpace:'nowrap'}}>{st.icon} {st.label}</div>
               </div>
             </div>
+
+            <div style={{display:'flex',alignItems:'center',gap:8,flexWrap:'wrap',marginBottom:4}}>
+              <div style={{fontSize:16,fontWeight:700,color:'#1F2937'}}>{appt.time} · {appt.duration} min</div>
+              {!appt.preview && (
+                <button onClick={()=>setEditTime(v=>!v)}
+                  title={editTime ? 'Cancel time edit' : 'Edit time'}
+                  aria-label={editTime ? 'Cancel time edit' : 'Edit time'}
+                  style={{
+                    background:'transparent',
+                    border:'1px solid #D1D5DB',
+                    borderRadius:8,
+                    padding:'4px 8px',
+                    fontSize:12,
+                    lineHeight:1,
+                    color:'#6B7280',
+                    cursor:'pointer',
+                    fontFamily:'inherit',
+                    flexShrink:0,
+                  }}>
+                  {editTime ? '✕' : '✏️'}
+                </button>
+              )}
+            </div>
+
+            <div style={{display:'flex',alignItems:'center',gap:8,flexWrap:'wrap'}}>
+              <div style={{fontSize:13,color:'#6B7280'}}>{appt.service||'Session'}</div>
+              {!appt.preview && (
+                <button onClick={toggleServiceEditor}
+                  title={editService ? 'Cancel service edit' : 'Edit service, duration, location, add-ons'}
+                  aria-label={editService ? 'Cancel service edit' : 'Edit service'}
+                  style={{
+                    background:'transparent',
+                    border:'1px solid #D1D5DB',
+                    borderRadius:8,
+                    padding:'4px 8px',
+                    fontSize:11,
+                    lineHeight:1,
+                    color:'#6B7280',
+                    cursor:'pointer',
+                    fontFamily:'inherit',
+                    flexShrink:0,
+                  }}>
+                  {editService ? '✕' : '✏️'}
+                </button>
+              )}
+            </div>
+
+            {mode === 'slide' && !appt.preview && (
+              <div style={{display:'flex',justifyContent:'flex-end',marginTop:10}}>
+                <a
+                  href={`/dashboard/schedule/booking/${appt.id}`}
+                  title="Open this booking as a full page"
+                  style={{
+                    fontSize:11, fontWeight:600, color:SO.forest,
+                    textDecoration:'underline', whiteSpace:'nowrap',
+                  }}
+                >
+                  Open full page ↗
+                </a>
+              </div>
+            )}
           </div>
 
           {/* HK May 31 2026: trace banner. When a booking has been marked
@@ -3597,16 +3601,17 @@ export function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelle
                   <button
                     onClick={() => setShowPackageLinkPanel(v => !v)}
                     style={{
-                      marginTop: 8,
-                      background: 'transparent',
-                      border: '1px solid #2A5741',
+                      marginTop: 10,
+                      background: '#fff',
+                      border: '1.5px solid #2A5741',
                       color: '#2A5741',
-                      borderRadius: 999,
-                      padding: '4px 12px',
-                      fontSize: 11,
+                      borderRadius: 10,
+                      padding: '11px 18px',
+                      fontSize: 13,
                       fontWeight: 700,
                       cursor: 'pointer',
                       fontFamily: 'inherit',
+                      minHeight: 44,
                     }}
                   >
                     {showPackageLinkPanel ? 'Hide options' : 'Manage package link'}
@@ -3715,13 +3720,14 @@ export function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelle
                                   background: '#2A5741',
                                   color: '#fff',
                                   border: 'none',
-                                  borderRadius: 999,
-                                  padding: '5px 12px',
-                                  fontSize: 11,
+                                  borderRadius: 8,
+                                  padding: '9px 16px',
+                                  fontSize: 13,
                                   fontWeight: 700,
                                   cursor: canPick && numValid ? 'pointer' : 'not-allowed',
                                   opacity: canPick && numValid ? 1 : 0.5,
                                   fontFamily: 'inherit',
+                                  minHeight: 36,
                                 }}
                               >
                                 {packageLinkBusy ? '...' : 'Link'}
@@ -3804,15 +3810,16 @@ export function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelle
               <button
                 onClick={() => setShowPackageLinkPanel(v => !v)}
                 style={{
-                  background: 'transparent',
-                  border: '1px solid #7A6232',
+                  background: '#fff',
+                  border: '1.5px solid #7A6232',
                   color: '#7A6232',
-                  borderRadius: 999,
-                  padding: '4px 12px',
-                  fontSize: 11,
+                  borderRadius: 10,
+                  padding: '11px 18px',
+                  fontSize: 13,
                   fontWeight: 700,
                   cursor: 'pointer',
                   fontFamily: 'inherit',
+                  minHeight: 44,
                 }}
               >
                 {showPackageLinkPanel ? 'Hide options' : 'Link to a package'}
