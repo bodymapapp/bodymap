@@ -283,7 +283,7 @@ export default function CancellationChargeModal({
             booking_id: booking.id,
             event_type: isNoShow ? 'no_show_recorded' : 'booking_cancelled',
             initiated_by: 'therapist', reason: reason || null,
-            fee_amount_cents: fee.amount_cents || 0,
+            fee_amount_cents: effectiveFeeCents,
             fee_charged: true,
           }),
         }).catch(() => { /* non-blocking */ });
@@ -359,7 +359,7 @@ export default function CancellationChargeModal({
             booking_id: booking.id,
             event_type: isNoShow ? 'no_show_recorded' : 'booking_cancelled',
             initiated_by: 'therapist', reason: reason || null,
-            fee_amount_cents: fee.amount_cents || 0,
+            fee_amount_cents: effectiveFeeCents,
             fee_charged: false,
             payment_link_url: data.payment_link_url,
           }),
