@@ -200,8 +200,15 @@ export function detectCsvType(headers, rows = []) {
     };
   }
 
-  // Strong client signal: has names + contact info, no date/time
-  if ((hasFirstName || hasLastName || hasFullName) && (effectiveEmail || effectivePhone) && !effectiveDate) {
+  // Strong client signal: has names + contact info, and no APPOINTMENT
+  // signal. HK Jun 1 2026: a client roster legitimately carries date
+  // columns (Birthdate, Customer Since, Last Visited). The old guard
+  // used effectiveDate (which includes content-sniffed dates), so
+  // Sophie's Vagaro roster was misrouted to the thin low-confidence
+  // block and dropped its address + new fields. The real disqualifier
+  // is an appointment layout: a header date column AND a time column.
+  const hasAppointmentSignal = hasDate && (hasStartTime || hasDuration);
+  if ((hasFirstName || hasLastName || hasFullName) && (effectiveEmail || effectivePhone) && !hasAppointmentSignal) {
     const mapping = {
       firstName: findLoose(h, 'first name', 'firstname', 'first_name', 'given name', 'client first'),
       lastName: findLoose(h, 'last name', 'lastname', 'last_name', 'family name', 'client last'),
