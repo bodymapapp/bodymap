@@ -9,6 +9,7 @@ import InlineTimeInput from './InlineTimeInput';
 import CloseButton from './CloseButton';
 import { useToast } from './Toast';
 import CheckoutModal from './CheckoutModal';
+import SetupCard from './SetupCard';
 // MarkAsPaidModal deleted in Phase 19 (May 18 2026). Functionality
 // folded into CheckoutModal's offline payment path. See commit history.
 import RefundModal from './RefundModal';
@@ -1836,188 +1837,15 @@ export function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelle
   // the session_payments row to be refunded; setting it null closes
   // the modal.
   const [refundTarget, setRefundTarget] = useState(null);
-  // HK May 29 2026: Send Agreement quick-action state. Holds 'email',
-  // 'sms', or false. Channel-explicit so the loading indicator can show
-  // which button the therapist tapped, and double-taps on the other
-  // channel during a send are blocked.
-  const [sendingAgreement, setSendingAgreement] = useState(false);
   const [paymentRows, setPaymentRows] = useState([]);
   const [paymentsLoading, setPaymentsLoading] = useState(true);
   const [clientRow, setClientRow] = useState(null);
   const firstName = appt.client?.split(' ')[0];
   const intakeLink = `${intakeUrl}?name=${encodeURIComponent(appt.client)}&email=${encodeURIComponent(appt.email)}&booking_id=${appt.id}`;
 
-  // HK May 29 2026: sendAgreement helper extracted from the old single
-  // button. Accepts a channel ('email' or 'sms') and runs the same row
-  // creation + token generation in both paths, then dispatches:
-  //   - email: invokes send-agreement-email edge fn AND copies link to
-  //     clipboard as a fallback the therapist can paste anywhere.
-  //   - sms: opens sms: link in the device handler with the agreement
-  //     URL prefilled in the body, no edge fn call needed.
-  // Both paths persist the agreement_send_request row so a Sent record
-  // shows on the Compliance Dashboard regardless of which channel.
-  async function sendAgreement(channel) {
-    if (sendingAgreement) return;
-    if (!clientRow?.id || !therapist?.id) {
-      notify('Open this booking again after the client record loads');
-      return;
-    }
-    setSendingAgreement(channel);
-    try {
-      const token = Array.from(crypto.getRandomValues(new Uint8Array(24)))
-        .map(b => b.toString(16).padStart(2, '0'))
-        .join('');
-      const alphabet = 'abcdefghjkmnpqrstuvwxyz23456789';
-      const codeBytes = crypto.getRandomValues(new Uint8Array(7));
-      const shortCode = Array.from(codeBytes)
-        .map(b => alphabet[b % alphabet.length])
-        .join('');
-      const { data: req, error: insErr } = await supabase
-        .from('agreement_send_requests')
-        .insert({
-          token,
-          short_code: shortCode,
-          therapist_id: therapist.id,
-          client_id: clientRow.id,
-          client_name: clientRow.name || null,
-          client_email: clientRow.email || null,
-          client_phone: clientRow.phone || null,
-        })
-        .select('id, short_code, token')
-        .single();
-      if (insErr) throw insErr;
-      const link = `${window.location.origin}/s/${req.short_code || shortCode}`;
-      if (channel === 'email') {
-        if (clientRow.email) {
-          // HK May 31 2026: previously this was fire-and-forget with
-          // .catch(()=>{}) which silently hid every failure. Toast
-          // showed "sent" whether the email went out or not. The
-          // edge function returns ok: true / false in the body, so
-          // we await and check.
-          try {
-            const { data: fnData, error: fnErr } = await supabase.functions.invoke('send-agreement-email', {
-              body: {
-                short_code: req.short_code || shortCode,
-                therapist_id: therapist.id,
-                client_email: clientRow.email,
-                client_name: clientRow.name || null,
-                link,
-              },
-            });
-            if (fnErr || !fnData?.ok) {
-              const detail = fnErr?.message || fnData?.error || 'email delivery failed';
-              console.error('[sendAgreement email]', detail);
-              try { await navigator.clipboard.writeText(link); } catch (_) {}
-              notify('Email did not send. Link copied so you can paste it.');
-              return;
-            }
-          } catch (e) {
-            console.error('[sendAgreement email] threw:', e);
-            try { await navigator.clipboard.writeText(link); } catch (_) {}
-            notify('Email did not send. Link copied so you can paste it.');
-            return;
-          }
-        }
-        try { await navigator.clipboard.writeText(link); } catch (_e) {}
-        notify(`Agreement sent to ${clientRow.email}`);
-      } else if (channel === 'sms') {
-        // Open the sms: handler with the link prefilled. The therapist
-        // taps Send in their default messaging app.
-        const phone = clientRow.phone || '';
-        const body = encodeURIComponent(`Hi ${(appt.client || clientRow.name || '').split(' ')[0] || 'there'}! Please sign your practice agreement: ${link}`);
-        window.location.href = `sms:${phone}&body=${body}`;
-      }
-    } catch (e) {
-      console.error('[sendAgreement]', e);
-      notify('Could not send agreement, try again');
-    } finally {
-      setSendingAgreement(false);
-    }
-  }
-
-  // HK May 31 2026: short-link intake delivery.
-  //
-  // Previously the SMS and Email pills put a raw 200+ char URL in the
-  // message body (intakeLink with name/email/booking_id stuffed as
-  // query params). HK called this 'horrible' and 'unprofessional.'
-  //
-  // Now we create an intake_send_requests row with a 7-char short_code,
-  // and the message body says https://mybodymap.app/i/<code>. When the
-  // client opens the short URL, IntakeRedirect.jsx looks up the row
-  // and redirects them to the actual intake form with name/email/
-  // booking_id prefilled. Mirrors the sendAgreement pattern.
-  const [sendingIntake, setSendingIntake] = useState(false);
-  async function sendIntake(channel) {
-    if (sendingIntake) return;
-    if (!clientRow?.id || !therapist?.id) {
-      notify('Open this booking again after the client record loads');
-      return;
-    }
-    setSendingIntake(channel);
-    try {
-      const alphabet = 'abcdefghjkmnpqrstuvwxyz23456789';
-      const codeBytes = crypto.getRandomValues(new Uint8Array(7));
-      const shortCode = Array.from(codeBytes)
-        .map(b => alphabet[b % alphabet.length])
-        .join('');
-      const { data: req, error: insErr } = await supabase
-        .from('intake_send_requests')
-        .insert({
-          short_code: shortCode,
-          therapist_id: therapist.id,
-          therapist_slug: therapist.custom_url,
-          client_id: clientRow.id,
-          client_name: clientRow.name || null,
-          client_email: clientRow.email || null,
-          client_phone: clientRow.phone || null,
-          booking_id: appt.id,
-        })
-        .select('short_code')
-        .single();
-      if (insErr) throw insErr;
-      const link = `${window.location.origin}/i/${req.short_code || shortCode}`;
-      const firstNameLocal = (appt.client || clientRow.name || '').split(' ')[0] || 'there';
-      const messageBody = `Hi ${firstNameLocal}! Please fill your intake form before your session: ${link}`;
-      if (channel === 'email') {
-        if (clientRow.email) {
-          try {
-            const { data: fnData, error: fnErr } = await supabase.functions.invoke('send-intake-email', {
-              body: {
-                short_code: req.short_code || shortCode,
-                therapist_id: therapist.id,
-                client_email: clientRow.email,
-                client_name: appt.client || clientRow.name || null,
-                link,
-              },
-            });
-            if (fnErr || !fnData?.ok) {
-              const detail = fnErr?.message || fnData?.error || 'email delivery failed';
-              console.error('[sendIntake email]', detail);
-              try { await navigator.clipboard.writeText(link); } catch (_) {}
-              notify('Email did not send. Link copied so you can paste it.');
-              return;
-            }
-          } catch (e) {
-            console.error('[sendIntake email] threw:', e);
-            try { await navigator.clipboard.writeText(link); } catch (_) {}
-            notify('Email did not send. Link copied so you can paste it.');
-            return;
-          }
-        }
-        try { await navigator.clipboard.writeText(link); } catch (_e) {}
-        notify(`Intake sent to ${clientRow.email}`);
-      } else if (channel === 'sms') {
-        const phone = clientRow.phone || '';
-        const body = encodeURIComponent(messageBody);
-        window.location.href = `sms:${phone}&body=${body}`;
-      }
-    } catch (e) {
-      console.error('[sendIntake]', e);
-      notify('Could not create intake link, try again');
-    } finally {
-      setSendingIntake(false);
-    }
-  }
+  // HK Jun 2 2026: sendIntake / sendAgreement (and their sending state)
+  // moved into the shared <SetupCard> component so the slide-over and the
+  // desktop page left box use one wired source. See components/SetupCard.jsx.
 
   // Load existing payments for this booking + the client row (for
   // card-on-file and id passing to the modals).
@@ -3433,145 +3261,12 @@ export function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelle
             );
           })()}
 
-          {/* HK May 29 2026: Quick-send actions at the TOP of the booking
-              detail panel. One pair of channel-explicit buttons per
-              action: 📧 Email and 💬 SMS. Therapist picks per send.
-              Buttons hide channels the client lacks (no email = no
-              email button, etc).
-              - Send Intake: visible if status is 'pending-intake'.
-              - Send Agreement: visible if client has not yet signed
-                (practice_agreement_signed_at is null on clientRow). */}
-          {/* HK May 29 2026 (revised): compact single-row quick actions
-              at the top of the booking detail panel. Each action lives
-              on one line: icon + label on the left, two small Email/SMS
-              pills on the right. Replaces the bulky stacked layout HK
-              flagged as 'massive use of space and unprofessional'.
-              Also: when agreement is already signed we show a sage
-              'Signed (date)' indicator instead of hiding the row, so
-              the therapist always sees the state. */}
-          {!appt.preview && clientRow && (() => {
-            const showIntakeSend = appt.status === 'pending-intake';
-            const agreementSigned = !!clientRow.practice_agreement_signed_at;
-            // If intake is done AND agreement is signed, nothing actionable
-            // here. Skip the whole section.
-            if (!showIntakeSend && agreementSigned) return null;
-
-            const clientEmail = appt.email || clientRow?.email || '';
-            const clientPhone = appt.client_phone || appt.phone || clientRow?.phone || '';
-            const hasEmail = !!clientEmail;
-            const hasPhone = !!clientPhone;
-            const intakeBody = `Hi ${firstName}! Please fill your intake form before your session: ${intakeLink}`;
-            const intakeMailtoSubject = encodeURIComponent('Your intake form');
-            const intakeMailtoBody = encodeURIComponent(intakeBody);
-            const intakeSmsBody = encodeURIComponent(intakeBody);
-
-            const pill = (label, icon, href, onClick, disabled) => {
-              const sharedStyle = {
-                display: 'inline-flex', alignItems: 'center', gap: 4,
-                padding: '6px 10px', borderRadius: 999,
-                background: disabled ? '#F4F4F4' : '#fff',
-                border: `1px solid ${disabled ? '#E5E7EB' : '#C8D5BC'}`,
-                color: disabled ? '#9CA3AF' : '#2A5741',
-                fontSize: 12, fontWeight: 600,
-                textDecoration: 'none', cursor: disabled ? 'not-allowed' : 'pointer',
-                fontFamily: 'inherit',
-              };
-              if (href && !disabled) {
-                return <a key={label} href={href} style={sharedStyle}><span style={{ fontSize: 11 }}>{icon}</span>{label}</a>;
-              }
-              return (
-                <button key={label} type="button" onClick={disabled ? undefined : onClick} disabled={disabled} style={sharedStyle}>
-                  <span style={{ fontSize: 11 }}>{icon}</span>{label}
-                </button>
-              );
-            };
-
-            const rowStyle = {
-              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-              gap: 8, padding: '8px 0', flexWrap: 'wrap',
-            };
-            const labelStyle = {
-              display: 'flex', alignItems: 'center', gap: 7,
-              fontSize: 13, fontWeight: 600, color: '#1F4030',
-              flexShrink: 0,
-            };
-            const pillRow = {
-              display: 'flex', gap: 6, flexShrink: 0,
-            };
-
-            const signedDate = agreementSigned
-              ? new Date(clientRow.practice_agreement_signed_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-              : '';
-
-            return (
-              <div style={{
-                marginTop: 10,
-                padding: '4px 12px',
-                background: '#FAFAF7',
-                border: '1px solid #EAE5DA',
-                borderRadius: 10,
-              }}>
-                {showIntakeSend && (
-                  <div style={{ ...rowStyle, borderBottom: !agreementSigned ? '1px solid #EFEAE0' : 'none' }}>
-                    <div style={labelStyle}>
-                      <span>📝</span>
-                      <span>Send intake</span>
-                    </div>
-                    {!hasEmail && !hasPhone ? (
-                      <span style={{ fontSize: 11, color: '#9CA3AF', fontStyle: 'italic' }}>No contact on file</span>
-                    ) : (
-                      <div style={pillRow}>
-                        {pill('Email', '📧', null, hasEmail ? () => sendIntake('email') : null, !hasEmail || !!sendingIntake)}
-                        {pill('SMS', '💬', null, hasPhone ? () => sendIntake('sms') : null, !hasPhone || !!sendingIntake)}
-                      </div>
-                    )}
-                  </div>
-                )}
-                {agreementSigned ? (
-                  <div style={rowStyle}>
-                    <div style={labelStyle}>
-                      <span>✍️</span>
-                      <span>Agreement</span>
-                    </div>
-                    <span style={{
-                      fontSize: 12, fontWeight: 600, color: '#2A5741',
-                      background: '#EEF3EE', padding: '4px 10px', borderRadius: 999,
-                      border: '1px solid #C8D5BC',
-                    }}>
-                      ✓ Signed {signedDate}
-                    </span>
-                  </div>
-                ) : (
-                  <div style={rowStyle}>
-                    <div style={labelStyle}>
-                      <span>✍️</span>
-                      <span>Send agreement</span>
-                    </div>
-                    {!hasEmail && !hasPhone ? (
-                      <span style={{ fontSize: 11, color: '#9CA3AF', fontStyle: 'italic' }}>No contact on file</span>
-                    ) : (
-                      <div style={pillRow}>
-                        {pill(
-                          sendingAgreement === 'email' ? 'Sending…' : 'Email',
-                          '📧',
-                          null,
-                          () => sendAgreement('email'),
-                          !hasEmail || sendingAgreement === 'email'
-                        )}
-                        {pill(
-                          sendingAgreement === 'sms' ? 'Sending…' : 'SMS',
-                          '💬',
-                          null,
-                          () => sendAgreement('sms'),
-                          !hasPhone || sendingAgreement === 'sms'
-                        )}
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-            );
-          })()}
+          {/* HK Jun 2 2026: Setup (Send intake + Agreement) now lives in the
+              shared <SetupCard>. On the slide-over and the mobile page it
+              renders here; on the desktop page it renders in the left box. */}
+          {(mode === 'slide' || isMobileW) && (
+            <SetupCard appt={appt} therapist={therapist} clientRow={clientRow} notify={notify} />
+          )}
 
           {/* HK May 29 2026: series pill on bookings that belong to a
               recurring set. Sits above the package badge if both apply.

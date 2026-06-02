@@ -17,6 +17,7 @@ import { DetailPanel } from '../components/ScheduleDashboard';
 import CheckoutModal from '../components/CheckoutModal';
 import BookingModal from '../components/BookingModal';
 import CancellationChargeModal from '../components/CancellationChargeModal';
+import SetupCard from '../components/SetupCard';
 
 const C = {
   beige: '#F5F0E8',
@@ -379,6 +380,15 @@ export default function BookingDetailPage({ therapist }) {
                 {appt.notes && <div style={{ fontSize: 13, color: '#5F5640', lineHeight: 1.6, fontStyle: 'italic', fontFamily: 'Georgia, serif', whiteSpace: 'pre-wrap', marginTop: clientRow?.notes ? 10 : 0, paddingTop: clientRow?.notes ? 10 : 0, borderTop: clientRow?.notes ? '1px solid #E7DFC9' : 'none' }}>{appt.notes}</div>}
               </div>
             )}
+
+            <SetupCard
+              appt={appt}
+              therapist={therapist}
+              clientRow={clientRow}
+              notify={(msg) => setToast(msg)}
+              showLabel
+              wrapperStyle={{ background: '#fff', border: `1px solid ${C.line}`, borderRadius: 14, padding: '14px 18px' }}
+            />
           </div>
         )}
 
