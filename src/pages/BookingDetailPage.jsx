@@ -297,7 +297,7 @@ export default function BookingDetailPage({ therapist }) {
     ['Gender', genderLabel(clientRow.gender)],
     ['Found you via', referralLabel(clientRow.referral_source)],
     ['Client since', fmtLongDate(clientRow.customer_since)],
-  ].filter(([, v]) => v) : [];
+  ] : [];
 
   return (
     <div style={{ padding: '20px 32px 48px', maxWidth: 1320, margin: '0 auto' }}>
@@ -371,7 +371,7 @@ export default function BookingDetailPage({ therapist }) {
                   {detailRows.map(([label, value]) => (
                     <div key={label} style={{ display: 'flex', justifyContent: 'space-between', gap: 12, padding: '5px 0', borderTop: label === detailRows[0][0] ? 'none' : `1px solid ${C.line}` }}>
                       <span style={{ color: C.inkMute, flexShrink: 0 }}>{label}</span>
-                      <span style={{ color: C.ink, textAlign: 'right', wordBreak: 'break-word' }}>{value}</span>
+                      <span style={{ color: value ? C.ink : C.inkMute, textAlign: 'right', wordBreak: 'break-word', opacity: value ? 1 : 0.65 }}>{value || 'Not on file'}</span>
                     </div>
                   ))}
                 </div>
