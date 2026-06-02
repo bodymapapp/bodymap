@@ -4246,6 +4246,23 @@ export function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelle
                 </button>
               </div>
 
+              {/* HK Jun 1 2026: on the desktop full page, lay the cockpit
+                  cards out in two columns so they use the width instead
+                  of stacking into one tall lonely strip. On the
+                  slide-over and on mobile they stay a single column. The
+                  grid auto-flows cards into the shorter column so heights
+                  stay balanced as accordions open/close. */}
+              <div style={(mode === 'page' && !isMobileW) ? {
+                display: 'grid',
+                gridTemplateColumns: '1fr 1fr',
+                gap: 12,
+                alignItems: 'start',
+              } : {
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 12,
+              }}>
+
               {/* ─── Session Journey panel (4-dot timeline) ─── */}
               <CockpitSection
                 sectionKey="journey"
@@ -4830,6 +4847,7 @@ export function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelle
                   <PatternsContent allSessions={allSessions} />
                 </CockpitSection>
               )}
+              </div>
             </>
           )}
 
