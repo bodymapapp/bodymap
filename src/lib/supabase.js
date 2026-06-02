@@ -41,6 +41,11 @@ const SILENT_TABLES = new Set([
   'cron_runs',
   'feature_flags',
   'realtime',
+  // HK Jun 2 2026: intake / agreement sends show their own inline "Sent
+  // (time)" confirmation in SetupCard, so the generic "Saved" toast here
+  // is duplicate noise.
+  'intake_send_requests',
+  'agreement_send_requests',
 ]);
 
 // Try to extract a table name from /rest/v1/{table}?... URLs.
