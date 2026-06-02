@@ -306,6 +306,9 @@ export default function BookingDetailPage({ therapist }) {
           }}>
           ← Schedule
         </button>
+        {/* HK Jun 1 2026: tiny build stamp so we can tell at a glance
+            whether the freshest deploy is loaded (vs a cached PWA). */}
+        <span style={{ fontSize: 11, color: C.inkMute }}>build v19-2col</span>
       </div>
 
       {/* HK Jun 1 2026: two-column desktop layout. Left rail = summary +
