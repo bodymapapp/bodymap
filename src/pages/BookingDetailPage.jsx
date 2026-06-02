@@ -47,6 +47,9 @@ export default function BookingDetailPage({ therapist }) {
   // page level so a refresh cannot tear it down.
   const [cancelContext, setCancelContext] = useState(null);
   const [bookingRow, setBookingRow] = useState(null);
+  // HK Jun 1 2026: full client row for the richer left panel (birthday,
+  // gender, referral source, customer since, alt phone, notes).
+  const [clientRow, setClientRow] = useState(null);
 
   const fmt12 = (t) => {
     if (!t) return '';
@@ -85,6 +88,21 @@ export default function BookingDetailPage({ therapist }) {
     }
 
     const sessionInfo = sessionRes.data;
+
+    // HK Jun 1 2026: load the full client row for the left panel.
+    const resolvedClientId = b.client_id || sessionInfo?.client_id || null;
+    if (resolvedClientId) {
+      const { data: cr } = await supabase
+        .from('clients')
+        .select('id, name, email, phone, alt_phone, birthday, gender, referral_source, customer_since, notes')
+        .eq('id', resolvedClientId)
+        .eq('therapist_id', therapist.id)
+        .maybeSingle();
+      if (cr) setClientRow(cr);
+    } else {
+      setClientRow(null);
+    }
+
     const payments = paymentsRes.data || [];
     const paidCents = payments
       .filter(p => p.status === 'succeeded')
@@ -234,6 +252,47 @@ export default function BookingDetailPage({ therapist }) {
     : '';
   const canAct = !['cancelled', 'no_show', 'refunded'].includes(appt.status);
 
+  // HK Jun 1 2026: formatters for the richer left panel.
+  const fmtLongDate = (d) => {
+    if (!d) return null;
+    const dt = new Date(d + 'T12:00:00');
+    if (isNaN(dt)) return null;
+    return dt.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+  };
+  const fmtBirthday = (d) => {
+    if (!d) return null;
+    const dt = new Date(d + 'T12:00:00');
+    if (isNaN(dt)) return null;
+    const age = Math.floor((Date.now() - dt.getTime()) / (365.25 * 24 * 3600 * 1000));
+    const md = dt.toLocaleDateString('en-US', { month: 'long', day: 'numeric' });
+    return age > 0 && age < 120 ? `${md} (${age})` : md;
+  };
+  const genderLabel = (g) => {
+    if (!g) return null;
+    const map = { female: 'Female', male: 'Male', non_binary: 'Non-binary', nonbinary: 'Non-binary', prefer_not_to_say: 'Prefer not to say' };
+    const key = String(g).toLowerCase().replace(/[\s-]+/g, '_');
+    if (map[key]) return map[key];
+    if (key.startsWith('other')) return g.replace(/^other:?\s*/i, '').trim() || 'Other';
+    return g;
+  };
+  const referralLabel = (r) => {
+    if (!r) return null;
+    const map = { referred_by_someone: 'Referred by someone', found_online: 'Found online', social_media: 'Social media', returning_client: 'Returning client', walk_in: 'Walk-in' };
+    const key = String(r).toLowerCase().replace(/[\s-]+/g, '_');
+    if (map[key]) return map[key];
+    if (key.startsWith('other')) return r.replace(/^other:?\s*/i, '').trim() || 'Other';
+    return r;
+  };
+  const detailRows = clientRow ? [
+    ['Email', clientRow.email || null],
+    ['Phone', clientRow.phone || null],
+    ['Other phone', clientRow.alt_phone || null],
+    ['Birthday', fmtBirthday(clientRow.birthday)],
+    ['Gender', genderLabel(clientRow.gender)],
+    ['Found you via', referralLabel(clientRow.referral_source)],
+    ['Client since', fmtLongDate(clientRow.customer_since)],
+  ].filter(([, v]) => v) : [];
+
   return (
     <div>
       <div style={{ marginBottom: 14, display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
@@ -277,6 +336,27 @@ export default function BookingDetailPage({ therapist }) {
                 <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0' }}><span style={{ color: C.inkMute }}>Price</span><span style={{ color: C.ink }}>${(appt.price || 0).toFixed(2)}</span></div>
               </div>
             </div>
+
+            {detailRows.length > 0 && (
+              <div style={{ background: '#fff', border: `1px solid ${C.line}`, borderRadius: 14, padding: '14px 18px' }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: C.inkMute, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>Client details</div>
+                <div style={{ fontSize: 13 }}>
+                  {detailRows.map(([label, value]) => (
+                    <div key={label} style={{ display: 'flex', justifyContent: 'space-between', gap: 12, padding: '5px 0', borderTop: label === detailRows[0][0] ? 'none' : `1px solid ${C.line}` }}>
+                      <span style={{ color: C.inkMute, flexShrink: 0 }}>{label}</span>
+                      <span style={{ color: C.ink, textAlign: 'right', wordBreak: 'break-word' }}>{value}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {clientRow?.notes && (
+              <div style={{ background: '#FFFBEB', border: '1px solid #FCD34D', borderRadius: 14, padding: '14px 18px' }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: '#92400E', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>Notes</div>
+                <div style={{ fontSize: 13, color: '#78350F', lineHeight: 1.6, fontStyle: 'italic', fontFamily: 'Georgia, serif', whiteSpace: 'pre-wrap' }}>{clientRow.notes}</div>
+              </div>
+            )}
 
             {canAct && (
               <div style={{ background: '#fff', border: `1px solid ${C.line}`, borderRadius: 14, padding: '14px 18px' }}>
