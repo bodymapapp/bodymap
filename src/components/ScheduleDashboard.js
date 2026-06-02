@@ -3171,7 +3171,12 @@ export function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelle
         margin: '0 auto',
         background: 'transparent',
         overflow: 'visible',
-        paddingTop: 'env(safe-area-inset-top, 0px)',
+        // HK Jun 1 2026: no extra top padding in page mode. The
+        // Dashboard card and the back-button row above already provide
+        // the top spacing; adding env(safe-area-inset-top) here stacked
+        // on top of that and left a large empty band before the client
+        // header on mobile. Safe-area top is only needed by the
+        // slide-over, which is position:fixed at the very top.
       } : {
         position:'fixed',
         top:0, right:0, bottom:0,
