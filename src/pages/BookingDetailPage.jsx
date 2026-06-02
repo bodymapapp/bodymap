@@ -16,6 +16,7 @@ import { supabase } from '../lib/supabase';
 import { DetailPanel } from '../components/ScheduleDashboard';
 import CheckoutModal from '../components/CheckoutModal';
 import BookingModal from '../components/BookingModal';
+import CancellationChargeModal from '../components/CancellationChargeModal';
 
 const C = {
   beige: '#F5F0E8',
@@ -41,6 +42,11 @@ export default function BookingDetailPage({ therapist }) {
   // the modal at the page level so it survives DetailPanel re-renders.
   const [checkoutContext, setCheckoutContext] = useState(null);
   const [rescheduleAppt, setRescheduleAppt] = useState(null);
+  // HK Jun 1 2026: the left-rail no-show/cancel buttons open the same
+  // full-screen CancellationChargeModal used elsewhere, rendered at this
+  // page level so a refresh cannot tear it down.
+  const [cancelContext, setCancelContext] = useState(null);
+  const [bookingRow, setBookingRow] = useState(null);
 
   const fmt12 = (t) => {
     if (!t) return '';
@@ -71,6 +77,7 @@ export default function BookingDetailPage({ therapist }) {
     ]);
 
     const b = bookingRes.data;
+    if (b) setBookingRow(b);
     if (!b) {
       setNotFound(true);
       setLoaded(true);
@@ -215,12 +222,20 @@ export default function BookingDetailPage({ therapist }) {
     );
   }
 
+  const isDesktop = typeof window !== 'undefined' && window.innerWidth >= 768;
+  const initials = (n) => (n || '?').split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase();
+  const statusLabel = {
+    'pending-intake': 'Awaiting intake', 'intake-done': 'Intake done',
+    paid: 'Paid', complete: 'Completed', cancelled: 'Cancelled',
+    no_show: 'No-show', refunded: 'Refunded', rescheduled: 'Rescheduled',
+  }[appt.status] || 'Confirmed';
+  const niceDate = appt.date instanceof Date
+    ? appt.date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
+    : '';
+  const canAct = !['cancelled', 'no_show', 'refunded'].includes(appt.status);
+
   return (
     <div>
-      {/* HK May 31 2026 round 2: removed the beige outer + 720px max-width
-          that made the page feel narrow and crowded. Dashboard already
-          wraps us in a white card at 1200px; we use that real estate
-          instead of adding our own padding/background. */}
       <div style={{ marginBottom: 14, display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
         <button onClick={handleBack}
           style={{
@@ -232,11 +247,60 @@ export default function BookingDetailPage({ therapist }) {
           }}>
           ← Schedule
         </button>
-        <div style={{ fontSize: 12, color: C.inkMute }}>
-          Full booking view
-        </div>
       </div>
 
+      {/* HK Jun 1 2026: two-column desktop layout. Left rail = summary +
+          quick actions (always in reach). Right = the existing
+          DetailPanel content (session journey, brief, SOAP, full
+          checkout). On mobile (<768) the rail is hidden and the page
+          falls back to the single-column DetailPanel flow that works
+          today, so phone behaviour is unchanged. The rail's buttons
+          call the same handlers the page already wires up. */}
+      <div style={isDesktop
+        ? { display: 'grid', gridTemplateColumns: '300px minmax(0, 1fr)', gap: 18, alignItems: 'start' }
+        : { display: 'block' }}>
+
+        {isDesktop && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12, position: 'sticky', top: 16 }}>
+            <div style={{ background: '#fff', border: `1px solid ${C.line}`, borderRadius: 14, padding: '16px 18px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14 }}>
+                <div style={{ width: 44, height: 44, borderRadius: '50%', background: C.forest, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15, fontWeight: 700, flexShrink: 0 }}>{initials(appt.client)}</div>
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ fontFamily: 'Georgia, serif', fontSize: 17, fontWeight: 700, color: C.forest, lineHeight: 1.2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{appt.client}</div>
+                  <div style={{ fontSize: 12, color: C.inkMute, marginTop: 2 }}>{appt.service} · {appt.duration} min</div>
+                </div>
+              </div>
+              <div style={{ borderTop: `1px solid ${C.line}`, paddingTop: 12, fontSize: 13 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0' }}><span style={{ color: C.inkMute }}>When</span><span style={{ color: C.ink, textAlign: 'right' }}>{niceDate} · {appt.time}</span></div>
+                {appt.locationName && <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0' }}><span style={{ color: C.inkMute }}>Where</span><span style={{ color: C.ink, textAlign: 'right' }}>{appt.locationName}</span></div>}
+                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0' }}><span style={{ color: C.inkMute }}>Status</span><span style={{ color: C.forest, fontWeight: 600 }}>{statusLabel}</span></div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0' }}><span style={{ color: C.inkMute }}>Price</span><span style={{ color: C.ink }}>${(appt.price || 0).toFixed(2)}</span></div>
+              </div>
+            </div>
+
+            {canAct && (
+              <div style={{ background: '#fff', border: `1px solid ${C.line}`, borderRadius: 14, padding: '14px 18px' }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: C.inkMute, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>Actions</div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  <button onClick={() => setRescheduleAppt(appt)}
+                    style={{ width: '100%', border: `1.5px solid ${C.line}`, borderRadius: 10, padding: 12, fontSize: 14, fontWeight: 600, background: '#fff', color: C.ink, cursor: 'pointer' }}>
+                    Reschedule
+                  </button>
+                  <button onClick={() => setCancelContext({ appt, isNoShow: true })}
+                    style={{ width: '100%', border: `1.5px solid ${C.line}`, borderRadius: 10, padding: 12, fontSize: 14, fontWeight: 600, background: '#fff', color: C.ink, cursor: 'pointer' }}>
+                    Mark no-show
+                  </button>
+                  <button onClick={() => setCancelContext({ appt, isNoShow: false })}
+                    style={{ width: '100%', border: 'none', borderRadius: 10, padding: 10, fontSize: 13, fontWeight: 600, background: 'transparent', color: '#B91C1C', cursor: 'pointer' }}>
+                    Cancel appointment
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        <div style={{ minWidth: 0 }}>
       <DetailPanel
         appt={appt}
         therapist={therapist}
@@ -248,6 +312,8 @@ export default function BookingDetailPage({ therapist }) {
         onRequestCheckout={(payload) => setCheckoutContext(payload)}
         paymentsRefreshTick={paymentsRefreshTick}
       />
+        </div>
+      </div>
 
       {checkoutContext && (
         <CheckoutModal
@@ -286,6 +352,21 @@ export default function BookingDetailPage({ therapist }) {
           onSuccess={() => {
             setToast('Session rescheduled');
             setRescheduleAppt(null);
+            loadBooking();
+          }}
+        />
+      )}
+
+      {cancelContext && bookingRow && (
+        <CancellationChargeModal
+          booking={bookingRow}
+          client={{ id: appt.clientId, name: appt.client, email: appt.email, phone: bookingRow.client_phone || null }}
+          therapist={therapist}
+          sessionPriceCents={appt.service_price_cents || Math.round((appt.price || 0) * 100)}
+          isNoShow={!!cancelContext.isNoShow}
+          onClose={() => setCancelContext(null)}
+          onCancelled={() => {
+            setToast(cancelContext.isNoShow ? 'Marked as no-show' : 'Appointment cancelled');
             loadBooking();
           }}
         />

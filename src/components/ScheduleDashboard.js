@@ -3160,14 +3160,15 @@ export function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelle
           the user hits top/bottom of the panel, the main page doesn't
           scroll behind it. */}
       <div style={mode === 'page' ? {
-        // HK May 31 2026 round 2 (Side panel A): page mode now fills the
-        // Dashboard's card width fully. The earlier 720 cap left a sea
-        // of empty space on desktop and made the page look unfinished.
-        // No outer background or border because Dashboard already wraps
-        // us in a white card; doubling up looked like a modal-in-modal.
-        // overflow:visible lets the page scroll naturally with body
-        // scroll, since the DetailPanel internals are tall.
+        // HK Jun 1 2026: page mode is responsive. On desktop the old
+        // full-width content left a single narrow column of cards in a
+        // sea of white. Now the page sits in a centered, comfortable
+        // column on a soft page background so it reads as an intentional
+        // detail page, not an unfinished strip. On mobile it stays
+        // full-bleed (the single-column flow that works today).
         width: '100%',
+        maxWidth: (typeof window !== 'undefined' && window.innerWidth >= 768) ? 980 : '100%',
+        margin: '0 auto',
         background: 'transparent',
         overflow: 'visible',
         paddingTop: 'env(safe-area-inset-top, 0px)',
