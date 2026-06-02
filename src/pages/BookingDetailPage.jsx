@@ -14,6 +14,8 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { DetailPanel } from '../components/ScheduleDashboard';
+import CheckoutModal from '../components/CheckoutModal';
+import BookingModal from '../components/BookingModal';
 
 const C = {
   beige: '#F5F0E8',
@@ -33,6 +35,12 @@ export default function BookingDetailPage({ therapist }) {
   const [notFound, setNotFound] = useState(false);
   const [paymentsRefreshTick, setPaymentsRefreshTick] = useState(0);
   const [toast, setToast] = useState(null);
+  // HK Jun 1 2026: checkout + reschedule now work on the full page (they
+  // previously only worked from the schedule slide-over). Mirrors the
+  // ScheduleDashboard root pattern: hold a context/snapshot and render
+  // the modal at the page level so it survives DetailPanel re-renders.
+  const [checkoutContext, setCheckoutContext] = useState(null);
+  const [rescheduleAppt, setRescheduleAppt] = useState(null);
 
   const fmt12 = (t) => {
     if (!t) return '';
@@ -172,7 +180,13 @@ export default function BookingDetailPage({ therapist }) {
     return () => { supabase.removeChannel(channel); };
   }, [bookingId, loadBooking]);
 
-  const handleBack = () => navigate('/dashboard/schedule');
+  // HK Jun 1 2026: Amazon-style back. Use browser history so the
+  // schedule returns to exactly where the therapist was (same day,
+  // scroll, view). Fall back to the schedule root on a cold deep-link.
+  const handleBack = () => {
+    if (window.history.length > 1) navigate(-1);
+    else navigate('/dashboard/schedule');
+  };
 
   if (!loaded) {
     return (
@@ -228,12 +242,54 @@ export default function BookingDetailPage({ therapist }) {
         therapist={therapist}
         mode="page"
         onClose={handleBack}
-        onReschedule={loadBooking}
+        onReschedule={(a) => setRescheduleAppt(a)}
         onCancelled={loadBooking}
         showToast={(msg) => setToast(msg)}
-        onRequestCheckout={() => { /* CheckoutModal opens via DetailPanel internals */ }}
+        onRequestCheckout={(payload) => setCheckoutContext(payload)}
         paymentsRefreshTick={paymentsRefreshTick}
       />
+
+      {checkoutContext && (
+        <CheckoutModal
+          appt={checkoutContext.appt}
+          therapist={therapist}
+          client={checkoutContext.client}
+          defaultAmountCents={checkoutContext.defaultAmountCents}
+          onClose={() => setCheckoutContext(null)}
+          onPaid={(paidCents) => {
+            const amount = typeof paidCents === 'number' ? ` $${(paidCents / 100).toFixed(2)}` : '';
+            setToast(`Payment recorded${amount}`);
+            setPaymentsRefreshTick((n) => n + 1);
+            loadBooking();
+          }}
+          onClientLinked={(picked) => {
+            setCheckoutContext((prev) => prev ? ({
+              ...prev,
+              appt: {
+                ...prev.appt,
+                clientId: picked.id,
+                client: picked.name || prev.appt.client,
+                email: picked.email || prev.appt.email,
+                phone: picked.phone || prev.appt.phone,
+              },
+            }) : null);
+          }}
+        />
+      )}
+
+      {rescheduleAppt && (
+        <BookingModal
+          therapist={therapist}
+          mode="reschedule"
+          existingBooking={rescheduleAppt}
+          onClose={() => setRescheduleAppt(null)}
+          onSuccess={() => {
+            setToast('Session rescheduled');
+            setRescheduleAppt(null);
+            loadBooking();
+          }}
+        />
+      )}
 
       {toast && (
         <div style={{

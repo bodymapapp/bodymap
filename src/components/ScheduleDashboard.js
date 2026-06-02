@@ -5219,7 +5219,7 @@ export function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelle
   );
 }
 
-function TimelineView({ therapist, allAppts, dayOffset, setDayOffset, today, onReschedule, onRefresh, blockedDays = [], onCreateBlock, onScheduleAtTime, selectedBookingId = '', setSelectedBookingId, onRequestCheckout, onRequestCancel, paymentsRefreshTick = 0 }) {
+function TimelineView({ therapist, allAppts, dayOffset, setDayOffset, today, onReschedule, onRefresh, blockedDays = [], onCreateBlock, onScheduleAtTime, selectedBookingId = '', setSelectedBookingId, onRequestCheckout, onRequestCancel, onOpenBooking, paymentsRefreshTick = 0 }) {
   const { toast: tlToast, showToast: tlShowToast } = useToast();
 
   // HK May 31 2026: selected booking is DERIVED from selectedBookingId
@@ -5243,6 +5243,9 @@ function TimelineView({ therapist, allAppts, dayOffset, setDayOffset, today, onR
 
   const setSelected = (next) => {
     const value = typeof next === 'function' ? next(null) : next;
+    // HK Jun 1 2026: open the full-page booking detail instead of the
+    // slide-over. Falls back to the slide-over only if no navigator.
+    if (value && typeof onOpenBooking === 'function') { onOpenBooking(value.id); return; }
     if (setSelectedBookingId) setSelectedBookingId(value ? value.id : '');
   };
   // Phase 9.2 long-press → create block. Tracking the active press and
@@ -5908,7 +5911,7 @@ function TimelineView({ therapist, allAppts, dayOffset, setDayOffset, today, onR
   );
 }
 
-function WeeklyView({ therapist, appointments, today, onReschedule, onRefresh, blockedDays = [], selectedBookingId = '', setSelectedBookingId, onRequestCheckout, onRequestCancel, paymentsRefreshTick = 0 }) {
+function WeeklyView({ therapist, appointments, today, onReschedule, onRefresh, blockedDays = [], selectedBookingId = '', setSelectedBookingId, onRequestCheckout, onRequestCancel, onOpenBooking, paymentsRefreshTick = 0 }) {
   const { toast: wkToast, showToast: wkShowToast } = useToast();
   const APPTS=appointments||[];
   const weekStartsOn = therapist?.week_starts_on ?? 0;
@@ -5919,6 +5922,9 @@ function WeeklyView({ therapist, appointments, today, onReschedule, onRefresh, b
   const selected = useStableSelectedAppt(APPTS, selectedBookingId);
   const setSelected = (next) => {
     const value = typeof next === 'function' ? next(null) : next;
+    // HK Jun 1 2026: open the full-page booking detail instead of the
+    // slide-over. Falls back to the slide-over only if no navigator.
+    if (value && typeof onOpenBooking === 'function') { onOpenBooking(value.id); return; }
     if (setSelectedBookingId) setSelectedBookingId(value ? value.id : '');
   };
 
@@ -6535,7 +6541,7 @@ function WeeklyView({ therapist, appointments, today, onReschedule, onRefresh, b
   );
 }
 
-function MonthlyView({ therapist, appointments, today, onReschedule, onRefresh, blockedDays = [], selectedBookingId = '', setSelectedBookingId, onRequestCheckout, onRequestCancel, paymentsRefreshTick = 0 }) {
+function MonthlyView({ therapist, appointments, today, onReschedule, onRefresh, blockedDays = [], selectedBookingId = '', setSelectedBookingId, onRequestCheckout, onRequestCancel, onOpenBooking, paymentsRefreshTick = 0 }) {
   const { toast: moToast, showToast: moShowToast } = useToast();
   const APPTS=appointments||[];
   const weekStartsOn = therapist?.week_starts_on ?? 0; // 0 = Sunday, 1 = Monday
@@ -6547,6 +6553,9 @@ function MonthlyView({ therapist, appointments, today, onReschedule, onRefresh, 
   const selected = useStableSelectedAppt(APPTS, selectedBookingId);
   const setSelected = (next) => {
     const value = typeof next === 'function' ? next(null) : next;
+    // HK Jun 1 2026: open the full-page booking detail instead of the
+    // slide-over. Falls back to the slide-over only if no navigator.
+    if (value && typeof onOpenBooking === 'function') { onOpenBooking(value.id); return; }
     if (setSelectedBookingId) setSelectedBookingId(value ? value.id : '');
   };
 
@@ -8096,6 +8105,13 @@ export default function ScheduleDashboard({ therapist }) {
   // mid-flow (the "lands back on side panel" glitch).
   const [cancelContext, setCancelContext] = useState(null);
   const requestCancel = (payload) => setCancelContext(payload);
+  // HK Jun 1 2026: tapping an appointment now navigates to the
+  // full-page booking detail (/dashboard/schedule/booking/:id) instead
+  // of opening the slide-over side panel. Amazon-style: the whole screen
+  // becomes the booking, and the page's back button returns to the
+  // schedule with its state preserved. The slide-over render below stays
+  // as a dormant fallback (never triggered while onOpenBooking is wired).
+  const openBooking = (id) => { if (id) routeNavigate(`/dashboard/schedule/booking/${id}`); };
 
   // Preview-data toggle (HK May 18 2026, simplified per HK May 18
   // feedback): one boolean. Therapist taps to flip. Persists to
@@ -9281,9 +9297,9 @@ export default function ScheduleDashboard({ therapist }) {
 
             {/* RIGHT PANE: tab-selected calendar/insights view. */}
             <div style={{ minWidth: 0 }}>
-              {subView==='today'   &&<ViewErrorBoundary viewName="Today"><TimelineView therapist={therapist} allAppts={allAppts} dayOffset={dayOffset} setDayOffset={setDayOffset} today={today} onReschedule={setRescheduleAppt} onRefresh={fetchBookings} blockedDays={blockedDays} onCreateBlock={addBlockedDay} onScheduleAtTime={setPendingBookingTime} selectedBookingId={selectedBookingId} setSelectedBookingId={setSelectedBookingId} onRequestCheckout={requestCheckout} onRequestCancel={requestCancel} paymentsRefreshTick={paymentsRefreshTick}/></ViewErrorBoundary>}
-              {subView==='weekly'  &&<ViewErrorBoundary viewName="Weekly"><WeeklyView therapist={therapist} appointments={allAppts} today={today} onReschedule={setRescheduleAppt} onRefresh={fetchBookings} blockedDays={blockedDays} selectedBookingId={selectedBookingId} setSelectedBookingId={setSelectedBookingId} onRequestCheckout={requestCheckout} onRequestCancel={requestCancel} paymentsRefreshTick={paymentsRefreshTick}/></ViewErrorBoundary>}
-              {subView==='monthly' &&<ViewErrorBoundary viewName="Monthly"><MonthlyView therapist={therapist} appointments={allAppts} today={today} onReschedule={setRescheduleAppt} onRefresh={fetchBookings} blockedDays={blockedDays} selectedBookingId={selectedBookingId} setSelectedBookingId={setSelectedBookingId} onRequestCheckout={requestCheckout} onRequestCancel={requestCancel} paymentsRefreshTick={paymentsRefreshTick}/></ViewErrorBoundary>}
+              {subView==='today'   &&<ViewErrorBoundary viewName="Today"><TimelineView therapist={therapist} allAppts={allAppts} dayOffset={dayOffset} setDayOffset={setDayOffset} today={today} onReschedule={setRescheduleAppt} onRefresh={fetchBookings} blockedDays={blockedDays} onCreateBlock={addBlockedDay} onScheduleAtTime={setPendingBookingTime} selectedBookingId={selectedBookingId} setSelectedBookingId={setSelectedBookingId} onRequestCheckout={requestCheckout} onRequestCancel={requestCancel} onOpenBooking={openBooking} paymentsRefreshTick={paymentsRefreshTick}/></ViewErrorBoundary>}
+              {subView==='weekly'  &&<ViewErrorBoundary viewName="Weekly"><WeeklyView therapist={therapist} appointments={allAppts} today={today} onReschedule={setRescheduleAppt} onRefresh={fetchBookings} blockedDays={blockedDays} selectedBookingId={selectedBookingId} setSelectedBookingId={setSelectedBookingId} onRequestCheckout={requestCheckout} onRequestCancel={requestCancel} onOpenBooking={openBooking} paymentsRefreshTick={paymentsRefreshTick}/></ViewErrorBoundary>}
+              {subView==='monthly' &&<ViewErrorBoundary viewName="Monthly"><MonthlyView therapist={therapist} appointments={allAppts} today={today} onReschedule={setRescheduleAppt} onRefresh={fetchBookings} blockedDays={blockedDays} selectedBookingId={selectedBookingId} setSelectedBookingId={setSelectedBookingId} onRequestCheckout={requestCheckout} onRequestCancel={requestCancel} onOpenBooking={openBooking} paymentsRefreshTick={paymentsRefreshTick}/></ViewErrorBoundary>}
               {subView==='yearly'  &&<ViewErrorBoundary viewName="Yearly"><YearlyView therapist={therapist} appointments={allAppts} today={today} blockedDays={blockedDays}/></ViewErrorBoundary>}
               {subView==='insights'&&<ViewErrorBoundary viewName="Insights"><InsightsView appointments={allAppts}/></ViewErrorBoundary>}
             </div>
