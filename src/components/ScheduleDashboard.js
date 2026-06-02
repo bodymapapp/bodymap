@@ -4279,7 +4279,7 @@ export function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelle
               <CockpitSection
                 sectionKey="journey"
                 index={++cockpitIndex}
-                icon="🧭"
+                icon={<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#2A5741" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9"/><path d="M15.5 8.5l-2.2 5-5 2.2 2.2-5z"/></svg>}
                 title="Session journey"
                 subtitle={
                   currentSession?.completed ? "Session complete"
@@ -4376,7 +4376,7 @@ export function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelle
               <CockpitSection
                 sectionKey="brief"
                 index={++cockpitIndex}
-                icon="🌿"
+                icon={<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#2A5741" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="6" y="4" width="12" height="17" rx="2"/><path d="M9 4.5h6V7H9z"/><path d="M9 11h6M9 14.5h4"/></svg>}
                 title="Today's Brief"
                 subtitle={intakeDone ? "What this client wants today" : "Intake not yet submitted"}
                 isOpen={openSections.brief}
@@ -4679,7 +4679,7 @@ export function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelle
               <CockpitSection
                 sectionKey="record"
                 index={++cockpitIndex}
-                icon="✍️"
+                icon={<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#2A5741" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/><path d="M9 13h6M9 16.5h5"/></svg>}
                 title="Session record · SOAP"
                 subtitle={
                   hasSoapContent
@@ -4749,7 +4749,7 @@ export function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelle
                 <CockpitSection
                   sectionKey="recap"
                   index={++cockpitIndex}
-                  icon="💌"
+                  icon={<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#2A5741" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19.5 6.5a4 4 0 0 0-6.2-.5L12 7.2l-1.3-1.2a4 4 0 1 0-5.4 5.9L12 18.5l6.7-6.6a4 4 0 0 0 .8-5.4z"/></svg>}
                   title="Client recap"
                   subtitle={
                     isFutureSession && !recapOverride && !hasRecap
@@ -4816,7 +4816,7 @@ export function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelle
                 >
                   {medicalFlagsFired.length === 0 && (
                     <EmptyStateCard
-                      icon="🩺"
+                      icon={<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#2A5741" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3l6.5 2.5v5C18.5 14.5 15.8 18 12 19c-3.8-1-6.5-4.5-6.5-8.5v-5z"/><path d="M12 8.5v5M9.5 11h5"/></svg>}
                       body="Client reported no medical concerns on intake."
                     />
                   )}
@@ -4837,7 +4837,7 @@ export function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelle
                 <CockpitSection
                   sectionKey="last_session"
                   index={++cockpitIndex}
-                  icon="📝"
+                  icon={<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#2A5741" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg>}
                   title="Last session"
                   subtitle={lastSession.created_at ? `${Math.floor((Date.now() - new Date(lastSession.created_at).getTime()) / 86400000)} days ago` : ''}
                   isOpen={openSections.last_session}
@@ -4857,7 +4857,7 @@ export function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelle
                 <CockpitSection
                   sectionKey="patterns"
                   index={++cockpitIndex}
-                  icon="📊"
+                  icon={<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#2A5741" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5.5 20V11M12 20V5M18.5 20v-6"/><path d="M3.5 20h17"/></svg>}
                   title="MyBodyMap Patterns"
                   subtitle={`${allSessions.length} sessions overlaid`}
                   isOpen={openSections.patterns !== false}
