@@ -553,27 +553,35 @@ export default function CancellationChargeModal({
     onClose();
   }
 
+  const isMobileW = typeof window !== 'undefined' && window.innerWidth < 768;
   return (
     <>
-      {/* HK Jun 1 2026: full-screen page, not a floating modal. For the
-          70-year-old therapist persona, a single screen that takes over
-          the whole view (Amazon-style) is clearer than a card hovering
-          over a busy schedule, and it cannot be torn down by the
-          schedule refreshing behind it. Rendered at the ScheduleDashboard
-          root (via cancelContext), so nothing unmounts it mid-flow.
-          Content sits in a centered column that is full-bleed on a phone
-          and a comfortable reading width on desktop. */}
+      {/* HK Jun 1 2026: responsive. On phone it is an edge-to-edge full
+          screen (480px = the whole device, Amazon-style). On desktop a
+          full-bleed white 480px column looked unfinished, so there it
+          presents as a centered card on a dim backdrop with rounded
+          corners and a shadow. Either way it renders at the
+          ScheduleDashboard root, so a schedule refresh cannot tear it
+          down mid-flow. */}
       <div style={{
-        position: 'fixed', inset: 0, background: '#fff',
+        position: 'fixed', inset: 0,
+        background: isMobileW ? '#fff' : 'rgba(31,41,51,0.45)',
         zIndex: 1100, overflowY: 'auto',
-        display: 'flex', flexDirection: 'column', alignItems: 'center',
+        display: 'flex', flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: isMobileW ? 'flex-start' : 'flex-start',
         WebkitOverflowScrolling: 'touch',
-        paddingTop: 'max(24px, env(safe-area-inset-top, 24px))',
-        paddingBottom: 'max(16px, env(safe-area-inset-bottom, 16px))',
+        paddingTop: isMobileW ? 'max(24px, env(safe-area-inset-top, 24px))' : 40,
+        paddingBottom: isMobileW ? 'max(16px, env(safe-area-inset-bottom, 16px))' : 40,
       }}>
         <div style={{
-          width: '100%', maxWidth: 480, margin: '0 auto',
-          minHeight: '100%', display: 'flex', flexDirection: 'column',
+          width: '100%', maxWidth: isMobileW ? 480 : 460, margin: '0 auto',
+          minHeight: isMobileW ? '100%' : 'auto',
+          display: 'flex', flexDirection: 'column',
+          background: '#fff',
+          borderRadius: isMobileW ? 0 : 18,
+          boxShadow: isMobileW ? 'none' : '0 24px 64px rgba(0,0,0,0.28)',
+          overflow: 'hidden',
         }}>
         {/* Top bar: clears the status bar and gives a always-visible way
             out so the therapist never feels trapped on the full page. */}

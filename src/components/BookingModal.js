@@ -692,22 +692,23 @@ export default function BookingModal({ therapist, mode = 'create', existingBooki
     };
   }, []);
 
+  const isMobileW = typeof window !== 'undefined' && window.innerWidth < 768;
   return createPortal((
     <div style={{
-      // HK Jun 1 2026: full-screen page, not a dimmed floating card.
-      // Applies to create / reschedule / rebook. For the 70-year-old
-      // therapist persona a single full screen is clearer than a sheet
-      // hovering over the schedule, and it cannot be torn down by the
-      // schedule refreshing behind it.
+      // HK Jun 1 2026: responsive. Phone = edge-to-edge full screen.
+      // Desktop = centered card on a dim backdrop (a full-bleed 480px
+      // column on a wide screen looked unfinished). Either way: no
+      // tap-outside-to-close, so no accidental dismissals.
       position: 'fixed',
       inset: 0,
-      background: '#fff',
+      background: isMobileW ? '#fff' : 'rgba(31,41,51,0.45)',
       display: 'flex',
       flexDirection: 'column',
       alignItems: 'center',
+      justifyContent: 'flex-start',
       zIndex: 3000,
-      paddingTop: 'max(24px, env(safe-area-inset-top, 24px))',
-      paddingBottom: 'max(16px, env(safe-area-inset-bottom, 16px))',
+      paddingTop: isMobileW ? 'max(24px, env(safe-area-inset-top, 24px))' : 40,
+      paddingBottom: isMobileW ? 'max(16px, env(safe-area-inset-bottom, 16px))' : 40,
       overflowY: 'auto',
       WebkitOverflowScrolling: 'touch',
       overscrollBehavior: 'contain',
@@ -716,9 +717,13 @@ export default function BookingModal({ therapist, mode = 'create', existingBooki
         background: '#fff',
         width: '100%',
         maxWidth: 480,
-        minHeight: '100%',
+        minHeight: isMobileW ? '100%' : 'auto',
+        maxHeight: isMobileW ? 'none' : 'calc(100dvh - 80px)',
         display: 'flex',
         flexDirection: 'column',
+        borderRadius: isMobileW ? 0 : 20,
+        boxShadow: isMobileW ? 'none' : '0 24px 64px rgba(0,0,0,0.28)',
+        overflow: 'hidden',
         overscrollBehavior: 'contain',
       }}>
 
