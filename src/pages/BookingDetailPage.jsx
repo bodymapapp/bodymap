@@ -50,6 +50,7 @@ export default function BookingDetailPage({ therapist }) {
   // HK Jun 1 2026: full client row for the richer left panel (birthday,
   // gender, referral source, customer since, alt phone, notes).
   const [clientRow, setClientRow] = useState(null);
+  const [insight, setInsight] = useState(null);
 
   const fmt12 = (t) => {
     if (!t) return '';
@@ -368,6 +369,17 @@ export default function BookingDetailPage({ therapist }) {
               </div>
             )}
 
+            {insight && (
+              <div style={{ background: insight.tone === 'warn' ? '#FEF3C7' : '#F0F7F1', border: insight.tone === 'warn' ? '1px solid #FDE68A' : '1px solid #DCE7DC', borderRadius: 14, padding: '12px 14px', display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+                <span style={{ fontSize: 14, lineHeight: 1.3 }}>{insight.icon}</span>
+                <span style={{ fontSize: 13, color: insight.tone === 'warn' ? '#78350F' : '#374151', lineHeight: 1.45, fontWeight: insight.tone === 'warn' ? 700 : 500 }}>{insight.text}</span>
+              </div>
+            )}
+
+            {appt.notes && (
+              <div style={{ background: '#FFFBEB', border: '1px solid #FCD34D', borderRadius: 14, padding: '12px 14px', fontSize: 13, color: '#78350F', lineHeight: 1.5, fontStyle: 'italic', fontFamily: 'Georgia, serif', whiteSpace: 'pre-wrap' }}>{appt.notes}</div>
+            )}
+
             {canAct && (
               <div style={{ background: '#fff', border: `1px solid ${C.line}`, borderRadius: 14, padding: '14px 18px' }}>
                 <div style={{ fontSize: 11, fontWeight: 700, color: C.inkMute, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>Actions</div>
@@ -400,6 +412,7 @@ export default function BookingDetailPage({ therapist }) {
         onCancelled={loadBooking}
         onRequestCancel={(payload) => setCancelContext(payload)}
         railPresent={isDesktop}
+        onInsight={setInsight}
         showToast={(msg) => setToast(msg)}
         onRequestCheckout={(payload) => setCheckoutContext(payload)}
         paymentsRefreshTick={paymentsRefreshTick}

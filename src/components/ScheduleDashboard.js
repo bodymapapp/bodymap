@@ -1569,7 +1569,7 @@ function RecapEditor({ session, parsedSoap, therapist, allSessions, onSaved, onR
 
 // HK May 31 2026 (Side panel A): DetailPanel exported so BookingDetailPage
 // can render it in mode='page' as a full-page route.
-export function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled, showToast, onRequestCheckout, onRequestCancel, railPresent = false, paymentsRefreshTick = 0, mode = 'slide' }) {
+export function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled, showToast, onRequestCheckout, onRequestCancel, railPresent = false, onInsight, paymentsRefreshTick = 0, mode = 'slide' }) {
   const notify = showToast || (() => {});
   // Mobile detection for paddingBottom that clears the mobile bottom nav
   // (74px) so the Cancel button doesn't get cut off. HK reported May 25
@@ -2394,6 +2394,13 @@ export function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelle
     // 5. Returning warm: positive signal for returning clients with no flag
     return { icon: '🌿', tone: 'soft', text: `Returning client · ${allSessions.length} session${allSessions.length === 1 ? '' : 's'} on file.` };
   }, [cockpitLoading, allSessions, lastSession, medicalFlagsFired]);
+
+  // HK Jun 2 2026: in page mode the cadence/insight line renders in the
+  // left box (the page owns that placement). The panel still computes it
+  // here, where the session-history data lives, and reports the value up.
+  useEffect(() => {
+    if (onInsight) onInsight(insightLine);
+  }, [insightLine, onInsight]);
 
   // Total paid + pending for this booking
   const paidTotalCents = paymentRows
@@ -3917,7 +3924,7 @@ export function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelle
               new-client cues. Computed in insightLine memo above.
               Hidden when cockpit is still loading or there is truly
               nothing to surface (rare). */}
-          {!appt.preview && insightLine && (
+          {!railPresent && !appt.preview && insightLine && (
             <div style={{
               display:'flex',
               alignItems:'flex-start',
@@ -4210,7 +4217,7 @@ export function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelle
               )}
             </div>
           )}
-          {appt.notes && <div style={{background:'#FFFBEB',border:'1px solid #FCD34D',borderRadius:10,padding:'10px 14px',fontSize:13,color:'#92400E',lineHeight:1.5,fontFamily:'Georgia, serif',fontStyle:'italic'}}>{appt.notes}</div>}
+          {!railPresent && appt.notes && <div style={{background:'#FFFBEB',border:'1px solid #FCD34D',borderRadius:10,padding:'10px 14px',fontSize:13,color:'#92400E',lineHeight:1.5,fontFamily:'Georgia, serif',fontStyle:'italic'}}>{appt.notes}</div>}
 
           {/* ══════════════════════════════════════════════════════════
               COCKPIT PANELS (HK May 25 2026 Phase 20.3-20.9)
