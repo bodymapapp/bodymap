@@ -9212,16 +9212,23 @@ export default function ScheduleDashboard({ therapist }) {
           HK May 19 2026 restyle: bigger serif numerals (24px), 14px
           radius, cream-edge border, soft shadow to match Billing. */}
       <div className="bm-sched-stats" style={{
-        display:'flex',
-        flexWrap:'wrap',
-        gap:0,
+        // HK Jun 2 2026: was a flex-wrap row with vertical-bar dividers
+        // between stats. On narrow phones it wrapped so the dividers
+        // floated at row ends and rows looked broken. Now a clean
+        // responsive grid: auto-fit cells with a sensible min width, so
+        // they always line up in tidy rows (typically 3-up on phones,
+        // 5-up on wider screens) with no orphaned dividers.
+        display:'grid',
+        gridTemplateColumns:'repeat(auto-fit, minmax(96px, 1fr))',
+        rowGap:12,
+        columnGap:8,
         marginBottom:14,
-        padding:'14px 18px',
+        padding:'16px 14px',
         background:'#fff',
         borderRadius:14,
         border:'1px solid #EDE6D6',
         boxShadow:'0 1px 3px rgba(31, 65, 49, 0.06), 0 1px 2px rgba(31, 65, 49, 0.04)',
-        alignItems:'center',
+        alignItems:'start',
       }}>
         {[
           {val:allAppts.filter(a=>sameDay(a.date,today)&&!a.preview).length,label:'Today',color:'#1F4131'},
@@ -9229,14 +9236,11 @@ export default function ScheduleDashboard({ therapist }) {
           {val:allAppts.filter(a=>sameDay(a.date,today)&&!a.preview&&a.status==='intake-done').length,label:'Intake received',color:'#1E40AF'},
           {val:allAppts.filter(a=>sameDay(a.date,today)&&!a.preview&&a.status==='pending-intake').length,label:'Need intake',color:'#D97706'},
           {val:allAppts.filter(a=>!a.preview&&a.date>=today&&a.date<=addDays(today,7)).length,label:'This week',color:'#6B9E80'},
-        ].map((s,idx,arr)=>(
-          <React.Fragment key={s.label}>
-            <div style={{display:'inline-flex',alignItems:'baseline',gap:8,padding:'0 18px',flexShrink:0}}>
-              <span style={{fontSize:24,fontWeight:600,fontFamily:"'Cormorant Garamond', Georgia, serif",color:s.color,lineHeight:1,letterSpacing:'-0.01em'}}>{s.val}</span>
-              <span style={{fontSize:11,color:'#6B7280',fontWeight:600,letterSpacing:'0.02em'}}>{s.label}</span>
-            </div>
-            {idx < arr.length - 1 && <div style={{width:1,height:22,background:'#EDE6D6',flexShrink:0}}/>}
-          </React.Fragment>
+        ].map((s)=>(
+          <div key={s.label} style={{display:'flex',flexDirection:'column',alignItems:'center',textAlign:'center',gap:3,padding:'0 4px',minWidth:0}}>
+            <span style={{fontSize:26,fontWeight:600,fontFamily:"'Cormorant Garamond', Georgia, serif",color:s.color,lineHeight:1,letterSpacing:'-0.01em'}}>{s.val}</span>
+            <span style={{fontSize:11,color:'#6B7280',fontWeight:600,letterSpacing:'0.01em',lineHeight:1.2}}>{s.label}</span>
+          </div>
         ))}
       </div>
 

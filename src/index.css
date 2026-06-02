@@ -157,9 +157,10 @@ body { overflow-x: hidden; }
     line-height: 1.2 !important;
   }
 
-  /* Schedule stats 4-col → 2x2 */
+  /* Schedule stats strip (5 stats). 3-up on mobile = a tidy 3+2,
+     not the lopsided 2+2+1 that 2 columns produced. HK Jun 2 2026. */
   .bm-sched-stats {
-    grid-template-columns: 1fr 1fr !important;
+    grid-template-columns: repeat(3, 1fr) !important;
   }
 
   /* Insights 2-col → stack */
@@ -225,7 +226,7 @@ body { overflow-x: hidden; }
 @media (min-width: 641px) and (max-width: 900px) {
   .bm-dash-pad { padding: 20px 16px !important; }
   .bm-stats-grid { grid-template-columns: repeat(2, 1fr) !important; }
-  .bm-sched-stats { grid-template-columns: repeat(2, 1fr) !important; }
+  .bm-sched-stats { grid-template-columns: repeat(5, 1fr) !important; }
 }
 
 /* ── HOME PAGE MOBILE (≤640px) ── */
