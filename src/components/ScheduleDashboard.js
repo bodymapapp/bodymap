@@ -1568,7 +1568,7 @@ function RecapEditor({ session, parsedSoap, therapist, allSessions, onSaved, onR
 
 // HK May 31 2026 (Side panel A): DetailPanel exported so BookingDetailPage
 // can render it in mode='page' as a full-page route.
-export function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled, showToast, onRequestCheckout, onRequestCancel, clientDetailRows = [], clientNotes = null, paymentsRefreshTick = 0, mode = 'slide' }) {
+export function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled, showToast, onRequestCheckout, onRequestCancel, paymentsRefreshTick = 0, mode = 'slide' }) {
   const notify = showToast || (() => {});
   // Mobile detection for paddingBottom that clears the mobile bottom nav
   // (74px) so the Cancel button doesn't get cut off. HK reported May 25
@@ -3174,21 +3174,17 @@ export function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelle
           the user hits top/bottom of the panel, the main page doesn't
           scroll behind it. */}
       <div style={mode === 'page' ? {
-        // HK Jun 2 2026: on desktop the page is a two-column grid. The two
-        // existing content containers (Container 1 = identity/Session/Setup/
-        // cadence/editors, Container 2 = tags/notes/Care history/Checkout/
-        // Reschedule) become the two columns directly, so nothing is cut or
-        // rewired. On mobile it stays a single block column (unchanged), and
-        // the slide-over (else branch) is untouched.
+        // HK Jun 1 2026: page mode is responsive. On desktop the old
+        // full-width content left a single narrow column of cards in a
+        // sea of white. Now the page sits in a centered, comfortable
+        // column on a soft page background so it reads as an intentional
+        // detail page, not an unfinished strip. On mobile it stays
+        // full-bleed (the single-column flow that works today).
         width: '100%',
-        maxWidth: !isMobileW ? 1100 : '100%',
+        maxWidth: (typeof window !== 'undefined' && window.innerWidth >= 768) ? 980 : '100%',
         margin: '0 auto',
         background: 'transparent',
         overflow: 'visible',
-        display: !isMobileW ? 'grid' : 'block',
-        gridTemplateColumns: !isMobileW ? 'minmax(0, 1fr) minmax(0, 1fr)' : undefined,
-        gap: !isMobileW ? 20 : undefined,
-        alignItems: 'start',
         // HK Jun 1 2026: no extra top padding in page mode. The
         // Dashboard card and the back-button row above already provide
         // the top spacing; adding env(safe-area-inset-top) here stacked
@@ -4173,30 +4169,6 @@ export function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelle
               list below, as its own collapsible. HK feedback: should be
               consistent with Today's Brief / Medical Flags / Last
               Session pattern. */}
-
-          {/* HK Jun 2 2026: Client details + Notes carried over from the
-              retired page rail, into the left column. Rows arrive
-              pre-formatted from the parent. Renders only when provided, so
-              the slide-over is unaffected. */}
-          {clientDetailRows && clientDetailRows.length > 0 && (
-            <div style={{background:'#fff',border:'1px solid #EEE9DD',borderRadius:12,padding:'12px 14px'}}>
-              <div style={{fontSize:11,fontWeight:700,color:SO.inkMute,textTransform:'uppercase',letterSpacing:'0.06em',marginBottom:8}}>Client details</div>
-              <div style={{fontSize:13}}>
-                {clientDetailRows.map(([label, value], i) => (
-                  <div key={label} style={{display:'flex',justifyContent:'space-between',gap:12,padding:'5px 0',borderTop: i === 0 ? 'none' : '1px solid #F0ECE2'}}>
-                    <span style={{color:SO.inkMute,flexShrink:0}}>{label}</span>
-                    <span style={{color:SO.ink,textAlign:'right',wordBreak:'break-word'}}>{value}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-          {clientNotes && (
-            <div style={{background:'#FFFBEB',border:'1px solid #FCD34D',borderRadius:12,padding:'12px 14px'}}>
-              <div style={{fontSize:11,fontWeight:700,color:'#92400E',textTransform:'uppercase',letterSpacing:'0.06em',marginBottom:6}}>Notes</div>
-              <div style={{fontSize:13,color:'#78350F',lineHeight:1.6,fontStyle:'italic',fontFamily:'Georgia, serif',whiteSpace:'pre-wrap'}}>{clientNotes}</div>
-            </div>
-          )}
         </div>
         <div style={{
           padding: 20,
