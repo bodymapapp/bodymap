@@ -327,8 +327,16 @@ export default function BookingDetailPage({ therapist }) {
                 <div style={{ minWidth: 0 }}>
                   <div style={{ fontFamily: 'Georgia, serif', fontSize: 17, fontWeight: 700, color: C.forest, lineHeight: 1.2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{appt.client}</div>
                   <div style={{ fontSize: 12, color: C.inkMute, marginTop: 2 }}>{appt.service} · {appt.duration} min</div>
+                  {appt.clientId && <a href={`/dashboard/clients/${appt.clientId}`} style={{ display: 'inline-block', marginTop: 4, fontSize: 12, fontWeight: 600, color: C.forest, textDecoration: 'none' }}>View profile ›</a>}
                 </div>
               </div>
+              {(appt.status === 'pending-intake' || (appt.deposit_required && appt.deposit_paid) || appt.reminder_sent) && (
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 14 }}>
+                  {appt.status === 'pending-intake' && <span style={{ background: '#FEF3C7', color: '#B45309', border: '1px solid #FDE68A', borderRadius: 999, padding: '4px 10px', fontSize: 12, fontWeight: 700 }}>No Intake</span>}
+                  {appt.deposit_required && appt.deposit_paid && <span style={{ background: '#EAF6EE', color: '#15803D', border: '1px solid #BBE7C9', borderRadius: 999, padding: '4px 10px', fontSize: 12, fontWeight: 700 }}>✓ Deposit paid</span>}
+                  {appt.reminder_sent && <span style={{ background: '#EAF6EE', color: '#15803D', border: '1px solid #BBE7C9', borderRadius: 999, padding: '4px 10px', fontSize: 12, fontWeight: 700 }}>🔔 Reminded</span>}
+                </div>
+              )}
               <div style={{ borderTop: `1px solid ${C.line}`, paddingTop: 12, fontSize: 13 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0' }}><span style={{ color: C.inkMute }}>When</span><span style={{ color: C.ink, textAlign: 'right' }}>{niceDate} · {appt.time}</span></div>
                 {appt.locationName && <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0' }}><span style={{ color: C.inkMute }}>Where</span><span style={{ color: C.ink, textAlign: 'right' }}>{appt.locationName}</span></div>}
@@ -389,6 +397,7 @@ export default function BookingDetailPage({ therapist }) {
         onReschedule={(a) => setRescheduleAppt(a)}
         onCancelled={loadBooking}
         onRequestCancel={(payload) => setCancelContext(payload)}
+        railPresent={isDesktop}
         showToast={(msg) => setToast(msg)}
         onRequestCheckout={(payload) => setCheckoutContext(payload)}
         paymentsRefreshTick={paymentsRefreshTick}

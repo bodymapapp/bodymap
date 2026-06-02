@@ -1568,7 +1568,7 @@ function RecapEditor({ session, parsedSoap, therapist, allSessions, onSaved, onR
 
 // HK May 31 2026 (Side panel A): DetailPanel exported so BookingDetailPage
 // can render it in mode='page' as a full-page route.
-export function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled, showToast, onRequestCheckout, onRequestCancel, paymentsRefreshTick = 0, mode = 'slide' }) {
+export function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled, showToast, onRequestCheckout, onRequestCancel, railPresent = false, paymentsRefreshTick = 0, mode = 'slide' }) {
   const notify = showToast || (() => {});
   // Mobile detection for paddingBottom that clears the mobile bottom nav
   // (74px) so the Cancel button doesn't get cut off. HK reported May 25
@@ -3239,6 +3239,7 @@ export function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelle
                        (No Intake / Signed / etc) right-aligned at top
                        of card balancing the date. "Open full page" link
                        at bottom right corner, quiet. */}
+          {!railPresent && (
           <div style={{display:'flex',alignItems:'flex-start',gap:12,marginBottom:10}}>
             {displayAppt.clientId ? (
               <a
@@ -3299,6 +3300,7 @@ export function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelle
               </button>
             )}
           </div>
+          )}
 
           {/* Date + time + service card. The visual anchor. Date is the
               biggest type; time and service nest below. Status pill on
@@ -4183,7 +4185,7 @@ export function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelle
               the prior verbose 'Reminder sent / pending' line which
               read as if intake was pending. Now uses paid + reminder
               + deposit as compact pills, only shown when relevant. */}
-          {!appt.preview && (
+          {!railPresent && !appt.preview && (
             <div style={{display:'flex',flexWrap:'wrap',gap:6,alignItems:'center'}}>
               {paidTotalCents > 0 && (
                 <span style={{display:'inline-flex',alignItems:'center',gap:5,padding:'4px 9px',borderRadius:999,background:'#F0FDF4',color:'#15803D',fontSize:11,fontWeight:700,border:'1px solid #BBF7D0'}}>
