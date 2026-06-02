@@ -388,6 +388,7 @@ export default function BookingDetailPage({ therapist }) {
         onClose={handleBack}
         onReschedule={(a) => setRescheduleAppt(a)}
         onCancelled={loadBooking}
+        onRequestCancel={(payload) => setCancelContext(payload)}
         showToast={(msg) => setToast(msg)}
         onRequestCheckout={(payload) => setCheckoutContext(payload)}
         paymentsRefreshTick={paymentsRefreshTick}
