@@ -45,6 +45,8 @@ export default function BookingDetailPage({ therapist }) {
   const [rescheduleAppt, setRescheduleAppt] = useState(null);
   const [rebookAppt, setRebookAppt] = useState(null);
   const checkoutFnRef = useRef(null);
+  const sessionEditRef = useRef(null);
+  const [sessionEditorSlot, setSessionEditorSlot] = useState(null);
   // HK Jun 1 2026: the left-rail no-show/cancel buttons open the same
   // full-screen CancellationChargeModal used elsewhere, rendered at this
   // page level so a refresh cannot tear it down.
@@ -352,13 +354,15 @@ export default function BookingDetailPage({ therapist }) {
               )}
               <div style={{ borderTop: `1px solid ${C.line}`, paddingTop: 12, fontSize: 13 }}>
                 <div style={{ fontSize: 11, fontWeight: 700, color: C.inkMute, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>Session</div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0' }}><span style={{ color: C.inkMute }}>When</span><span style={{ color: C.ink, textAlign: 'right' }}>{niceDate} · {appt.time}</span></div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0' }}><span style={{ color: C.inkMute }}>Service</span><span style={{ color: C.ink, textAlign: 'right' }}>{appt.service} · {appt.duration} min</span></div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '4px 0' }}><span style={{ color: C.inkMute }}>When</span><span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><span style={{ color: C.ink, textAlign: 'right' }}>{niceDate} · {appt.time}</span>{canAct && <button onClick={() => sessionEditRef.current && sessionEditRef.current.toggleTime()} title="Edit time" style={{ background: 'transparent', border: `1px solid ${C.line}`, borderRadius: 7, padding: '2px 6px', fontSize: 11, lineHeight: 1, cursor: 'pointer' }}>✏️</button>}</span></div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '4px 0' }}><span style={{ color: C.inkMute }}>Service</span><span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><span style={{ color: C.ink, textAlign: 'right' }}>{appt.service} · {appt.duration} min</span>{canAct && <button onClick={() => sessionEditRef.current && sessionEditRef.current.toggleService()} title="Edit service, duration, location, add-ons" style={{ background: 'transparent', border: `1px solid ${C.line}`, borderRadius: 7, padding: '2px 6px', fontSize: 11, lineHeight: 1, cursor: 'pointer' }}>✏️</button>}</span></div>
                 {appt.locationName && <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0' }}><span style={{ color: C.inkMute }}>Where</span><span style={{ color: C.ink, textAlign: 'right' }}>{appt.locationName}</span></div>}
                 <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0' }}><span style={{ color: C.inkMute }}>Status</span><span style={{ color: C.forest, fontWeight: 600 }}>{statusLabel}</span></div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0' }}><span style={{ color: C.inkMute }}>Price</span><span style={{ color: C.ink }}>${(appt.price || 0).toFixed(2)}</span></div>
               </div>
             </div>
+
+            <div ref={setSessionEditorSlot} />
 
             {detailRows.length > 0 && (
               <div style={{ background: '#fff', border: `1px solid ${C.line}`, borderRadius: 14, padding: '14px 18px' }}>
@@ -444,6 +448,8 @@ export default function BookingDetailPage({ therapist }) {
         railPresent={isDesktop}
         onInsight={setInsight}
         checkoutFnRef={checkoutFnRef}
+        sessionEditRef={sessionEditRef}
+        sessionEditorSlot={sessionEditorSlot}
         showToast={(msg) => setToast(msg)}
         onRequestCheckout={(payload) => setCheckoutContext(payload)}
         paymentsRefreshTick={paymentsRefreshTick}

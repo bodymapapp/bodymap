@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { useSearchParams, useParams, useNavigate, useLocation } from 'react-router-dom';
 import { supabase, db } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
@@ -1570,7 +1571,7 @@ function RecapEditor({ session, parsedSoap, therapist, allSessions, onSaved, onR
 
 // HK May 31 2026 (Side panel A): DetailPanel exported so BookingDetailPage
 // can render it in mode='page' as a full-page route.
-export function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled, showToast, onRequestCheckout, onRequestCancel, railPresent = false, onInsight, checkoutFnRef, paymentsRefreshTick = 0, mode = 'slide' }) {
+export function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled, showToast, onRequestCheckout, onRequestCancel, railPresent = false, onInsight, checkoutFnRef, sessionEditRef, sessionEditorSlot, paymentsRefreshTick = 0, mode = 'slide' }) {
   const notify = showToast || (() => {});
   // Mobile detection for paddingBottom that clears the mobile bottom nav
   // (74px) so the Cancel button doesn't get cut off. HK reported May 25
@@ -2261,6 +2262,18 @@ export function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelle
   // ref each render so the button always invokes the latest closure.
   useEffect(() => {
     if (checkoutFnRef) checkoutFnRef.current = openCheckout;
+  });
+
+  // HK Jun 2 2026: on the desktop page the When / Service pencils live in
+  // the left box (BookingDetailPage). They open these same editors through
+  // this ref, so the edit logic (paid guard, conflict check) stays here.
+  useEffect(() => {
+    if (sessionEditRef) {
+      sessionEditRef.current = {
+        toggleTime: () => setEditTime(v => !v),
+        toggleService: () => { toggleServiceEditor(); },
+      };
+    }
   });
 
   async function saveEndTime() {
@@ -3148,7 +3161,10 @@ export function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelle
 
           {/* Date + time + service card. The visual anchor. Date is the
               biggest type; time and service nest below. Status pill on
-              the right top corner. Open-as-full-page link bottom right. */}
+              the right top corner. Open-as-full-page link bottom right.
+              HK Jun 2 2026: on the desktop page the left box carries the
+              session info + edit pencils, so this card is slide/mobile only. */}
+          {!railPresent && (
           <div style={{background:'#F9FAFB',borderRadius:12,padding:'14px 16px'}}>
             <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',gap:12,marginBottom:10}}>
               <div style={{flex:1,minWidth:0}}>
@@ -3224,6 +3240,7 @@ export function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelle
               </div>
             )}
           </div>
+          )}
 
           {/* HK May 31 2026: trace banner. When a booking has been marked
               no-show / cancelled / refunded / rescheduled, the status pill
@@ -3651,7 +3668,8 @@ export function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelle
             </div>
           )}
 
-          {editTime && !appt.preview && (
+          {editTime && !appt.preview && (() => {
+            const panel = (
             <div style={{background:'#F0FDF4',border:'1.5px solid #86EFAC',borderRadius:10,padding:'14px 16px',margin:'0 0 0 0'}}>
               <div style={{fontSize:12,fontWeight:700,color:'#2A5741',marginBottom:10}}>Edit session times</div>
               <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:12}}>
@@ -3666,12 +3684,20 @@ export function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelle
                     style={{width:'100%',padding:'9px 10px',border:'1.5px solid #D1D5DB',borderRadius:8,fontSize:14,outline:'none',boxSizing:'border-box'}}/>
                 </div>
               </div>
-              <button onClick={saveEndTime} disabled={savingTime}
-                style={{width:'100%',padding:'9px 0',background:'#2A5741',color:'#fff',border:'none',borderRadius:8,fontSize:13,fontWeight:700,cursor:'pointer',opacity:savingTime?0.6:1}}>
-                {savingTime ? 'Saving...' : 'Save times'}
-              </button>
+              <div style={{display:'flex',gap:8}}>
+                <button onClick={()=>setEditTime(false)}
+                  style={{flex:'0 0 auto',padding:'9px 14px',background:'#fff',color:'#6B7280',border:'1px solid #D1D5DB',borderRadius:8,fontSize:13,fontWeight:600,cursor:'pointer'}}>
+                  Cancel
+                </button>
+                <button onClick={saveEndTime} disabled={savingTime}
+                  style={{flex:1,padding:'9px 0',background:'#2A5741',color:'#fff',border:'none',borderRadius:8,fontSize:13,fontWeight:700,cursor:'pointer',opacity:savingTime?0.6:1}}>
+                  {savingTime ? 'Saving...' : 'Save times'}
+                </button>
+              </div>
             </div>
-          )}
+            );
+            return railPresent && sessionEditorSlot ? createPortal(panel, sessionEditorSlot) : panel;
+          })()}
 
           {editService && !appt.preview && (() => {
             const isPaid = (appt.paid_cents || 0) > 0;
@@ -3694,7 +3720,7 @@ export function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelle
               ...baseDurations,
             ])).sort((a, b) => a - b);
 
-            return (
+            const panel = (
               <div style={{background:'#FFF7ED',border:'1.5px solid #FED7AA',borderRadius:10,padding:'14px 16px'}}>
                 <div style={{fontSize:12,fontWeight:700,color:'#9A3412',marginBottom:10}}>Edit service</div>
 
@@ -3870,12 +3896,19 @@ export function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelle
                   </div>
                 )}
 
-                <button onClick={saveServiceEdit} disabled={savingService}
-                  style={{width:'100%',padding:'10px 0',background:'#9A3412',color:'#fff',border:'none',borderRadius:8,fontSize:13,fontWeight:700,cursor:savingService?'wait':'pointer',opacity:savingService?0.6:1,fontFamily:'inherit'}}>
-                  {savingService ? 'Saving...' : 'Save changes'}
-                </button>
+                <div style={{display:'flex',gap:8}}>
+                  <button onClick={()=>setEditService(false)}
+                    style={{flex:'0 0 auto',padding:'10px 14px',background:'#fff',color:'#6B7280',border:'1px solid #D1D5DB',borderRadius:8,fontSize:13,fontWeight:600,cursor:'pointer',fontFamily:'inherit'}}>
+                    Cancel
+                  </button>
+                  <button onClick={saveServiceEdit} disabled={savingService}
+                    style={{flex:1,padding:'10px 0',background:'#9A3412',color:'#fff',border:'none',borderRadius:8,fontSize:13,fontWeight:700,cursor:savingService?'wait':'pointer',opacity:savingService?0.6:1,fontFamily:'inherit'}}>
+                    {savingService ? 'Saving...' : 'Save changes'}
+                  </button>
+                </div>
               </div>
             );
+            return railPresent && sessionEditorSlot ? createPortal(panel, sessionEditorSlot) : panel;
           })()}
 
           {/* Phase 24d: Session journey moved into the cockpit section
