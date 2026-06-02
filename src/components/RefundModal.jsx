@@ -63,6 +63,7 @@ export default function RefundModal({
   const [step, setStep] = useState('confirm'); // 'confirm' | 'custom' | 'processing' | 'done' | 'error'
   const [customAmount, setCustomAmount] = useState(fullAmountDollars);
   const [errorMsg, setErrorMsg] = useState(null);
+  const [errorCode, setErrorCode] = useState('');
 
   async function issueRefund(amountCents) {
     setStep('processing');
@@ -91,8 +92,42 @@ export default function RefundModal({
       });
       const data = await res.json();
       if (!res.ok || data.error) {
-        throw new Error(data.error || data.detail || 'Refund failed');
+        const code = data.error || '';
+        setErrorCode(code);
+        throw new Error(data.detail || code || 'Refund failed');
       }
+      setStep('done');
+      onRefunded?.(data);
+    } catch (e) {
+      setErrorMsg(String(e?.message || e));
+      setStep('error');
+    }
+  }
+
+  // HK Jun 1 2026: mark a payment refunded locally when the original
+  // processor can no longer be reached (e.g. it was charged on Stripe
+  // and the therapist has since disconnected Stripe and moved to
+  // Square). The money is returned out-of-band in that processor's
+  // own dashboard; this just reconciles MyBodyMap's record.
+  async function markRefundedLocally(amountCents) {
+    setStep('processing');
+    setErrorMsg(null);
+    try {
+      const supabaseUrl = process.env.REACT_APP_SUPABASE_URL;
+      const anonKey = process.env.REACT_APP_SUPABASE_ANON_KEY;
+      const body = {
+        session_payment_id: payment.id,
+        therapist_id: therapist.id,
+        offline_only: true,
+      };
+      if (amountCents && amountCents !== fullAmountCents) body.refund_amount_cents = amountCents;
+      const res = await fetch(`${supabaseUrl}/functions/v1/refund-session-payment`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${anonKey}`, 'apikey': anonKey },
+        body: JSON.stringify(body),
+      });
+      const data = await res.json();
+      if (!res.ok || data.error) throw new Error(data.detail || data.error || 'Could not mark refunded');
       setStep('done');
       onRefunded?.(data);
     } catch (e) {
@@ -271,38 +306,65 @@ export default function RefundModal({
           </div>
         )}
 
-        {step === 'error' && (
+        {step === 'error' && (() => {
+          // HK Jun 1 2026: turn raw error codes into plain language and,
+          // when the original processor is no longer connected, offer to
+          // reconcile the record locally instead of dead-ending.
+          const disconnectedProcessor =
+            errorCode === 'stripe_not_connected_for_therapist' ||
+            errorCode === 'square_not_connected_for_therapist' ||
+            errorCode === 'no_square_payment_id';
+          const wasStripe = errorCode === 'stripe_not_connected_for_therapist';
+          const friendly = disconnectedProcessor
+            ? `This payment was taken through ${wasStripe ? 'Stripe' : 'Square'}, which is not connected right now. Refund it in your ${wasStripe ? 'Stripe' : 'Square'} dashboard, then mark it refunded here so your records match.`
+            : (errorMsg || 'Refund failed.');
+          return (
           <div style={{ padding: '24px' }}>
             <div style={{
               background: C.redLight, border: `1px solid #FCA5A5`,
               borderRadius: 10, padding: '12px 14px', marginBottom: 14,
               fontSize: 13, color: C.redDark, lineHeight: 1.5,
             }}>
-              {errorMsg || 'Refund failed.'}
+              {friendly}
             </div>
-            <div style={{ display: 'flex', gap: 8 }}>
-              <button onClick={() => setStep('confirm')}
-                style={{
-                  flex: 1,
-                  background: C.forest, color: '#fff', border: 'none',
-                  borderRadius: 10, padding: '12px 16px', fontSize: 14, fontWeight: 700,
-                  cursor: 'pointer',
-                }}>
-                Try again
-              </button>
-              <button onClick={onClose}
-                style={{
-                  flex: 1,
-                  background: 'transparent', color: C.text,
-                  border: `1.5px solid ${C.light}`,
-                  borderRadius: 10, padding: '12px 16px', fontSize: 14, fontWeight: 600,
-                  cursor: 'pointer',
-                }}>
-                Close
-              </button>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {disconnectedProcessor && (
+                <button onClick={() => markRefundedLocally(fullAmountCents)}
+                  style={{
+                    background: C.forest, color: '#fff', border: 'none',
+                    borderRadius: 10, padding: '13px 16px', fontSize: 14, fontWeight: 700,
+                    cursor: 'pointer',
+                  }}>
+                  Mark refunded here
+                </button>
+              )}
+              <div style={{ display: 'flex', gap: 8 }}>
+                {!disconnectedProcessor && (
+                  <button onClick={() => setStep('confirm')}
+                    style={{
+                      flex: 1,
+                      background: C.forest, color: '#fff', border: 'none',
+                      borderRadius: 10, padding: '12px 16px', fontSize: 14, fontWeight: 700,
+                      cursor: 'pointer',
+                    }}>
+                    Try again
+                  </button>
+                )}
+                <button onClick={onClose}
+                  style={{
+                    flex: 1,
+                    background: 'transparent', color: C.text,
+                    border: `1.5px solid ${C.light}`,
+                    borderRadius: 10, padding: '12px 16px', fontSize: 14, fontWeight: 600,
+                    cursor: 'pointer',
+                  }}>
+                  Close
+                </button>
+              </div>
             </div>
           </div>
-        )}
+          );
+        })()}
       </div>
     </>
   );
