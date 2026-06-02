@@ -196,6 +196,25 @@
           });
         } catch (e) {}
 
+        // HK Jun 2 2026: iOS PWAs do NOT fire `load` when resumed from the
+        // background, so the update check below never ran and the app kept
+        // serving the old bundle until a full cold launch. Re-check for a new
+        // service worker whenever the app becomes visible again. This only
+        // calls registration.update(); if a new SW activates it posts
+        // SW_UPDATE_READY and the banner above lets the user refresh. No
+        // auto-reload, so an in-progress edit is never interrupted.
+        let __mbmLastUpdateCheck = 0;
+        document.addEventListener('visibilitychange', async () => {
+          if (document.visibilityState !== 'visible') return;
+          const now = Date.now();
+          if (now - __mbmLastUpdateCheck < 30000) return; // throttle
+          __mbmLastUpdateCheck = now;
+          try {
+            const regs = await navigator.serviceWorker.getRegistrations();
+            await Promise.all(regs.map(r => r.update().catch(() => {})));
+          } catch (e) {}
+        });
+
         window.addEventListener('load', async () => {
           try {
             const regs = await navigator.serviceWorker.getRegistrations();

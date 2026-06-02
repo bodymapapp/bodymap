@@ -9,7 +9,13 @@
 // user controls the refresh moment. Still uses skipWaiting + claim
 // so the message reaches every open client immediately, but the
 // reload itself is user-triggered.
-const CACHE_NAME = 'bodymap-v35';
+//
+// HK Jun 2 2026 v36: bump to purge any stale caches on devices that
+// were stuck on an old bundle (the session-editor fix was deployed but
+// installed PWAs kept serving the old JS from memory on resume). Paired
+// with a visibilitychange update check in index.html so a resumed PWA
+// (which never fires window.load) still notices a new deploy.
+const CACHE_NAME = 'bodymap-v36';
 
 self.addEventListener('install', event => {
   self.skipWaiting();
