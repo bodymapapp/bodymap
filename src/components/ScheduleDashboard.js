@@ -9256,20 +9256,20 @@ export default function ScheduleDashboard({ therapist }) {
         ))}
       </div>
 
-      {/* Action row. HK Jun 2 2026: was three pills with flex-wrap, so
-          on narrow phones the third (Previews) dropped to its own line
-          leaving an awkward gap. Now: Book Appointment is a full-width
-          primary (unmissable for the 70-year-old persona), and Block
-          time + Previews sit as an even two-up below it. Always tidy at
-          any width; the two-up never orphans a button. */}
-      <div style={{display:'flex',flexDirection:'column',gap:8,marginBottom:18,maxWidth:isMobileW?'100%':420}}>
+      {/* Action row. HK Jun 2 2026: web shows all three across one row
+          spanning the page (Book Appointment takes half as the primary,
+          Block time + Previews split the other half). On mobile they
+          stack: Book Appointment full-width primary, Block time +
+          Previews as an even two-up below it. Tidy at any width; the
+          two-up never orphans a button. */}
+      <div style={{display:'flex',flexDirection:isMobileW?'column':'row',gap:8,marginBottom:18,alignItems:'stretch'}}>
         <button onClick={() => setShowCreate(true)}
-          style={{display:'inline-flex',alignItems:'center',justifyContent:'center',gap:6,background:'linear-gradient(135deg,#2A5741,#3D6B54)',color:'#fff',border:'none',borderRadius:22,padding:'12px 18px',fontSize:14,fontWeight:700,cursor:'pointer',whiteSpace:'nowrap',boxShadow:'0 2px 8px rgba(42,87,65,0.25)',minHeight:44,lineHeight:1,width:'100%',WebkitTapHighlightColor:'transparent'}}>
+          style={{display:'inline-flex',alignItems:'center',justifyContent:'center',gap:6,background:'linear-gradient(135deg,#2A5741,#3D6B54)',color:'#fff',border:'none',borderRadius:22,padding:'12px 18px',fontSize:14,fontWeight:700,cursor:'pointer',whiteSpace:'nowrap',boxShadow:'0 2px 8px rgba(42,87,65,0.25)',minHeight:44,lineHeight:1,width:isMobileW?'100%':'auto',flex:isMobileW?'none':2,WebkitTapHighlightColor:'transparent'}}>
           <span style={{fontSize:17,lineHeight:1,marginTop:-1}}>+</span>
           <span>Book Appointment</span>
         </button>
 
-        <div style={{display:'flex',gap:8}}>
+        <div style={{display:'flex',gap:8,flex:isMobileW?'none':2}}>
           <button onClick={() => setShowBlockTime(true)}
             style={{flex:1,display:'inline-flex',alignItems:'center',justifyContent:'center',gap:6,background:'#fff',color:'#9A3412',border:'1.5px solid #FED7AA',borderRadius:22,padding:'10px 14px',fontSize:13,fontWeight:700,cursor:'pointer',whiteSpace:'nowrap',minHeight:42,lineHeight:1,WebkitTapHighlightColor:'transparent'}}>
             <span style={{fontSize:14,lineHeight:1}}>⏸</span>
