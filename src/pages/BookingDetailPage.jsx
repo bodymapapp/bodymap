@@ -300,12 +300,14 @@ export default function BookingDetailPage({ therapist }) {
         <button onClick={handleBack}
           style={{
             background: '#fff', border: `1px solid ${C.line}`,
-            borderRadius: 999, padding: '8px 16px',
+            borderRadius: 999, padding: '8px 16px 8px 12px',
             fontSize: 13, fontWeight: 600, color: C.ink,
             cursor: 'pointer',
-            display: 'inline-flex', alignItems: 'center', gap: 6,
+            display: 'inline-flex', alignItems: 'center', gap: 5,
+            boxShadow: '0 1px 2px rgba(31,65,49,0.06)',
           }}>
-          ← Schedule
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={C.forest} strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+          Schedule
         </button>
       </div>
 
@@ -338,6 +340,12 @@ export default function BookingDetailPage({ therapist }) {
                   {appt.reminder_sent && <span style={{ background: '#EAF6EE', color: '#15803D', border: '1px solid #BBE7C9', borderRadius: 999, padding: '4px 10px', fontSize: 12, fontWeight: 700 }}>🔔 Reminded</span>}
                 </div>
               )}
+              {insight && (
+                <div style={{ background: insight.tone === 'warn' ? '#FEF3C7' : '#F1F6F1', border: insight.tone === 'warn' ? '1px solid #FDE68A' : '1px solid #DDE8DD', borderRadius: 10, padding: '10px 12px', display: 'flex', gap: 8, alignItems: 'flex-start', marginBottom: 14 }}>
+                  <span style={{ fontSize: 14, lineHeight: 1.3 }}>{insight.icon}</span>
+                  <span style={{ fontSize: 13, color: insight.tone === 'warn' ? '#78350F' : '#41514A', lineHeight: 1.45, fontWeight: insight.tone === 'warn' ? 700 : 500 }}>{insight.text}</span>
+                </div>
+              )}
               <div style={{ borderTop: `1px solid ${C.line}`, paddingTop: 12, fontSize: 13 }}>
                 <div style={{ fontSize: 11, fontWeight: 700, color: C.inkMute, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>Session</div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0' }}><span style={{ color: C.inkMute }}>When</span><span style={{ color: C.ink, textAlign: 'right' }}>{niceDate} · {appt.time}</span></div>
@@ -362,22 +370,12 @@ export default function BookingDetailPage({ therapist }) {
               </div>
             )}
 
-            {clientRow?.notes && (
-              <div style={{ background: '#FFFBEB', border: '1px solid #FCD34D', borderRadius: 14, padding: '14px 18px' }}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: '#92400E', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>Notes</div>
-                <div style={{ fontSize: 13, color: '#78350F', lineHeight: 1.6, fontStyle: 'italic', fontFamily: 'Georgia, serif', whiteSpace: 'pre-wrap' }}>{clientRow.notes}</div>
+            {(clientRow?.notes || appt.notes) && (
+              <div style={{ background: '#FBF7EC', border: '1px solid #E7DFC9', borderRadius: 14, padding: '14px 18px' }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: '#8A7B53', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>Notes</div>
+                {clientRow?.notes && <div style={{ fontSize: 13, color: '#5F5640', lineHeight: 1.6, fontStyle: 'italic', fontFamily: 'Georgia, serif', whiteSpace: 'pre-wrap' }}>{clientRow.notes}</div>}
+                {appt.notes && <div style={{ fontSize: 13, color: '#5F5640', lineHeight: 1.6, fontStyle: 'italic', fontFamily: 'Georgia, serif', whiteSpace: 'pre-wrap', marginTop: clientRow?.notes ? 10 : 0, paddingTop: clientRow?.notes ? 10 : 0, borderTop: clientRow?.notes ? '1px solid #E7DFC9' : 'none' }}>{appt.notes}</div>}
               </div>
-            )}
-
-            {insight && (
-              <div style={{ background: insight.tone === 'warn' ? '#FEF3C7' : '#F0F7F1', border: insight.tone === 'warn' ? '1px solid #FDE68A' : '1px solid #DCE7DC', borderRadius: 14, padding: '12px 14px', display: 'flex', gap: 8, alignItems: 'flex-start' }}>
-                <span style={{ fontSize: 14, lineHeight: 1.3 }}>{insight.icon}</span>
-                <span style={{ fontSize: 13, color: insight.tone === 'warn' ? '#78350F' : '#374151', lineHeight: 1.45, fontWeight: insight.tone === 'warn' ? 700 : 500 }}>{insight.text}</span>
-              </div>
-            )}
-
-            {appt.notes && (
-              <div style={{ background: '#FFFBEB', border: '1px solid #FCD34D', borderRadius: 14, padding: '12px 14px', fontSize: 13, color: '#78350F', lineHeight: 1.5, fontStyle: 'italic', fontFamily: 'Georgia, serif', whiteSpace: 'pre-wrap' }}>{appt.notes}</div>
             )}
 
             {canAct && (
