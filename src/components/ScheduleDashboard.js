@@ -540,7 +540,7 @@ function Label({ children, color }) {
 // CockpitSection's existing call site does not have to change.
 const ChevronIcon = SharedChevronIcon;
 
-function CockpitSection({ sectionKey, icon, title, subtitle, isOpen, onToggle, warn = false, children }) {
+function CockpitSection({ sectionKey, index, icon, title, subtitle, isOpen, onToggle, warn = false, children }) {
   // HK May 25 2026 (Phase 22): visual upgrade for collapsibles.
   // Previously the row looked indistinguishable from a heading.
   // Now: collapsed state gets a soft cream tint that reads as
@@ -548,11 +548,10 @@ function CockpitSection({ sectionKey, icon, title, subtitle, isOpen, onToggle, w
   // desktop. SVG chevron replaces unicode triangle. The pill
   // background colors come from the Billing DeepDiveCard pattern.
   const [hover, setHover] = useState(false);
-  const cardBg = warn
-    ? '#FFFBEB'
-    : isOpen
-      ? '#fff'
-      : (hover ? '#F8F2E5' : '#FCF8EE');
+  // HK Jun 2 2026: cards go to clean white (matching the approved
+  // numbered-row mockup) instead of the cream collapsed tint. Warn
+  // state still uses the soft amber. Hover lifts the shadow subtly.
+  const cardBg = warn ? '#FFFBEB' : '#fff';
   const borderColor = warn ? '#FDE68A' : isOpen ? '#D6E0D4' : '#E5DDD2';
 
   return (
@@ -587,6 +586,15 @@ function CockpitSection({ sectionKey, icon, title, subtitle, isOpen, onToggle, w
         }}
         aria-expanded={isOpen}
       >
+        {index != null && (
+          <div style={{
+            fontFamily: 'Georgia, "Times New Roman", serif',
+            fontSize: 15, fontWeight: 600, color: '#C7D0C8',
+            width: 20, flexShrink: 0, textAlign: 'left', lineHeight: 1.2,
+          }}>
+            {String(index).padStart(2, '0')}
+          </div>
+        )}
         <div style={{
           width: 38, height: 38, borderRadius: 10,
           background: isOpen ? '#EEF3EE' : '#F0E7D4',
@@ -598,13 +606,14 @@ function CockpitSection({ sectionKey, icon, title, subtitle, isOpen, onToggle, w
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{
-            fontSize: 14.5,
+            fontFamily: 'Georgia, "Times New Roman", serif',
+            fontSize: 15.5,
             fontWeight: 700,
             color: '#1F2937',
-            lineHeight: 1.3,
+            lineHeight: 1.25,
             letterSpacing: '-0.005em',
           }}>{title}</div>
-          {subtitle && <div style={{ fontSize: 12, color: '#6B7280', marginTop: 3, lineHeight: 1.4 }}>{subtitle}</div>}
+          {subtitle && <div style={{ fontSize: 12, color: '#6B7280', marginTop: 3, lineHeight: 1.45 }}>{subtitle}</div>}
         </div>
         <div style={{
           width: 34, height: 34, borderRadius: '50%',
@@ -3112,6 +3121,11 @@ export function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelle
     );
   }
 
+  // HK Jun 2 2026: sequential number for the Care-history cards (01..N).
+  // Reset each render; ++ runs only for cards that actually render
+  // (short-circuited conditionals), so numbering has no gaps.
+  let cockpitIndex = 0;
+
   return (
     <>
       {/* HK May 30 2026: backdrop no longer closes on tap. Previously
@@ -4251,18 +4265,11 @@ export function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelle
                 </button>
               </div>
 
-              {/* HK Jun 1 2026: on the desktop full page, lay the cockpit
-                  cards out in two columns so they use the width instead
-                  of stacking into one tall lonely strip. On the
-                  slide-over and on mobile they stay a single column. The
-                  grid auto-flows cards into the shorter column so heights
-                  stay balanced as accordions open/close. */}
-              <div style={(mode === 'page' && !isMobileW) ? {
-                display: 'grid',
-                gridTemplateColumns: '1fr 1fr',
-                gap: 12,
-                alignItems: 'start',
-              } : {
+              {/* HK Jun 2 2026: cards go one per row across the full
+                  width (numbered 01..N), matching the approved mockup.
+                  Replaces the earlier two-column page grid. Same single
+                  column on slide-over and mobile. */}
+              <div style={{
                 display: 'flex',
                 flexDirection: 'column',
                 gap: 12,
@@ -4271,6 +4278,7 @@ export function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelle
               {/* ─── Session Journey panel (4-dot timeline) ─── */}
               <CockpitSection
                 sectionKey="journey"
+                index={++cockpitIndex}
                 icon="🧭"
                 title="Session journey"
                 subtitle={
@@ -4367,6 +4375,7 @@ export function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelle
               {/* ─── Brief panel (intake summary) ─── */}
               <CockpitSection
                 sectionKey="brief"
+                index={++cockpitIndex}
                 icon="🌿"
                 title="Today's Brief"
                 subtitle={intakeDone ? "What this client wants today" : "Intake not yet submitted"}
@@ -4669,6 +4678,7 @@ export function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelle
                   state only shows during the brief loading window. */}
               <CockpitSection
                 sectionKey="record"
+                index={++cockpitIndex}
                 icon="✍️"
                 title="Session record · SOAP"
                 subtitle={
@@ -4738,6 +4748,7 @@ export function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelle
               {(currentSession?.completed || hasRecap || (isFutureSession && recapOverride)) && (
                 <CockpitSection
                   sectionKey="recap"
+                  index={++cockpitIndex}
                   icon="💌"
                   title="Client recap"
                   subtitle={
@@ -4795,6 +4806,7 @@ export function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelle
               {(medicalFlagsFired.length > 0 || currentSession?.med_flag === 'none') && (
                 <CockpitSection
                   sectionKey="medical"
+                  index={++cockpitIndex}
                   icon={medicalFlagsFired.length > 0 ? "⚠️" : "🩺"}
                   title="Medical flags"
                   subtitle={medicalFlagsFired.length > 0 ? `${medicalFlagsFired.length} flagged` : "None flagged"}
@@ -4824,6 +4836,7 @@ export function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelle
               {lastSession && (
                 <CockpitSection
                   sectionKey="last_session"
+                  index={++cockpitIndex}
                   icon="📝"
                   title="Last session"
                   subtitle={lastSession.created_at ? `${Math.floor((Date.now() - new Date(lastSession.created_at).getTime()) / 86400000)} days ago` : ''}
@@ -4843,8 +4856,9 @@ export function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelle
               {allSessions.length >= 2 && (
                 <CockpitSection
                   sectionKey="patterns"
+                  index={++cockpitIndex}
                   icon="📊"
-                  title="Body Map Patterns"
+                  title="MyBodyMap Patterns"
                   subtitle={`${allSessions.length} sessions overlaid`}
                   isOpen={openSections.patterns !== false}
                   onToggle={() => toggleSection('patterns')}
