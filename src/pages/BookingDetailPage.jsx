@@ -298,7 +298,7 @@ export default function BookingDetailPage({ therapist }) {
   ].filter(([, v]) => v) : [];
 
   return (
-    <div>
+    <div style={{ padding: '20px 32px 48px', maxWidth: 1320, margin: '0 auto' }}>
       <div style={{ marginBottom: 14, display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
         <button onClick={handleBack}
           style={{
@@ -336,9 +336,10 @@ export default function BookingDetailPage({ therapist }) {
                   {appt.clientId && <a href={`/dashboard/clients/${appt.clientId}`} style={{ display: 'inline-block', marginTop: 2, fontSize: 12, fontWeight: 600, color: C.forest, textDecoration: 'none' }}>View profile ›</a>}
                 </div>
               </div>
-              {(appt.status === 'pending-intake' || (appt.deposit_required && appt.deposit_paid) || appt.reminder_sent) && (
+              {(appt.status === 'pending-intake' || appt.status === 'intake-done' || appt.status === 'complete' || (appt.deposit_required && appt.deposit_paid) || appt.reminder_sent) && (
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 14 }}>
                   {appt.status === 'pending-intake' && <span style={{ background: '#FEF3C7', color: '#B45309', border: '1px solid #FDE68A', borderRadius: 999, padding: '4px 10px', fontSize: 12, fontWeight: 700 }}>No Intake</span>}
+                  {(appt.status === 'intake-done' || appt.status === 'complete') && <span style={{ background: '#EAF6EE', color: '#15803D', border: '1px solid #BBE7C9', borderRadius: 999, padding: '4px 10px', fontSize: 12, fontWeight: 700 }}>✓ Intake received</span>}
                   {appt.deposit_required && appt.deposit_paid && <span style={{ background: '#EAF6EE', color: '#15803D', border: '1px solid #BBE7C9', borderRadius: 999, padding: '4px 10px', fontSize: 12, fontWeight: 700 }}>✓ Deposit paid</span>}
                   {appt.reminder_sent && <span style={{ background: '#EAF6EE', color: '#15803D', border: '1px solid #BBE7C9', borderRadius: 999, padding: '4px 10px', fontSize: 12, fontWeight: 700 }}>🔔 Reminded</span>}
                 </div>
@@ -374,10 +375,20 @@ export default function BookingDetailPage({ therapist }) {
             )}
 
             {(clientRow?.notes || appt.notes) && (
-              <div style={{ background: '#FBF7EC', border: '1px solid #E7DFC9', borderRadius: 14, padding: '14px 18px' }}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: '#8A7B53', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>Notes</div>
-                {clientRow?.notes && <div style={{ fontSize: 13, color: '#5F5640', lineHeight: 1.6, fontStyle: 'italic', fontFamily: 'Georgia, serif', whiteSpace: 'pre-wrap' }}>{clientRow.notes}</div>}
-                {appt.notes && <div style={{ fontSize: 13, color: '#5F5640', lineHeight: 1.6, fontStyle: 'italic', fontFamily: 'Georgia, serif', whiteSpace: 'pre-wrap', marginTop: clientRow?.notes ? 10 : 0, paddingTop: clientRow?.notes ? 10 : 0, borderTop: clientRow?.notes ? '1px solid #E7DFC9' : 'none' }}>{appt.notes}</div>}
+              <div style={{ background: '#fff', border: `1px solid ${C.line}`, borderRadius: 14, padding: '14px 18px' }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: C.inkMute, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>Notes</div>
+                {clientRow?.notes && (
+                  <div style={{ marginBottom: appt.notes ? 12 : 0 }}>
+                    <div style={{ fontSize: 10.5, fontWeight: 700, color: '#5E7A52', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 5, display: 'flex', alignItems: 'center', gap: 5 }}><span>🌿</span>Client preferences</div>
+                    <div style={{ fontSize: 13, color: '#3F4A39', lineHeight: 1.6, fontFamily: 'Georgia, serif', fontStyle: 'italic', whiteSpace: 'pre-wrap' }}>{clientRow.notes}</div>
+                  </div>
+                )}
+                {appt.notes && (
+                  <div style={{ borderTop: clientRow?.notes ? `1px solid ${C.line}` : 'none', paddingTop: clientRow?.notes ? 12 : 0 }}>
+                    <div style={{ fontSize: 10.5, fontWeight: 700, color: '#A97D3C', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 5, display: 'flex', alignItems: 'center', gap: 5 }}><span>📌</span>This booking</div>
+                    <div style={{ fontSize: 13, color: '#3F4A39', lineHeight: 1.6, fontFamily: 'Georgia, serif', fontStyle: 'italic', whiteSpace: 'pre-wrap' }}>{appt.notes}</div>
+                  </div>
+                )}
               </div>
             )}
 

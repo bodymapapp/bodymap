@@ -220,10 +220,11 @@ export default function SetupCard({
 
   if (appt.preview || !clientRow) return null;
 
-  const showIntakeSend = appt.status === 'pending-intake';
+  // HK Jun 2 2026: both rows always render. Each turns into a green
+  // confirmation when done (intake received / agreement signed) or sent,
+  // rather than disappearing.
+  const intakeReceived = appt.status !== 'pending-intake';
   const agreementSigned = !!clientRow.practice_agreement_signed_at;
-  // If intake is done AND agreement is signed, nothing actionable here.
-  if (!showIntakeSend && agreementSigned) return null;
 
   const clientEmail = appt.email || clientRow?.email || '';
   const clientPhone = appt.client_phone || appt.phone || clientRow?.phone || '';
@@ -299,27 +300,28 @@ export default function SetupCard({
         <div style={{ fontSize: 11, fontWeight: 700, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>Setup</div>
       )}
 
-      {showIntakeSend && (
-        <div style={{ ...rowStyle, borderBottom: !agreementSigned ? '1px solid #EFEAE0' : 'none' }}>
-          <div style={labelStyle}>
-            <span>📝</span>
-            <span>Send intake</span>
-          </div>
-          {intakeSent ? (
-            <div style={pillRow}>
-              {confirmBadge(`Sent ${fmtSent(intakeSentAt)}`)}
-              {(hasEmail || hasPhone) && resendLink(() => setResendIntake(true))}
-            </div>
-          ) : !hasEmail && !hasPhone ? (
-            noContact
-          ) : (
-            <div style={pillRow}>
-              {pill('Email', '📧', hasEmail ? () => sendIntake('email') : null, !hasEmail || sendingIntake === 'email')}
-              {pill('SMS', '💬', hasPhone ? () => sendIntake('sms') : null, !hasPhone || sendingIntake === 'sms')}
-            </div>
-          )}
+      {/* Intake row: received (green) / sent (green + resend) / pills */}
+      <div style={{ ...rowStyle, borderBottom: '1px solid #EFEAE0' }}>
+        <div style={labelStyle}>
+          <span>📝</span>
+          <span>{intakeReceived ? 'Intake' : 'Send intake'}</span>
         </div>
-      )}
+        {intakeReceived ? (
+          confirmBadge('Intake received')
+        ) : intakeSent ? (
+          <div style={pillRow}>
+            {confirmBadge(`Sent ${fmtSent(intakeSentAt)}`)}
+            {(hasEmail || hasPhone) && resendLink(() => setResendIntake(true))}
+          </div>
+        ) : !hasEmail && !hasPhone ? (
+          noContact
+        ) : (
+          <div style={pillRow}>
+            {pill('Email', '📧', hasEmail ? () => sendIntake('email') : null, !hasEmail || sendingIntake === 'email')}
+            {pill('SMS', '💬', hasPhone ? () => sendIntake('sms') : null, !hasPhone || sendingIntake === 'sms')}
+          </div>
+        )}
+      </div>
 
       <div style={rowStyle}>
         <div style={labelStyle}>

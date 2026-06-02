@@ -3159,7 +3159,7 @@ export function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelle
                 )}
               </div>
               <div style={{flexShrink:0}}>
-                <div style={{background:st.bg,color:st.color,borderRadius:20,padding:'5px 11px',fontSize:11,fontWeight:700,whiteSpace:'nowrap'}}>{st.icon} {st.label}</div>
+                {!railPresent && <div style={{background:st.bg,color:st.color,borderRadius:20,padding:'5px 11px',fontSize:11,fontWeight:700,whiteSpace:'nowrap'}}>{st.icon} {st.label}</div>}
               </div>
             </div>
 
