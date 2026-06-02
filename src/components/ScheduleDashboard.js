@@ -1569,7 +1569,7 @@ function RecapEditor({ session, parsedSoap, therapist, allSessions, onSaved, onR
 
 // HK May 31 2026 (Side panel A): DetailPanel exported so BookingDetailPage
 // can render it in mode='page' as a full-page route.
-export function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled, showToast, onRequestCheckout, onRequestCancel, railPresent = false, onInsight, paymentsRefreshTick = 0, mode = 'slide' }) {
+export function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled, showToast, onRequestCheckout, onRequestCancel, railPresent = false, onInsight, checkoutFnRef, paymentsRefreshTick = 0, mode = 'slide' }) {
   const notify = showToast || (() => {});
   // Mobile detection for paddingBottom that clears the mobile bottom nav
   // (74px) so the Cancel button doesn't get cut off. HK reported May 25
@@ -2426,6 +2426,14 @@ export function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelle
       defaultAmountCents,
     });
   };
+
+  // HK Jun 2 2026: the page's right-column ACTIONS card owns the Checkout
+  // button. It calls back into this same openCheckout so the payload (and
+  // any in-panel edits) stay the single source of truth. We refresh the
+  // ref each render so the button always invokes the latest closure.
+  useEffect(() => {
+    if (checkoutFnRef) checkoutFnRef.current = openCheckout;
+  });
 
   async function saveEndTime() {
     setSavingTime(true);
@@ -4969,6 +4977,7 @@ export function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelle
                         Done: real button shapes with sage-green outline,
                         equal sizing, side by side. Discoverable peers. */}
                     <div style={{display:'flex',gap:8,marginTop:6,marginLeft:38}}>
+                      {(mode === 'slide' || isMobileW) && (
                       <button onClick={openCheckout}
                         style={{
                           flex:1,
@@ -4983,6 +4992,7 @@ export function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelle
                         }}>
                         + Add payment
                       </button>
+                      )}
                       {(() => {
                         const refundable = paymentRows
                           .filter(p => p.status === 'succeeded')
@@ -5023,7 +5033,7 @@ export function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelle
                       </div>
                     </div>
                   </div>
-                ) : (
+                ) : (mode === 'slide' || isMobileW) ? (
                   /* UNPAID STATE. Phase 13.8 (HK May 17 2026):
                       Checkout (primary, filled) and Mark paid (secondary,
                       outlined) as two stacked peer buttons. Previously
@@ -5056,7 +5066,7 @@ export function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelle
                       Checkout
                     </button>
                   </div>
-                )}
+                ) : null}
               </>
             )}
 
@@ -5068,7 +5078,7 @@ export function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelle
                 the top of this cluster (sage outline, not ghost) so
                 the therapist can close the loop. Also present inside
                 the Recap panel for the recap-writing moment. */}
-            {!appt.preview && !confirmCancel && currentSession?.completed && (
+            {!appt.preview && !confirmCancel && currentSession?.completed && (mode === 'slide' || isMobileW) && (
               <button
                 onClick={() => onReschedule({ ...appt, isRebook: true })}
                 style={{

@@ -10,7 +10,7 @@
 // the appt shape DetailPanel expects. Realtime subscription keeps
 // the page fresh while open.
 
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { DetailPanel } from '../components/ScheduleDashboard';
@@ -42,6 +42,8 @@ export default function BookingDetailPage({ therapist }) {
   // the modal at the page level so it survives DetailPanel re-renders.
   const [checkoutContext, setCheckoutContext] = useState(null);
   const [rescheduleAppt, setRescheduleAppt] = useState(null);
+  const [rebookAppt, setRebookAppt] = useState(null);
+  const checkoutFnRef = useRef(null);
   // HK Jun 1 2026: the left-rail no-show/cancel buttons open the same
   // full-screen CancellationChargeModal used elsewhere, rendered at this
   // page level so a refresh cannot tear it down.
@@ -377,30 +379,39 @@ export default function BookingDetailPage({ therapist }) {
                 {appt.notes && <div style={{ fontSize: 13, color: '#5F5640', lineHeight: 1.6, fontStyle: 'italic', fontFamily: 'Georgia, serif', whiteSpace: 'pre-wrap', marginTop: clientRow?.notes ? 10 : 0, paddingTop: clientRow?.notes ? 10 : 0, borderTop: clientRow?.notes ? '1px solid #E7DFC9' : 'none' }}>{appt.notes}</div>}
               </div>
             )}
-
-            {canAct && (
-              <div style={{ background: '#fff', border: `1px solid ${C.line}`, borderRadius: 14, padding: '14px 18px' }}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: C.inkMute, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>Actions</div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  <button onClick={() => setRescheduleAppt(appt)}
-                    style={{ width: '100%', border: `1.5px solid ${C.line}`, borderRadius: 10, padding: 12, fontSize: 14, fontWeight: 600, background: '#fff', color: C.ink, cursor: 'pointer' }}>
-                    Reschedule
-                  </button>
-                  <button onClick={() => setCancelContext({ appt, isNoShow: true })}
-                    style={{ width: '100%', border: `1.5px solid ${C.line}`, borderRadius: 10, padding: 12, fontSize: 14, fontWeight: 600, background: '#fff', color: C.ink, cursor: 'pointer' }}>
-                    Mark no-show
-                  </button>
-                  <button onClick={() => setCancelContext({ appt, isNoShow: false })}
-                    style={{ width: '100%', border: 'none', borderRadius: 10, padding: 10, fontSize: 13, fontWeight: 600, background: 'transparent', color: '#B91C1C', cursor: 'pointer' }}>
-                    Cancel appointment
-                  </button>
-                </div>
-              </div>
-            )}
           </div>
         )}
 
         <div style={{ minWidth: 0 }}>
+        {isDesktop && canAct && (
+          <div style={{ marginBottom: 16 }}>
+            <div style={{ fontSize: 12, fontWeight: 700, color: C.inkMute, textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 8 }}>Actions</div>
+            <div style={{ background: '#fff', border: `1px solid ${C.line}`, borderRadius: 16, padding: 16, display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <button onClick={() => { if (checkoutFnRef.current) checkoutFnRef.current(); }}
+                style={{ width: '100%', background: 'linear-gradient(135deg, #2A5741 0%, #1F4030 100%)', color: '#fff', border: 'none', borderRadius: 12, padding: '14px 18px', fontSize: 15, fontWeight: 700, cursor: 'pointer', boxShadow: '0 4px 14px rgba(31,64,48,0.28), 0 1px 0 rgba(255,255,255,0.15) inset', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+                <span style={{ fontSize: 15 }}>💳</span> Checkout
+              </button>
+              <button onClick={() => setRebookAppt(appt)}
+                style={{ width: '100%', background: '#fff', color: C.ink, border: `1.5px solid ${C.line}`, borderRadius: 12, padding: '12px 14px', fontSize: 14, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+                <span>📅</span> Book next session
+              </button>
+              <div style={{ display: 'flex', gap: 10 }}>
+                <button onClick={() => setRescheduleAppt(appt)}
+                  style={{ flex: 1, background: '#fff', color: C.ink, border: `1.5px solid ${C.line}`, borderRadius: 12, padding: '12px 14px', fontSize: 14, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+                  <span>↻</span> Reschedule
+                </button>
+                <button onClick={() => setCancelContext({ appt, isNoShow: true })}
+                  style={{ flex: 1, background: '#fff', color: '#B45309', border: '1.5px solid #FCD34D', borderRadius: 12, padding: '12px 14px', fontSize: 14, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+                  <span>🚫</span> No-show
+                </button>
+              </div>
+              <button onClick={() => setCancelContext({ appt, isNoShow: false })}
+                style={{ width: '100%', background: 'transparent', color: '#B91C1C', border: 'none', borderRadius: 10, padding: 8, fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
+                Cancel appointment
+              </button>
+            </div>
+          </div>
+        )}
       <DetailPanel
         appt={appt}
         therapist={therapist}
@@ -411,6 +422,7 @@ export default function BookingDetailPage({ therapist }) {
         onRequestCancel={(payload) => setCancelContext(payload)}
         railPresent={isDesktop}
         onInsight={setInsight}
+        checkoutFnRef={checkoutFnRef}
         showToast={(msg) => setToast(msg)}
         onRequestCheckout={(payload) => setCheckoutContext(payload)}
         paymentsRefreshTick={paymentsRefreshTick}
@@ -455,6 +467,20 @@ export default function BookingDetailPage({ therapist }) {
           onSuccess={() => {
             setToast('Session rescheduled');
             setRescheduleAppt(null);
+            loadBooking();
+          }}
+        />
+      )}
+
+      {rebookAppt && (
+        <BookingModal
+          therapist={therapist}
+          mode="rebook"
+          existingBooking={rebookAppt}
+          onClose={() => setRebookAppt(null)}
+          onSuccess={() => {
+            setToast('Next session booked');
+            setRebookAppt(null);
             loadBooking();
           }}
         />
