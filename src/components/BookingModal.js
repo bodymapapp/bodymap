@@ -780,7 +780,21 @@ export default function BookingModal({ therapist, mode = 'create', existingBooki
             <div style={{ background: C.beige, borderRadius: 12, padding: '12px 16px' }}>
               <div style={{ fontSize: 12, fontWeight: 700, color: C.gray, marginBottom: 4 }}>Moving appointment for</div>
               <div style={{ fontSize: 15, fontWeight: 700, color: C.dark }}>{name}</div>
-              <div style={{ fontSize: 12, color: C.gray }}>{existingBooking?.time} · {existingBooking?.service}</div>
+              {/* HK Jun 2 2026: show the ORIGINAL date + time, not just
+                  the time, so the therapist can see exactly what they are
+                  moving from. Handles both a Date object and a string. */}
+              <div style={{ fontSize: 12, color: C.gray, marginTop: 2 }}>
+                {(() => {
+                  const d = existingBooking?.date;
+                  let dateStr = '';
+                  try {
+                    const dt = d instanceof Date ? d : (d ? new Date(`${d}T12:00:00`) : null);
+                    if (dt && !isNaN(dt)) dateStr = dt.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+                  } catch (e) { dateStr = ''; }
+                  const parts = [dateStr, existingBooking?.time].filter(Boolean).join(' at ');
+                  return [parts, existingBooking?.service].filter(Boolean).join(' · ');
+                })()}
+              </div>
             </div>
           )}
 
