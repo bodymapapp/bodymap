@@ -1568,7 +1568,7 @@ function RecapEditor({ session, parsedSoap, therapist, allSessions, onSaved, onR
 
 // HK May 31 2026 (Side panel A): DetailPanel exported so BookingDetailPage
 // can render it in mode='page' as a full-page route.
-export function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled, showToast, onRequestCheckout, onRequestCancel, paymentsRefreshTick = 0, mode = 'slide' }) {
+export function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled, showToast, onRequestCheckout, onRequestCancel, clientDetailRows = [], clientNotes = null, paymentsRefreshTick = 0, mode = 'slide' }) {
   const notify = showToast || (() => {});
   // Mobile detection for paddingBottom that clears the mobile bottom nav
   // (74px) so the Cancel button doesn't get cut off. HK reported May 25
@@ -3212,6 +3212,13 @@ export function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelle
         boxShadow:'-8px 0 40px rgba(0,0,0,0.15)',
         paddingTop:'env(safe-area-inset-top, 0px)',
       }}>
+        {/* HK Jun 2 2026: two-column page layout. Left = identity, Session
+            (with pencils), tags, cadence, Setup, Client details. Right =
+            Care history (+ Checkout and Reschedule/Cancel). On the slide-over
+            and on mobile the wrappers use display:contents so the layout is
+            byte-identical to before (single column, unchanged). */}
+        <div style={(mode === 'page' && !isMobileW) ? {display:'grid', gridTemplateColumns:'minmax(0, 1.05fr) minmax(0, 0.95fr)', gap:20, alignItems:'start'} : {}}>
+        <div style={(mode === 'page' && !isMobileW) ? {display:'flex', flexDirection:'column', gap:14, minWidth:0} : {}}>
         <div style={{padding:'14px 16px 14px',borderBottom:'1px solid #F3F4F6'}}>
           {/* Top row: avatar + name + close. displayAppt is used so
               if the user links a client via the ClientPicker inside
@@ -4209,6 +4216,32 @@ export function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelle
           )}
           {appt.notes && <div style={{background:'#FFFBEB',border:'1px solid #FCD34D',borderRadius:10,padding:'10px 14px',fontSize:13,color:'#92400E',lineHeight:1.5,fontFamily:'Georgia, serif',fontStyle:'italic'}}>{appt.notes}</div>}
 
+          {/* HK Jun 2 2026: Client details + Notes carried over from the
+              page rail so the rail can retire. Rows arrive pre-formatted
+              from the parent (faithful labels and values). Renders only when
+              provided, so the slide-over is unaffected. */}
+          {clientDetailRows && clientDetailRows.length > 0 && (
+            <div style={{background:'#fff',border:'1px solid #EEE9DD',borderRadius:12,padding:'12px 14px'}}>
+              <div style={{fontSize:11,fontWeight:700,color:SO.inkMute,textTransform:'uppercase',letterSpacing:'0.06em',marginBottom:8}}>Client details</div>
+              <div style={{fontSize:13}}>
+                {clientDetailRows.map(([label, value], i) => (
+                  <div key={label} style={{display:'flex',justifyContent:'space-between',gap:12,padding:'5px 0',borderTop: i === 0 ? 'none' : '1px solid #F0ECE2'}}>
+                    <span style={{color:SO.inkMute,flexShrink:0}}>{label}</span>
+                    <span style={{color:SO.ink,textAlign:'right',wordBreak:'break-word'}}>{value}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+          {clientNotes && (
+            <div style={{background:'#FFFBEB',border:'1px solid #FCD34D',borderRadius:12,padding:'12px 14px'}}>
+              <div style={{fontSize:11,fontWeight:700,color:'#92400E',textTransform:'uppercase',letterSpacing:'0.06em',marginBottom:6}}>Notes</div>
+              <div style={{fontSize:13,color:'#78350F',lineHeight:1.6,fontStyle:'italic',fontFamily:'Georgia, serif',whiteSpace:'pre-wrap'}}>{clientNotes}</div>
+            </div>
+          )}
+        </div>{/* end LEFT column */}
+        <div style={(mode === 'page' && !isMobileW) ? {display:'flex', flexDirection:'column', gap:14, minWidth:0} : {}}>
+
           {/* ══════════════════════════════════════════════════════════
               COCKPIT PANELS (HK May 25 2026 Phase 20.3-20.9)
               The therapist's full session context lives here. Each
@@ -5159,6 +5192,8 @@ export function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelle
               </div>
             )}
           </div>
+        </div>{/* end RIGHT column */}
+        </div>{/* end two-column grid */}
           {appt.preview && <div style={{background:'#FEF3C7',borderRadius:10,padding:'10px 14px',fontSize:12,color:'#92400E',textAlign:'center'}}>Preview card, real clients appear here after booking.</div>}
         </div>
       </div>
