@@ -3229,7 +3229,7 @@ export function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelle
               >
                 <div style={{width:44,height:44,borderRadius:'50%',background:ac(displayAppt.client),color:'#fff',display:'flex',alignItems:'center',justifyContent:'center',fontSize:15,fontWeight:700,flexShrink:0}}>{initials(displayAppt.client)}</div>
                 <div style={{flex:1,minWidth:0}}>
-                  <div style={{fontSize:18,fontWeight:700,color:SO.ink,fontFamily:'Georgia,serif',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',lineHeight:1.2}}>
+                  <div style={{fontSize:18,fontWeight:700,color:SO.ink,fontFamily:'Georgia,serif',lineHeight:1.25,wordBreak:'break-word'}}>
                     {displayAppt.client}
                   </div>
                   {displayAppt.is_couples && displayAppt.partner_name && (
@@ -3246,7 +3246,7 @@ export function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelle
               <div style={{display:'flex',alignItems:'center',gap:12,flex:1,minWidth:0}}>
                 <div style={{width:44,height:44,borderRadius:'50%',background:ac(displayAppt.client),color:'#fff',display:'flex',alignItems:'center',justifyContent:'center',fontSize:15,fontWeight:700,flexShrink:0}}>{initials(displayAppt.client)}</div>
                 <div style={{flex:1,minWidth:0}}>
-                  <div style={{fontSize:18,fontWeight:700,color:SO.ink,fontFamily:'Georgia,serif',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',lineHeight:1.2}}>{displayAppt.client}</div>
+                  <div style={{fontSize:18,fontWeight:700,color:SO.ink,fontFamily:'Georgia,serif',lineHeight:1.25,wordBreak:'break-word'}}>{displayAppt.client}</div>
                   {displayAppt.is_couples && displayAppt.partner_name && (
                     <div style={{fontSize:12,color:SO.sage,fontWeight:600,marginTop:2}}>💑 with {displayAppt.partner_name}</div>
                   )}
@@ -5037,7 +5037,12 @@ export function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelle
                 <span>📅</span> Book next session with {appt.client?.split(' ')[0] || 'this client'}
               </button>
             )}
-            {!appt.preview && !confirmCancel && (
+            {/* HK Jun 1 2026: on the DESKTOP full page the left rail
+                already carries Reschedule / No-show / Cancel, so this
+                inline cluster would duplicate them. Hide it only there
+                (page mode AND wide screen). On the slide-over and on the
+                MOBILE page (which has no left rail) it still shows. */}
+            {!appt.preview && !confirmCancel && (mode === 'slide' || isMobileW) && (
               <div style={{marginTop:4,paddingTop:14,borderTop:`1px solid ${SO.border}`}}>
                 <div style={{display:'flex',gap:8}}>
                   <button onClick={() => onReschedule(appt)}
