@@ -321,13 +321,13 @@ export default function BookingDetailPage({ therapist }) {
 
         {isDesktop && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12, position: 'sticky', top: 16 }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: C.inkMute, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Booking</div>
             <div style={{ background: '#fff', border: `1px solid ${C.line}`, borderRadius: 14, padding: '16px 18px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14 }}>
                 <div style={{ width: 44, height: 44, borderRadius: '50%', background: C.forest, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15, fontWeight: 700, flexShrink: 0 }}>{initials(appt.client)}</div>
                 <div style={{ minWidth: 0 }}>
                   <div style={{ fontFamily: 'Georgia, serif', fontSize: 17, fontWeight: 700, color: C.forest, lineHeight: 1.2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{appt.client}</div>
-                  <div style={{ fontSize: 12, color: C.inkMute, marginTop: 2 }}>{appt.service} · {appt.duration} min</div>
-                  {appt.clientId && <a href={`/dashboard/clients/${appt.clientId}`} style={{ display: 'inline-block', marginTop: 4, fontSize: 12, fontWeight: 600, color: C.forest, textDecoration: 'none' }}>View profile ›</a>}
+                  {appt.clientId && <a href={`/dashboard/clients/${appt.clientId}`} style={{ display: 'inline-block', marginTop: 2, fontSize: 12, fontWeight: 600, color: C.forest, textDecoration: 'none' }}>View profile ›</a>}
                 </div>
               </div>
               {(appt.status === 'pending-intake' || (appt.deposit_required && appt.deposit_paid) || appt.reminder_sent) && (
@@ -338,7 +338,9 @@ export default function BookingDetailPage({ therapist }) {
                 </div>
               )}
               <div style={{ borderTop: `1px solid ${C.line}`, paddingTop: 12, fontSize: 13 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: C.inkMute, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>Session</div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0' }}><span style={{ color: C.inkMute }}>When</span><span style={{ color: C.ink, textAlign: 'right' }}>{niceDate} · {appt.time}</span></div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0' }}><span style={{ color: C.inkMute }}>Service</span><span style={{ color: C.ink, textAlign: 'right' }}>{appt.service} · {appt.duration} min</span></div>
                 {appt.locationName && <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0' }}><span style={{ color: C.inkMute }}>Where</span><span style={{ color: C.ink, textAlign: 'right' }}>{appt.locationName}</span></div>}
                 <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0' }}><span style={{ color: C.inkMute }}>Status</span><span style={{ color: C.forest, fontWeight: 600 }}>{statusLabel}</span></div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0' }}><span style={{ color: C.inkMute }}>Price</span><span style={{ color: C.ink }}>${(appt.price || 0).toFixed(2)}</span></div>

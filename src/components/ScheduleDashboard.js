@@ -540,7 +540,7 @@ function Label({ children, color }) {
 // CockpitSection's existing call site does not have to change.
 const ChevronIcon = SharedChevronIcon;
 
-function CockpitSection({ sectionKey, index, icon, title, subtitle, isOpen, onToggle, warn = false, children }) {
+function CockpitSection({ sectionKey, index, icon, title, subtitle, subtitle2, isOpen, onToggle, warn = false, children }) {
   // HK May 25 2026 (Phase 22): visual upgrade for collapsibles.
   // Previously the row looked indistinguishable from a heading.
   // Now: collapsed state gets a soft cream tint that reads as
@@ -597,7 +597,7 @@ function CockpitSection({ sectionKey, index, icon, title, subtitle, isOpen, onTo
         )}
         <div style={{
           width: 38, height: 38, borderRadius: 10,
-          background: isOpen ? '#EEF3EE' : '#F0E7D4',
+          background: '#EEF3EE',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           fontSize: 17, flexShrink: 0,
           transition: 'background 0.18s ease',
@@ -614,6 +614,7 @@ function CockpitSection({ sectionKey, index, icon, title, subtitle, isOpen, onTo
             letterSpacing: '-0.005em',
           }}>{title}</div>
           {subtitle && <div style={{ fontSize: 12, color: '#6B7280', marginTop: 3, lineHeight: 1.45 }}>{subtitle}</div>}
+          {subtitle2 && <div style={{ fontSize: 12, color: '#9AA3A0', marginTop: 1, lineHeight: 1.45 }}>{subtitle2}</div>}
         </div>
         <div style={{
           width: 34, height: 34, borderRadius: '50%',
@@ -4231,6 +4232,7 @@ export function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelle
               lock until session date passes (or override). */}
           {!appt.preview && (
             <>
+              <div style={{ fontSize: 11, fontWeight: 700, color: '#9AA3A0', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 2 }}>Session notes</div>
               {/* HK May 25 2026 (Phase 24e): Collapse all / Expand all
                   toggle. When all panels are open the slide-over is
                   long; this gives a fast bird's-eye view of headers
@@ -4288,6 +4290,7 @@ export function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelle
                     : intakeDone ? (intakeWaivedLocal ? "Intake waived, ready for session" : "Intake filled, ready for session")
                     : "Awaiting client intake"
                 }
+                subtitle2="Intake → Brief → Record → Recap."
                 isOpen={openSections.journey !== false}
                 onToggle={() => toggleSection('journey')}
               >
@@ -4381,6 +4384,7 @@ export function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelle
                 icon={<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#2A5741" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="6" y="4" width="12" height="17" rx="2"/><path d="M9 4.5h6V7H9z"/><path d="M9 11h6M9 14.5h4"/></svg>}
                 title="Today's Brief"
                 subtitle={intakeDone ? "What this client wants today" : "Intake not yet submitted"}
+                subtitle2="Send the link or fill it in for them."
                 isOpen={openSections.brief}
                 onToggle={() => toggleSection('brief')}
               >
@@ -4688,6 +4692,7 @@ export function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelle
                     ? 'Notes saved · tap to edit'
                     : '🎙️ Capture what happened, dictate or type'
                 }
+                subtitle2="Type your notes after the session."
                 isOpen={openSections.record}
                 onToggle={() => toggleSection('record')}
               >
@@ -4760,6 +4765,7 @@ export function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelle
                         ? 'Recap saved · tap to view'
                         : 'Send a warm note to client'
                   }
+                  subtitle2="Aftercare notes plus a rebooking nudge."
                   isOpen={openSections.recap}
                   onToggle={() => toggleSection('recap')}
                 >
@@ -4812,6 +4818,7 @@ export function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelle
                   icon={medicalFlagsFired.length > 0 ? "⚠️" : "🩺"}
                   title="Medical flags"
                   subtitle={medicalFlagsFired.length > 0 ? `${medicalFlagsFired.length} flagged` : "None flagged"}
+                  subtitle2="Conditions and allergies show here in red."
                   isOpen={openSections.medical}
                   onToggle={() => toggleSection('medical')}
                   warn={medicalFlagsFired.length > 0}
@@ -4842,6 +4849,7 @@ export function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelle
                   icon={<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#2A5741" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg>}
                   title="Last session"
                   subtitle={lastSession.created_at ? `${Math.floor((Date.now() - new Date(lastSession.created_at).getTime()) / 86400000)} days ago` : ''}
+                  subtitle2="Tap to see the previous SOAP and recap."
                   isOpen={openSections.last_session}
                   onToggle={() => toggleSection('last_session')}
                 >
@@ -4862,6 +4870,7 @@ export function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelle
                   icon={<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#2A5741" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5.5 20V11M12 20V5M18.5 20v-6"/><path d="M3.5 20h17"/></svg>}
                   title="MyBodyMap Patterns"
                   subtitle={`${allSessions.length} sessions overlaid`}
+                  subtitle2="Where this client carries tension over time."
                   isOpen={openSections.patterns !== false}
                   onToggle={() => toggleSection('patterns')}
                 >
