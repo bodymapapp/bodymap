@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useSearchParams, useParams, useNavigate, useLocation } from 'react-router-dom';
-import { supabase, db } from '../lib/supabase';
+import { supabase, db, suppressNextSaveToast } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import BookingModal from './BookingModal';
 import CancellationChargeModal from './CancellationChargeModal';
@@ -1631,7 +1631,6 @@ export function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelle
   const [cancelAllInSeries, setCancelAllInSeries] = useState(false);
   const [editTime, setEditTime] = useState(false);
   const [newStartTime, setNewStartTime] = useState(appt.startTime || '');
-  const [newEndTime, setNewEndTime] = useState(appt.endTime || '');
   const [savingTime, setSavingTime] = useState(false);
   // HK May 27 2026: service editing state. Lets therapist change
   // service type, duration, location, addons, and partner info on
@@ -1649,6 +1648,11 @@ export function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelle
   const [newPartnerName, setNewPartnerName] = useState(appt.partner_name || '');
   const [newPartnerEmail, setNewPartnerEmail] = useState(appt.partner_email || '');
   const [savingService, setSavingService] = useState(false);
+  // HK Jun 2 2026: brief green "Saved" confirmation shown inside an editor
+  // after a successful save, in place of the old generic toast. Holds
+  // 'time' or 'service' or null.
+  const [savedFlash, setSavedFlash] = useState(null);
+  const [timeEditError, setTimeEditError] = useState(null);
   const [serviceEditError, setServiceEditError] = useState(null);
   // Shape: { id, name, sessions_purchased, sessions_remaining,
   //   used_count, this_session_number, expires_at, linked }
@@ -2270,57 +2274,76 @@ export function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelle
   useEffect(() => {
     if (sessionEditRef) {
       sessionEditRef.current = {
-        toggleTime: () => setEditTime(v => !v),
+        toggleTime: () => setEditTime(v => {
+          const opening = !v;
+          if (opening) { setNewStartTime(appt.startTime || ''); setTimeEditError(null); setSavedFlash(null); }
+          return opening;
+        }),
         toggleService: () => { toggleServiceEditor(); },
       };
     }
   });
 
-  async function saveEndTime() {
-    setSavingTime(true);
-    const updates = {};
-    if (newStartTime) updates.start_time = newStartTime;
-    if (newEndTime) updates.end_time = newEndTime;
-    if (Object.keys(updates).length) {
-      // Capture prev values BEFORE the update so we can pass them
-      // to the reschedule confirmation email (C10).
-      const prevDate = appt.date instanceof Date
-        ? appt.date.toISOString().slice(0, 10)
-        : (appt.start_date || null);
-      const prevTime = appt.start_time_raw || null;
-      await supabase.from('bookings').update(updates).eq('id', appt.id);
+  // HK Jun 2 2026: shared overlap check used by both the time and the
+  // service editors. Returns { conflict } (the first overlapping booking
+  // on the same day, excluding self + cancelled) or { error: true }.
+  async function findConflict(dateStr, startFull, endFull) {
+    if (!dateStr) return { error: true };
+    const { data, error } = await supabase
+      .from('bookings')
+      .select('id, start_time, end_time, client_name')
+      .eq('therapist_id', therapist.id)
+      .eq('booking_date', dateStr)
+      .neq('status', 'cancelled')
+      .neq('id', appt.id);
+    if (error) return { error: true };
+    const conflict = (data || []).find(b => !(endFull <= b.start_time || startFull >= b.end_time));
+    return { conflict: conflict || null };
+  }
 
-      // HK May 26 2026: notify-booking-event with event_type='reschedule'
-      // fires the C10 reschedule confirmation email to the client.
-      // Only fires when start_time actually changed (saveEndTime can
-      // also fire from just end_time changes which are not a real
-      // reschedule). Non-blocking.
-      if (newStartTime && newStartTime !== prevTime) {
-        try {
-          const supabaseUrl = process.env.REACT_APP_SUPABASE_URL;
-          const anonKey = process.env.REACT_APP_SUPABASE_ANON_KEY;
-          fetch(`${supabaseUrl}/functions/v1/notify-booking-event`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${anonKey}`,
-              'apikey': anonKey,
-            },
-            body: JSON.stringify({
-              booking_id: appt.id,
-              event_type: 'reschedule',
-              reschedule_prev: { prev_date: prevDate, prev_time: prevTime },
-            }),
-          }).catch(() => { /* non-blocking */ });
-        } catch (_) { /* non-blocking */ }
-      }
+  // HK Jun 2 2026: the time editor now changes the START only. The session
+  // length follows the service (no free end-time field), so the end is
+  // recomputed as start + current duration. The overlap check runs before
+  // saving so a moved booking cannot silently land on top of another.
+  async function saveEndTime() {
+    if (!newStartTime) { setEditTime(false); return; }
+    setTimeEditError(null);
+    setSavingTime(true);
+    const dur = appt.duration || 60;
+    const [sh, sm] = newStartTime.split(':').map(Number);
+    const startMin = sh * 60 + sm;
+    const endMin = startMin + dur;
+    const startFull = `${String(sh).padStart(2, '0')}:${String(sm).padStart(2, '0')}:00`;
+    const endFull = `${String(Math.floor(endMin / 60) % 24).padStart(2, '0')}:${String(endMin % 60).padStart(2, '0')}:00`;
+
+    const { conflict, error: cErr } = await findConflict(appt.booking_date, startFull, endFull);
+    if (cErr) { setTimeEditError('Could not check for conflicts. Try again.'); setSavingTime(false); return; }
+    if (conflict) {
+      setTimeEditError(`That time overlaps ${conflict.client_name || 'another booking'} at ${fmt12(conflict.start_time)}. Pick another time.`);
+      setSavingTime(false);
+      return;
+    }
+
+    const prevDate = appt.booking_date || null;
+    const prevTime = appt.start_time_raw || appt.start_time || null;
+    suppressNextSaveToast();
+    await supabase.from('bookings').update({ start_time: startFull, end_time: endFull }).eq('id', appt.id);
+
+    // C10 reschedule confirmation email when the start actually changed.
+    if (startFull !== (appt.start_time || '')) {
+      try {
+        const supabaseUrl = process.env.REACT_APP_SUPABASE_URL;
+        const anonKey = process.env.REACT_APP_SUPABASE_ANON_KEY;
+        fetch(`${supabaseUrl}/functions/v1/notify-booking-event`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${anonKey}`, 'apikey': anonKey },
+          body: JSON.stringify({ booking_id: appt.id, event_type: 'reschedule', reschedule_prev: { prev_date: prevDate, prev_time: prevTime } }),
+        }).catch(() => {});
+      } catch (_) {}
     }
     setSavingTime(false);
-    setEditTime(false);
-    if (Object.keys(updates).length) {
-      notify('Saved');
-    }
-    onCancelled?.();
+    setSavedFlash('time');
+    setTimeout(() => { setSavedFlash(null); setEditTime(false); onCancelled?.(); }, 1100);
   }
 
   // HK May 27 2026: lazy-load the service / location / addon catalogs
@@ -2431,50 +2454,31 @@ export function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelle
     }
     const [sh, sm] = startTimeStr.split(':').map(Number);
     const startMin = sh * 60 + sm;
-    const endMin = startMin + newDuration;
+
+    // Add-ons first: duration follows the service + add-on minutes (there
+    // is no free duration field, so we never store an unmapped length).
+    const selectedAddons = (addonCatalog || []).filter(a => (newAddonIds || []).includes(a.id));
+    const addonTotalPrice = selectedAddons.reduce((sum, a) => sum + Number(a.price || 0), 0);
+    const addonExtraMinutes = selectedAddons.reduce((sum, a) => sum + Number(a.extra_minutes || 0), 0);
+    const effectiveDuration = ((newService && newService.duration) || appt.duration || 60) + addonExtraMinutes;
+
+    const endMin = startMin + effectiveDuration;
     const newEndH = String(Math.floor(endMin / 60) % 24).padStart(2, '0');
     const newEndM = String(endMin % 60).padStart(2, '0');
     const newEndStr = `${newEndH}:${newEndM}:00`;
+    const newStartFull = `${String(sh).padStart(2, '0')}:${String(sm).padStart(2, '0')}:00`;
 
-    // Conflict detection: query bookings on the same date that
-    // overlap the proposed time window. Excludes self and cancelled.
-    if (durationChanged) {
-      const { data: dayBookings, error: conflictErr } = await supabase
-        .from('bookings')
-        .select('id, start_time, end_time, client_name')
-        .eq('therapist_id', therapist.id)
-        .eq('booking_date', appt.booking_date)
-        .neq('status', 'cancelled')
-        .neq('id', appt.id);
-      if (conflictErr) {
-        setServiceEditError('Could not check for conflicts. Try again.');
-        setSavingService(false);
-        return;
-      }
-      const newStartFull = `${String(sh).padStart(2, '0')}:${String(sm).padStart(2, '0')}:00`;
-      const conflict = (dayBookings || []).find(b => {
-        // overlap: not (this.end <= other.start OR this.start >= other.end)
-        return !(newEndStr <= b.start_time || newStartFull >= b.end_time);
-      });
+    // Conflict detection always runs: a new service or add-on can push the
+    // end of the session onto another booking even at the same start time.
+    {
+      const { conflict, error: cErr } = await findConflict(appt.booking_date, newStartFull, newEndStr);
+      if (cErr) { setServiceEditError('Could not check for conflicts. Try again.'); setSavingService(false); return; }
       if (conflict) {
-        const t12 = (timeStr) => {
-          const [h, m] = timeStr.split(':').map(Number);
-          const ampm = h >= 12 ? 'PM' : 'AM';
-          const h12 = h % 12 === 0 ? 12 : h % 12;
-          return `${h12}:${String(m).padStart(2, '0')} ${ampm}`;
-        };
-        setServiceEditError(
-          `This duration would overlap with ${conflict.client_name || 'another booking'} at ${t12(conflict.start_time.slice(0, 5))}. Pick a shorter duration or reschedule that booking first.`
-        );
+        setServiceEditError(`This change would overlap ${conflict.client_name || 'another booking'} at ${fmt12(conflict.start_time)}. Shorten the session or reschedule that booking first.`);
         setSavingService(false);
         return;
       }
     }
-
-    // Recompute addon totals from selected addon ids
-    const selectedAddons = (addonCatalog || []).filter(a => (newAddonIds || []).includes(a.id));
-    const addonTotalPrice = selectedAddons.reduce((sum, a) => sum + Number(a.price || 0), 0);
-    const addonExtraMinutes = selectedAddons.reduce((sum, a) => sum + Number(a.extra_minutes || 0), 0);
 
     // Capture before snapshot for audit
     const beforeSnapshot = {
@@ -2491,7 +2495,7 @@ export function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelle
     const afterSnapshot = {
       service_id: newServiceId,
       service_name: newService?.name || null,
-      duration: newDuration,
+      duration: effectiveDuration,
       location_id: newLocationId,
       location_name: (locationCatalog.find(l => l.id === newLocationId) || {}).name || null,
       addon_ids: newAddonIds,
@@ -2503,7 +2507,7 @@ export function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelle
     // Determine change_type for the audit row
     const changes = [];
     if (serviceChanged) changes.push('service');
-    if (durationChanged) changes.push('duration');
+    if (effectiveDuration !== (appt.duration || 60)) changes.push('duration');
     if (newLocationId !== (appt.location_id || null)) changes.push('location');
     if (JSON.stringify(newAddonIds.sort()) !== JSON.stringify((appt.addon_ids || []).slice().sort())) changes.push('addons');
     if (newPartnerName.trim() !== (appt.partner_name || '') || newPartnerEmail.trim() !== (appt.partner_email || '')) changes.push('partner');
@@ -2561,6 +2565,7 @@ export function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelle
       }
     }
 
+    suppressNextSaveToast();
     const { error: updateErr } = await supabase.from('bookings').update(updates).eq('id', appt.id);
     if (updateErr) {
       console.error('saveServiceEdit update error:', updateErr);
@@ -2595,7 +2600,7 @@ export function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelle
     //     the client was told). Non-blocking on both paths.
     const supabaseUrl = process.env.REACT_APP_SUPABASE_URL;
     const anonKey = process.env.REACT_APP_SUPABASE_ANON_KEY;
-    if (durationChanged) {
+    if (effectiveDuration !== (appt.duration || 60)) {
       try {
         fetch(`${supabaseUrl}/functions/v1/notify-booking-event`, {
           method: 'POST',
@@ -2631,9 +2636,8 @@ export function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelle
     }
 
     setSavingService(false);
-    setEditService(false);
-    notify('Saved');
-    onCancelled?.();
+    setSavedFlash('service');
+    setTimeout(() => { setSavedFlash(null); setEditService(false); onCancelled?.(); }, 1100);
   }
 
   // HK May 27 2026 Phase Pkg-C manual flow: link this booking to a
@@ -3671,29 +3675,49 @@ export function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelle
           {editTime && !appt.preview && (() => {
             const panel = (
             <div style={{background:'#F0FDF4',border:'1.5px solid #86EFAC',borderRadius:10,padding:'14px 16px',margin:'0 0 0 0'}}>
-              <div style={{fontSize:12,fontWeight:700,color:'#2A5741',marginBottom:10}}>Edit session times</div>
-              <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:12}}>
-                <div>
-                  <label style={{fontSize:11,fontWeight:700,color:'#6B7280',display:'block',marginBottom:4,textTransform:'uppercase',letterSpacing:'0.06em'}}>Start time</label>
-                  <input type="time" value={newStartTime} onChange={e=>setNewStartTime(e.target.value)}
-                    style={{width:'100%',padding:'9px 10px',border:'1.5px solid #D1D5DB',borderRadius:8,fontSize:14,outline:'none',boxSizing:'border-box'}}/>
+              <div style={{fontSize:12,fontWeight:700,color:'#2A5741',marginBottom:10}}>Edit start time</div>
+              {(() => {
+                const dur = appt.duration || 60;
+                let endLabel = '';
+                if (newStartTime && /^\d{2}:\d{2}/.test(newStartTime)) {
+                  const [hh, mm] = newStartTime.split(':').map(Number);
+                  const em = hh * 60 + mm + dur;
+                  const eh = Math.floor(em / 60) % 24, emm = em % 60;
+                  const ap = eh >= 12 ? 'PM' : 'AM'; const h12 = eh % 12 === 0 ? 12 : eh % 12;
+                  endLabel = `${h12}:${String(emm).padStart(2, '0')} ${ap}`;
+                }
+                return (
+                  <div style={{marginBottom:10}}>
+                    <label style={{fontSize:11,fontWeight:700,color:'#6B7280',display:'block',marginBottom:4,textTransform:'uppercase',letterSpacing:'0.06em'}}>Start time</label>
+                    <input type="time" value={newStartTime} onChange={e=>{ setTimeEditError(null); setNewStartTime(e.target.value); }}
+                      style={{width:'100%',padding:'9px 10px',border:'1.5px solid #D1D5DB',borderRadius:8,fontSize:14,outline:'none',boxSizing:'border-box'}}/>
+                    <div style={{fontSize:12,color:'#6B7280',marginTop:6}}>
+                      {dur} min session{endLabel ? ` · ends ${endLabel}` : ''}. The length follows the service. To change the length, edit the service.
+                    </div>
+                  </div>
+                );
+              })()}
+              {timeEditError && (
+                <div style={{background:'#FEF2F2',border:'1px solid #FCA5A5',borderRadius:8,padding:'9px 11px',fontSize:12.5,color:'#991B1B',marginBottom:10}}>
+                  {timeEditError}
                 </div>
-                <div>
-                  <label style={{fontSize:11,fontWeight:700,color:'#6B7280',display:'block',marginBottom:4,textTransform:'uppercase',letterSpacing:'0.06em'}}>End time</label>
-                  <input type="time" value={newEndTime} onChange={e=>setNewEndTime(e.target.value)}
-                    style={{width:'100%',padding:'9px 10px',border:'1.5px solid #D1D5DB',borderRadius:8,fontSize:14,outline:'none',boxSizing:'border-box'}}/>
+              )}
+              {savedFlash === 'time' ? (
+                <div style={{display:'flex',alignItems:'center',gap:7,padding:'9px 0',color:'#15803D',fontSize:14,fontWeight:700}}>
+                  <span style={{fontSize:16}}>✓</span> Saved
                 </div>
-              </div>
-              <div style={{display:'flex',gap:8}}>
-                <button onClick={()=>setEditTime(false)}
-                  style={{flex:'0 0 auto',padding:'9px 14px',background:'#fff',color:'#6B7280',border:'1px solid #D1D5DB',borderRadius:8,fontSize:13,fontWeight:600,cursor:'pointer'}}>
-                  Cancel
-                </button>
-                <button onClick={saveEndTime} disabled={savingTime}
-                  style={{flex:1,padding:'9px 0',background:'#2A5741',color:'#fff',border:'none',borderRadius:8,fontSize:13,fontWeight:700,cursor:'pointer',opacity:savingTime?0.6:1}}>
-                  {savingTime ? 'Saving...' : 'Save times'}
-                </button>
-              </div>
+              ) : (
+                <div style={{display:'flex',gap:8}}>
+                  <button onClick={()=>{ setTimeEditError(null); setEditTime(false); }}
+                    style={{flex:'0 0 auto',padding:'9px 14px',background:'#fff',color:'#6B7280',border:'1px solid #D1D5DB',borderRadius:8,fontSize:13,fontWeight:600,cursor:'pointer'}}>
+                    Cancel
+                  </button>
+                  <button onClick={saveEndTime} disabled={savingTime}
+                    style={{flex:1,padding:'9px 0',background:'#2A5741',color:'#fff',border:'none',borderRadius:8,fontSize:13,fontWeight:700,cursor:'pointer',opacity:savingTime?0.6:1}}>
+                    {savingTime ? 'Saving...' : 'Save time'}
+                  </button>
+                </div>
+              )}
             </div>
             );
             return railPresent && sessionEditorSlot ? createPortal(panel, sessionEditorSlot) : panel;
@@ -3709,16 +3733,6 @@ export function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelle
               if (Array.isArray(apply)) return apply.includes(newServiceId);
               return true;
             });
-            // Duration options: the selected service's default + a few
-            // common neighbors (30, 60, 75, 90, 120). Therapist can also
-            // pick the original duration on this booking even if it
-            // doesn't match the new service's default.
-            const baseDurations = [30, 45, 60, 75, 90, 120];
-            const durationOptions = Array.from(new Set([
-              selectedService?.duration || 60,
-              appt.duration || 60,
-              ...baseDurations,
-            ])).sort((a, b) => a - b);
 
             const panel = (
               <div style={{background:'#FFF7ED',border:'1.5px solid #FED7AA',borderRadius:10,padding:'14px 16px'}}>
@@ -3772,29 +3786,20 @@ export function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelle
                   </select>
                 </div>
 
-                {/* Duration picker */}
+                {/* Session length: derived from the service (+ add-ons), never free-typed */}
                 <div style={{marginBottom:12}}>
-                  <label style={{fontSize:11,fontWeight:700,color:'#6B7280',display:'block',marginBottom:4,textTransform:'uppercase',letterSpacing:'0.06em'}}>Duration</label>
-                  <select
-                    value={newDuration}
-                    onChange={e => setNewDuration(Number(e.target.value))}
-                    disabled={isPaid}
-                    style={{
-                      width:'100%',
-                      padding:'9px 10px',
-                      border:'1.5px solid #D1D5DB',
-                      borderRadius:8,
-                      fontSize:14,
-                      outline:'none',
-                      boxSizing:'border-box',
-                      background: isPaid ? '#F3F4F6' : '#fff',
-                      color: isPaid ? '#9CA3AF' : '#1F2937',
-                      fontFamily:'inherit',
-                    }}>
-                    {durationOptions.map(d => (
-                      <option key={d} value={d}>{d} min</option>
-                    ))}
-                  </select>
+                  <label style={{fontSize:11,fontWeight:700,color:'#6B7280',display:'block',marginBottom:4,textTransform:'uppercase',letterSpacing:'0.06em'}}>Session length</label>
+                  {(() => {
+                    const addonMin = (addonCatalog || []).filter(a => (newAddonIds || []).includes(a.id)).reduce((s, a) => s + Number(a.extra_minutes || 0), 0);
+                    const base = (selectedService && selectedService.duration) || appt.duration || 60;
+                    const shown = base + addonMin;
+                    return (
+                      <div style={{padding:'9px 10px',border:'1.5px solid #E5E7EB',borderRadius:8,fontSize:14,background:'#F9FAFB',color:'#374151'}}>
+                        {shown} min{addonMin ? ` (${base} min service + ${addonMin} min add-ons)` : ''}
+                        <span style={{display:'block',fontSize:11.5,color:'#9CA3AF',marginTop:2}}>Set by the service. To change the length, pick a different service.</span>
+                      </div>
+                    );
+                  })()}
                 </div>
 
                 {/* Location picker (only if multi-location) */}
@@ -3896,6 +3901,11 @@ export function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelle
                   </div>
                 )}
 
+                {savedFlash === 'service' ? (
+                  <div style={{display:'flex',alignItems:'center',gap:7,padding:'10px 0',color:'#15803D',fontSize:14,fontWeight:700}}>
+                    <span style={{fontSize:16}}>✓</span> Saved
+                  </div>
+                ) : (
                 <div style={{display:'flex',gap:8}}>
                   <button onClick={()=>setEditService(false)}
                     style={{flex:'0 0 auto',padding:'10px 14px',background:'#fff',color:'#6B7280',border:'1px solid #D1D5DB',borderRadius:8,fontSize:13,fontWeight:600,cursor:'pointer',fontFamily:'inherit'}}>
@@ -3906,6 +3916,7 @@ export function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelle
                     {savingService ? 'Saving...' : 'Save changes'}
                   </button>
                 </div>
+                )}
               </div>
             );
             return railPresent && sessionEditorSlot ? createPortal(panel, sessionEditorSlot) : panel;

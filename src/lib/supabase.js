@@ -46,7 +46,19 @@ const SILENT_TABLES = new Set([
   // is duplicate noise.
   'intake_send_requests',
   'agreement_send_requests',
+  // HK Jun 2 2026: booking_history is an audit trail written as a side
+  // effect of a booking edit; the edit itself confirms.
+  'booking_history',
 ]);
+
+// HK Jun 2 2026: flows that show their own inline confirmation (e.g. the
+// session time/service editor's green "Saved" line) call this right before
+// their write burst so the generic "Saved" toast does not also fire. A
+// short window covers the booking update + any audit writes in the burst.
+let suppressSaveToastUntil = 0;
+export function suppressNextSaveToast(ms = 2000) {
+  suppressSaveToastUntil = Date.now() + ms;
+}
 
 // Try to extract a table name from /rest/v1/{table}?... URLs.
 // Returns null if the request isn't a PostgREST table call.
@@ -79,7 +91,7 @@ async function instrumentedFetch(input, init) {
   // Skip RPC calls (POST to /rest/v1/rpc/*); they may or may not be
   // "saves" depending on the function.
   const isRpc = method === 'POST' && url && url.includes('/rest/v1/rpc/');
-  const shouldToast = isWrite && table && !SILENT_TABLES.has(table) && !isRpc;
+  const shouldToast = isWrite && table && !SILENT_TABLES.has(table) && !isRpc && Date.now() >= suppressSaveToastUntil;
 
   try {
     const response = await window.fetch(input, init);
