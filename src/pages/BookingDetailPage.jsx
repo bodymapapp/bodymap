@@ -308,79 +308,8 @@ export default function BookingDetailPage({ therapist }) {
         </button>
       </div>
 
-      {/* HK Jun 1 2026: two-column desktop layout. Left rail = summary +
-          quick actions (always in reach). Right = the existing
-          DetailPanel content (session journey, brief, SOAP, full
-          checkout). On mobile (<768) the rail is hidden and the page
-          falls back to the single-column DetailPanel flow that works
-          today, so phone behaviour is unchanged. The rail's buttons
-          call the same handlers the page already wires up. */}
-      <div style={isDesktop
-        ? { display: 'grid', gridTemplateColumns: '300px minmax(0, 1fr)', gap: 18, alignItems: 'start' }
-        : { display: 'block' }}>
-
-        {isDesktop && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12, position: 'sticky', top: 16 }}>
-            <div style={{ background: '#fff', border: `1px solid ${C.line}`, borderRadius: 14, padding: '16px 18px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14 }}>
-                <div style={{ width: 44, height: 44, borderRadius: '50%', background: C.forest, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15, fontWeight: 700, flexShrink: 0 }}>{initials(appt.client)}</div>
-                <div style={{ minWidth: 0 }}>
-                  <div style={{ fontFamily: 'Georgia, serif', fontSize: 17, fontWeight: 700, color: C.forest, lineHeight: 1.2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{appt.client}</div>
-                  <div style={{ fontSize: 12, color: C.inkMute, marginTop: 2 }}>{appt.service} · {appt.duration} min</div>
-                </div>
-              </div>
-              <div style={{ borderTop: `1px solid ${C.line}`, paddingTop: 12, fontSize: 13 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0' }}><span style={{ color: C.inkMute }}>When</span><span style={{ color: C.ink, textAlign: 'right' }}>{niceDate} · {appt.time}</span></div>
-                {appt.locationName && <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0' }}><span style={{ color: C.inkMute }}>Where</span><span style={{ color: C.ink, textAlign: 'right' }}>{appt.locationName}</span></div>}
-                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0' }}><span style={{ color: C.inkMute }}>Status</span><span style={{ color: C.forest, fontWeight: 600 }}>{statusLabel}</span></div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0' }}><span style={{ color: C.inkMute }}>Price</span><span style={{ color: C.ink }}>${(appt.price || 0).toFixed(2)}</span></div>
-              </div>
-            </div>
-
-            {detailRows.length > 0 && (
-              <div style={{ background: '#fff', border: `1px solid ${C.line}`, borderRadius: 14, padding: '14px 18px' }}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: C.inkMute, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>Client details</div>
-                <div style={{ fontSize: 13 }}>
-                  {detailRows.map(([label, value]) => (
-                    <div key={label} style={{ display: 'flex', justifyContent: 'space-between', gap: 12, padding: '5px 0', borderTop: label === detailRows[0][0] ? 'none' : `1px solid ${C.line}` }}>
-                      <span style={{ color: C.inkMute, flexShrink: 0 }}>{label}</span>
-                      <span style={{ color: C.ink, textAlign: 'right', wordBreak: 'break-word' }}>{value}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {clientRow?.notes && (
-              <div style={{ background: '#FFFBEB', border: '1px solid #FCD34D', borderRadius: 14, padding: '14px 18px' }}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: '#92400E', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>Notes</div>
-                <div style={{ fontSize: 13, color: '#78350F', lineHeight: 1.6, fontStyle: 'italic', fontFamily: 'Georgia, serif', whiteSpace: 'pre-wrap' }}>{clientRow.notes}</div>
-              </div>
-            )}
-
-            {canAct && (
-              <div style={{ background: '#fff', border: `1px solid ${C.line}`, borderRadius: 14, padding: '14px 18px' }}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: C.inkMute, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>Actions</div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  <button onClick={() => setRescheduleAppt(appt)}
-                    style={{ width: '100%', border: `1.5px solid ${C.line}`, borderRadius: 10, padding: 12, fontSize: 14, fontWeight: 600, background: '#fff', color: C.ink, cursor: 'pointer' }}>
-                    Reschedule
-                  </button>
-                  <button onClick={() => setCancelContext({ appt, isNoShow: true })}
-                    style={{ width: '100%', border: `1.5px solid ${C.line}`, borderRadius: 10, padding: 12, fontSize: 14, fontWeight: 600, background: '#fff', color: C.ink, cursor: 'pointer' }}>
-                    Mark no-show
-                  </button>
-                  <button onClick={() => setCancelContext({ appt, isNoShow: false })}
-                    style={{ width: '100%', border: 'none', borderRadius: 10, padding: 10, fontSize: 13, fontWeight: 600, background: 'transparent', color: '#B91C1C', cursor: 'pointer' }}>
-                    Cancel appointment
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-
-        <div style={{ minWidth: 0 }}>
+      {/* HK Jun 2 2026: page rail retired. DetailPanel (page mode) renders the
+          full-width two-column layout itself; Client details + Notes passed as props. */}
       <DetailPanel
         appt={appt}
         therapist={therapist}
@@ -389,12 +318,12 @@ export default function BookingDetailPage({ therapist }) {
         onReschedule={(a) => setRescheduleAppt(a)}
         onCancelled={loadBooking}
         onRequestCancel={(payload) => setCancelContext(payload)}
+        clientDetailRows={detailRows}
+        clientNotes={clientRow?.notes || null}
         showToast={(msg) => setToast(msg)}
         onRequestCheckout={(payload) => setCheckoutContext(payload)}
         paymentsRefreshTick={paymentsRefreshTick}
       />
-        </div>
-      </div>
 
       {checkoutContext && (
         <CheckoutModal
