@@ -694,37 +694,38 @@ export default function BookingModal({ therapist, mode = 'create', existingBooki
 
   return createPortal((
     <div style={{
+      // HK Jun 1 2026: full-screen page, not a dimmed floating card.
+      // Applies to create / reschedule / rebook. For the 70-year-old
+      // therapist persona a single full screen is clearer than a sheet
+      // hovering over the schedule, and it cannot be torn down by the
+      // schedule refreshing behind it.
       position: 'fixed',
       inset: 0,
-      background: 'rgba(0,0,0,0.5)',
+      background: '#fff',
       display: 'flex',
-      alignItems: 'flex-start',
-      justifyContent: 'center',
+      flexDirection: 'column',
+      alignItems: 'center',
       zIndex: 3000,
-      padding: 20,
-      paddingTop: 'max(20px, env(safe-area-inset-top, 0px))',
-      paddingBottom: 'max(20px, env(safe-area-inset-bottom, 0px))',
+      paddingTop: 'max(24px, env(safe-area-inset-top, 24px))',
+      paddingBottom: 'max(16px, env(safe-area-inset-bottom, 16px))',
       overflowY: 'auto',
       WebkitOverflowScrolling: 'touch',
       overscrollBehavior: 'contain',
-    }}
-      onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
+    }}>
       <div style={{
         background: '#fff',
-        borderRadius: 20,
         width: '100%',
         maxWidth: 480,
-        maxHeight: 'calc(100dvh - 40px)',
+        minHeight: '100%',
         display: 'flex',
         flexDirection: 'column',
-        boxShadow: '0 24px 64px rgba(0,0,0,0.25)',
         overscrollBehavior: 'contain',
       }}>
 
         {/* Header */}
-        <div style={{ padding: '24px 24px 16px', borderBottom: `1px solid ${C.border}`, background: '#fff', flexShrink: 0 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <h3 style={{ fontFamily: 'Georgia, serif', fontSize: 20, fontWeight: 700, color: C.dark, margin: 0 }}>{title}</h3>
+        <div style={{ padding: '8px 20px 16px', borderBottom: `1px solid ${C.border}`, background: '#fff', flexShrink: 0 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
+            <h3 style={{ fontFamily: 'Georgia, serif', fontSize: 22, fontWeight: 700, color: C.dark, margin: 0 }}>{title}</h3>
             <CloseButton onClick={onClose} label="Cancel" />
           </div>
         </div>
@@ -1086,16 +1087,16 @@ export default function BookingModal({ therapist, mode = 'create', existingBooki
                  has scrolled. The therapist sees the action target
                  the entire time. */}
         <div style={{
-          padding: '14px 24px',
+          padding: '14px 20px',
           paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 14px)',
           borderTop: `1px solid ${C.border}`,
           background: '#fff',
           flexShrink: 0,
+          position: 'sticky',
+          bottom: 0,
           display: 'flex',
           flexDirection: 'column',
           gap: 10,
-          borderBottomLeftRadius: 20,
-          borderBottomRightRadius: 20,
         }}>
           {error && <div style={{ fontSize: 13, color: '#DC2626', fontWeight: 600 }}>⚠ {error}</div>}
 
