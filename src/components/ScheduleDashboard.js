@@ -3183,22 +3183,22 @@ export function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelle
               HK Jun 2 2026: on the desktop page the left box carries the
               session info + edit pencils, so this card is slide/mobile only. */}
           {!railPresent && (
-          <div style={{background:'#F9FAFB',borderRadius:12,padding:'14px 16px'}}>
+          <div style={{background:'#fff',border:'1px solid #E4E7DF',borderRadius:16,padding:'16px 18px',boxShadow:'0 1px 2px rgba(31,65,49,0.04)'}}>
             <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',gap:12,marginBottom:10}}>
               <div style={{flex:1,minWidth:0}}>
                 {appt.date && (
-                  <div style={{fontSize:14,fontWeight:700,color:SO.ink,letterSpacing:'0.01em',lineHeight:1.3}}>
+                  <div style={{fontSize:15.5,fontWeight:700,color:SO.ink,letterSpacing:'0.01em',lineHeight:1.3}}>
                     {appt.date.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
                   </div>
                 )}
               </div>
               <div style={{flexShrink:0}}>
-                {!railPresent && <div style={{background:st.bg,color:st.color,borderRadius:20,padding:'5px 11px',fontSize:11,fontWeight:700,whiteSpace:'nowrap'}}>{st.icon} {st.label}</div>}
+                {!railPresent && <div style={{background:st.bg,color:st.color,borderRadius:20,padding:'5px 11px',fontSize:11.5,fontWeight:700,whiteSpace:'nowrap'}}>{st.icon} {st.label}</div>}
               </div>
             </div>
 
-            <div style={{display:'flex',alignItems:'center',gap:8,flexWrap:'wrap',marginBottom:4}}>
-              <div style={{fontSize:16,fontWeight:700,color:'#1F2937'}}>{appt.time} · {appt.duration} min</div>
+            <div style={{display:'flex',alignItems:'center',gap:10,flexWrap:'wrap',marginBottom:6}}>
+              <div style={{fontSize:19,fontWeight:700,color:'#1F2937'}}>{appt.time} · {appt.duration} min</div>
               {!appt.preview && (
                 <button onClick={()=>setEditTime(v=>!v)}
                   title={editTime ? 'Cancel time edit' : 'Edit time'}
@@ -3206,22 +3206,23 @@ export function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelle
                   style={{
                     background:'transparent',
                     border:'1px solid #D1D5DB',
-                    borderRadius:8,
-                    padding:'4px 8px',
-                    fontSize:12,
+                    borderRadius:9,
+                    padding:'7px 11px',
+                    fontSize:14,
                     lineHeight:1,
                     color:'#6B7280',
                     cursor:'pointer',
                     fontFamily:'inherit',
                     flexShrink:0,
+                    minHeight:38,
                   }}>
                   {editTime ? '✕' : '✏️'}
                 </button>
               )}
             </div>
 
-            <div style={{display:'flex',alignItems:'center',gap:8,flexWrap:'wrap'}}>
-              <div style={{fontSize:13,color:'#6B7280'}}>{appt.service||'Session'}</div>
+            <div style={{display:'flex',alignItems:'center',gap:10,flexWrap:'wrap'}}>
+              <div style={{fontSize:14.5,color:'#4B5563'}}>{appt.service||'Session'}</div>
               {!appt.preview && (
                 <button onClick={toggleServiceEditor}
                   title={editService ? 'Cancel service edit' : 'Edit service, duration, location, add-ons'}
@@ -3229,14 +3230,15 @@ export function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelle
                   style={{
                     background:'transparent',
                     border:'1px solid #D1D5DB',
-                    borderRadius:8,
-                    padding:'4px 8px',
-                    fontSize:11,
+                    borderRadius:9,
+                    padding:'7px 11px',
+                    fontSize:14,
                     lineHeight:1,
                     color:'#6B7280',
                     cursor:'pointer',
                     fontFamily:'inherit',
                     flexShrink:0,
+                    minHeight:38,
                   }}>
                   {editService ? '✕' : '✏️'}
                 </button>
@@ -3306,7 +3308,7 @@ export function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelle
               shared <SetupCard>. On the slide-over and the mobile page it
               renders here; on the desktop page it renders in the left box. */}
           {(mode === 'slide' || isMobileW) && (
-            <SetupCard appt={appt} therapist={therapist} clientRow={clientRow} notify={notify} />
+            <SetupCard appt={appt} therapist={therapist} clientRow={clientRow} notify={notify} showLabel />
           )}
 
           {/* HK May 29 2026: series pill on bookings that belong to a

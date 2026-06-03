@@ -289,11 +289,12 @@ export default function SetupCard({
   const noContact = <span style={{ fontSize: 11, color: '#9CA3AF', fontStyle: 'italic' }}>No contact on file</span>;
 
   const box = wrapperStyle || {
-    marginTop: 10,
-    padding: '4px 12px',
-    background: '#FAFAF7',
-    border: '1px solid #EAE5DA',
-    borderRadius: 10,
+    marginTop: 12,
+    padding: '14px 16px',
+    background: '#fff',
+    border: '1px solid #E4E7DF',
+    borderRadius: 16,
+    boxShadow: '0 1px 2px rgba(31,65,49,0.04)',
   };
 
   // Intake row: sent (badge + resend) vs not sent (pills).
