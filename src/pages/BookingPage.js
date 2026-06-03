@@ -956,6 +956,13 @@ export default function BookingPage() {
             deposit_paid: true,
             square_deposit_paid_at: new Date().toISOString(),
           }).eq('id', bid);
+          // HK Jun 3 2026: the booking was inserted as pending-deposit, so
+          // the AFTER INSERT confirmation trigger deliberately skips it and
+          // expects the deposit-success path to send the confirmation
+          // explicitly. The Stripe branch above already does this; this
+          // Square branch did not, so Square deposit clients (and their
+          // therapist) got NO confirmation. Fire it here, same as Stripe.
+          fireBookingConfirmation(bid);
           setConfirmed(true);
           setBookingId(bid);
           window.history.replaceState({}, '', window.location.pathname);
