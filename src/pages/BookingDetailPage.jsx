@@ -417,6 +417,10 @@ export default function BookingDetailPage({ therapist }) {
               showLabel
               wrapperStyle={{ background: '#fff', border: `1px solid ${C.line}`, borderRadius: 14, padding: '14px 18px' }}
             />
+
+            {/* HK Jun 2 2026: package card (Session N of M + Manage link)
+                portals in here on desktop, from DetailPanel. */}
+            <div ref={setPackageSlot} />
           </div>
         )}
 

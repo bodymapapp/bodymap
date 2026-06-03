@@ -3344,6 +3344,13 @@ export function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelle
               loudly on the booking so the therapist can see at a
               glance "this is part of an existing pack, not a new
               charge." */}
+          {/* HK Jun 2 2026: on desktop the package card moves into the left
+              box (packageSlot); on slide-over / mobile it stays inline here.
+              Both package blocks (active match + the no-auto-match affordance)
+              are wrapped so they travel together. */}
+          {(() => {
+          const packageUi = (
+            <>
           {!appt.preview && activePackage && (
             <div style={{
               marginTop: 10,
@@ -3660,6 +3667,10 @@ export function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelle
               )}
             </div>
           )}
+            </>
+          );
+          return (railPresent && packageSlot) ? createPortal(packageUi, packageSlot) : packageUi;
+          })()}
 
 
           {/* HK May 25 2026 (Phase 20.1): single highest-priority
