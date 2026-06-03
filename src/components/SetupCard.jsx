@@ -231,31 +231,38 @@ export default function SetupCard({
   const hasEmail = !!clientEmail;
   const hasPhone = !!clientPhone;
 
+  // HK Jun 2 2026: every action row now uses ONE consistent vertical layout:
+  // the label on its own line, then the Email / SMS buttons as two equal,
+  // full-width buttons below. Before, the row was label-left / buttons-right
+  // with flex-wrap, so the short "Send intake" label kept its buttons inline
+  // while the longer "Send practice agreement" pushed them to a second line.
+  // That mismatch is what read as unprofessional. Stacking makes every row
+  // identical with big, obvious tap targets (70yo persona).
   const rowStyle = {
-    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-    gap: 8, padding: '8px 0', flexWrap: 'wrap',
+    display: 'flex', flexDirection: 'column', alignItems: 'flex-start',
+    gap: 10, padding: '12px 0',
   };
   const labelStyle = {
     display: 'flex', alignItems: 'center', gap: 7,
-    fontSize: 13, fontWeight: 600, color: '#1F4030',
-    flexShrink: 0,
+    fontSize: 14, fontWeight: 700, color: '#1F4030',
   };
-  const pillRow = { display: 'flex', gap: 6, flexShrink: 0, alignItems: 'center' };
+  const pillRow = { display: 'flex', gap: 8, alignItems: 'center', width: '100%' };
 
   const pill = (label, icon, onClick, disabled) => {
     const sharedStyle = {
-      display: 'inline-flex', alignItems: 'center', gap: 4,
-      padding: '6px 12px', borderRadius: 999,
+      display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 5,
+      flex: 1,
+      padding: '11px 14px', borderRadius: 10,
       background: disabled ? '#F4F4F4' : '#fff',
       border: `1px solid ${disabled ? '#E5E7EB' : '#C8D5BC'}`,
       color: disabled ? '#9CA3AF' : '#2A5741',
-      fontSize: 12, fontWeight: 600,
+      fontSize: 13.5, fontWeight: 700,
       cursor: disabled ? 'not-allowed' : 'pointer',
       fontFamily: 'inherit',
     };
     return (
       <button key={label} type="button" onClick={disabled ? undefined : onClick} disabled={disabled} style={sharedStyle}>
-        <span style={{ fontSize: 11 }}>{icon}</span>{label}
+        <span style={{ fontSize: 13 }}>{icon}</span>{label}
       </button>
     );
   };
