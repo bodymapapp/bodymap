@@ -191,7 +191,7 @@ export default function BookingModal({ therapist, mode = 'create', existingBooki
       const horizonIso = horizonDate.toISOString().slice(0, 10);
       const todayIso = new Date().toISOString().slice(0, 10);
 
-      const [{ data: svcs }, { data: avail }, { data: blocked }, { data: locs }, { data: addons }, { data: futureBookings }] = await Promise.all([
+      const [{ data: svcs }, { data: avail }, { data: blocked }, { data: locs }, { data: addons }, { data: futureBookings }, { data: recBlocks }, { data: recExc }] = await Promise.all([
         supabase.from('services').select('*').eq('therapist_id', therapist.id).eq('active', true).is('archived_at', null).order('sort_order', { ascending: true }).order('price', { ascending: true }),
         supabase.from('availability').select('*').eq('therapist_id', therapist.id).eq('active', true),
         // Phase 9.1: fetch start_time/end_time so partial-day blocks
@@ -204,6 +204,12 @@ export default function BookingModal({ therapist, mode = 'create', existingBooki
         supabase.from('service_addons').select('*').eq('therapist_id', therapist.id).eq('active', true).order('display_order').order('created_at'),
         // HK May 29 2026: bookings count per date for sage dots.
         supabase.from('bookings').select('booking_date').eq('therapist_id', therapist.id).gte('booking_date', todayIso).lte('booking_date', horizonIso).neq('status', 'cancelled'),
+        // HK Jun 3 2026: recurring block rules (e.g. "Every Sat") plus
+        // their exceptions, so the date picker honors them the same way
+        // the availability calendar does. Without this, recurring-blocked
+        // days were offered as bookable (Jacquie saw a blocked Saturday).
+        supabase.from('recurring_blocks').select('*').eq('therapist_id', therapist.id),
+        supabase.from('recurring_block_exceptions').select('*').eq('therapist_id', therapist.id),
       ]);
       setServices(svcs || []);
       setAvail(avail || []);
@@ -219,6 +225,30 @@ export default function BookingModal({ therapist, mode = 'create', existingBooki
           partial[b.date].push({ start_time: b.start_time.slice(0,5), end_time: b.end_time.slice(0,5) });
         } else {
           fullDay.push(b.date);
+        }
+      }
+      // HK Jun 3 2026: materialize recurring blocks across the booking
+      // horizon so rules like "Every Sat" remove those days (full-day) or
+      // those windows (partial) from the picker, matching the calendar.
+      {
+        const exc = recExc || [];
+        const base = new Date(); base.setHours(12, 0, 0, 0);
+        for (let i = 0; i < 366; i++) {
+          const d = new Date(base); d.setDate(base.getDate() + i);
+          const dow = d.getDay();
+          const ds = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+          for (const rule of (recBlocks || [])) {
+            if (!rule.weekly_days?.includes(dow)) continue;
+            if (rule.start_date && rule.start_date > ds) continue;
+            if (rule.end_date && rule.end_date < ds) continue;
+            if (exc.some(e => e.recurring_block_id === rule.id && e.exception_date === ds)) continue;
+            if (rule.start_time && rule.end_time) {
+              if (!partial[ds]) partial[ds] = [];
+              partial[ds].push({ start_time: rule.start_time.slice(0, 5), end_time: rule.end_time.slice(0, 5) });
+            } else {
+              fullDay.push(ds);
+            }
+          }
         }
       }
       setBlockedDates(new Set(fullDay));
