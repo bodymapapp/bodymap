@@ -1936,7 +1936,13 @@ export default function BookingPage() {
       location_id: selectedLocation?.id || null,
     }).select().single();
     setSubmitting(false);
-    if(error){alert('Something went wrong. Please try again.');return;}
+    if(error){
+      const overlap = (error.message || '').includes('BOOKING_OVERLAP');
+      alert(overlap
+        ? 'Sorry, that time was just booked. Please go back and pick another time.'
+        : 'Something went wrong. Please try again.');
+      return;
+    }
     const bid=newBooking?.id||null;
     setBookingId(bid);
 

@@ -228,6 +228,49 @@ export default function BulkSessionScheduler({
         .single();
       let remaining = pkg?.sessions_remaining ?? redeemContext.sessionsRemaining ?? filledRows.length;
 
+      // HK Jun 3 2026: pre-flight overlap check (mirrors the series path
+      // and the DB guard). If any chosen slot overlaps an existing active
+      // booking, or two rows in this batch overlap each other, abort and
+      // list them, creating nothing, so a batch is never half-created.
+      {
+        const skip = ['cancelled', 'rescheduled', 'no_show', 'pending-approval'];
+        const ov = (aS, aE, bS, bE) => aS < bE && bS < aE;
+        const dates = [...new Set(filledRows.map(r => r.date))];
+        const { data: existing } = await supabase
+          .from('bookings')
+          .select('booking_date, start_time, end_time, client_name, status')
+          .eq('therapist_id', therapist.id)
+          .in('booking_date', dates);
+        const intervals = filledRows.map(row => {
+          const dur = (svcById[row.serviceId]?.duration) || 60;
+          const [sh, sm] = row.time.split(':').map(Number);
+          const e = sh * 60 + sm + dur;
+          const endTime = `${String(Math.floor(e / 60)).padStart(2, '0')}:${String(e % 60).padStart(2, '0')}`;
+          return { date: row.date, time: row.time, endTime, s: sh * 60 + sm, e };
+        });
+        const conflicts = [];
+        for (const it of intervals) {
+          const hit = (existing || []).find(b =>
+            b.booking_date === it.date &&
+            !skip.includes(b.status) &&
+            ov(it.time, it.endTime, (b.start_time || '').slice(0, 5), (b.end_time || '').slice(0, 5))
+          );
+          if (hit) conflicts.push(`${it.date} ${it.time} overlaps ${hit.client_name || 'another booking'}`);
+        }
+        for (let i = 0; i < intervals.length; i++) {
+          for (let j = i + 1; j < intervals.length; j++) {
+            if (intervals[i].date === intervals[j].date && intervals[i].s < intervals[j].e && intervals[j].s < intervals[i].e) {
+              conflicts.push(`${intervals[i].date}: ${intervals[i].time} and ${intervals[j].time} overlap each other`);
+            }
+          }
+        }
+        if (conflicts.length) {
+          setSubmitting(false);
+          setError(`These sessions overlap existing bookings, so nothing was scheduled. Fix them and try again:\n${conflicts.slice(0, 8).join('\n')}${conflicts.length > 8 ? `\n...and ${conflicts.length - 8} more` : ''}`);
+          return;
+        }
+      }
+
       let created = 0;
       const createdBookingIds = [];
       for (const row of filledRows) {

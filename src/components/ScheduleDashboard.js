@@ -5116,6 +5116,40 @@ function TimelineView({ therapist, allAppts, dayOffset, setDayOffset, today, onR
 
   const starts = dayAppts.map(a=>t2m(a.time));
   const ends = dayAppts.map(a=>t2m(a.time)+a.duration);
+
+  // HK Jun 3 2026: overlap column layout. Bookings that overlap in time
+  // are packed into side-by-side columns so none can hide behind another.
+  // (A cancelled slot was painting over a confirmed booking, so Jacquie
+  // could not see Cathy and booked Julie on top.) Greedy interval packing:
+  // within each cluster of mutually overlapping bookings, each takes the
+  // first free column; the cluster's column count sets every card's width.
+  const apptLayout = (() => {
+    const items = sorted.map(a => ({ id: a.id, start: t2m(a.time), end: t2m(a.time) + Math.max(a.duration, 1) }));
+    const layout = {};
+    let cluster = [];
+    let clusterEnd = -Infinity;
+    const flush = () => {
+      if (!cluster.length) return;
+      const colEnds = [];
+      for (const it of cluster) {
+        let col = colEnds.findIndex(e => it.start >= e);
+        if (col === -1) { col = colEnds.length; colEnds.push(it.end); }
+        else colEnds[col] = it.end;
+        layout[it.id] = { col, cols: 1 };
+      }
+      const cols = colEnds.length;
+      for (const it of cluster) layout[it.id].cols = cols;
+      cluster = [];
+      clusterEnd = -Infinity;
+    };
+    for (const it of items) {
+      if (cluster.length && it.start >= clusterEnd) flush();
+      cluster.push(it);
+      clusterEnd = Math.max(clusterEnd, it.end);
+    }
+    flush();
+    return layout;
+  })();
   // Full working-day window. Per founder playbook: showing empty
   // time is the point. Compressing the calendar to first/last
   // booking hides the gaps that Fill This Gap is meant to surface.
@@ -5557,9 +5591,14 @@ function TimelineView({ therapist, allAppts, dayOffset, setDayOffset, today, onR
               // HK May 29 2026: trace styling for cancelled/no-show/refund/reschedule
               const ts = traceStyles(appt);
               const ann = traceAnnotation(appt);
+              // HK Jun 3 2026: side-by-side columns when bookings overlap.
+              const lay = apptLayout[appt.id] || { col: 0, cols: 1 };
+              const colW = 100 / lay.cols;
+              const leftCss = `calc(${(lay.col * colW).toFixed(4)}% + 2px)`;
+              const widthCss = `calc(${colW.toFixed(4)}% - ${lay.cols > 1 ? 5 : 4}px)`;
               return (
                 <div key={appt.id} data-appt-card="1" onClick={()=>setSelected(appt)}
-                  style={{position:'absolute',top:y,left:2,right:2,height:bh,
+                  style={{position:'absolute',top:y,left:leftCss,width:widthCss,height:bh,
                     background:appt.preview?'#F9FAFB':st.bg,
                     border:`1.5px ${appt.preview?'dashed':'solid'} ${appt.preview?'#D1D5DB':st.dot}`,
                     borderLeft:`4px solid ${appt.preview?'#CBD5E1':st.dot}`,
