@@ -1654,6 +1654,12 @@ export function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelle
   const [savedFlash, setSavedFlash] = useState(null);
   const [timeEditError, setTimeEditError] = useState(null);
   const [serviceEditError, setServiceEditError] = useState(null);
+  // HK Jun 2 2026: on mobile (no left rail) the session editors had no slot
+  // to portal into, so they fell back to their inline definition near the
+  // bottom of the panel, far from the pencil. This slot sits right under the
+  // date card; on mobile/slide-over the editors portal here so they open
+  // directly below the row being edited. Desktop still uses sessionEditorSlot.
+  const [mobileEditorSlot, setMobileEditorSlot] = useState(null);
   // Shape: { id, name, sessions_purchased, sessions_remaining,
   //   used_count, this_session_number, expires_at, linked }
   // Or null when no active package matches.
@@ -3246,6 +3252,12 @@ export function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelle
           </div>
           )}
 
+          {/* HK Jun 2 2026: mobile/slide-over anchor for the session editors,
+              so the time/service editor opens directly under the date card
+              (next to the pencil) instead of detached at the bottom. Empty on
+              desktop, where the editors portal to the left-box slot instead. */}
+          {!railPresent && <div ref={setMobileEditorSlot} style={{ width: '100%' }} />}
+
           {/* HK May 31 2026: trace banner. When a booking has been marked
               no-show / cancelled / refunded / rescheduled, the status pill
               alone (small, in the corner of the header) was easy to miss.
@@ -3720,7 +3732,9 @@ export function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelle
               )}
             </div>
             );
-            return railPresent && sessionEditorSlot ? createPortal(panel, sessionEditorSlot) : panel;
+            return railPresent && sessionEditorSlot
+              ? createPortal(panel, sessionEditorSlot)
+              : (mobileEditorSlot ? createPortal(panel, mobileEditorSlot) : panel);
           })()}
 
           {editService && !appt.preview && (() => {
@@ -3919,7 +3933,9 @@ export function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelle
                 )}
               </div>
             );
-            return railPresent && sessionEditorSlot ? createPortal(panel, sessionEditorSlot) : panel;
+            return railPresent && sessionEditorSlot
+              ? createPortal(panel, sessionEditorSlot)
+              : (mobileEditorSlot ? createPortal(panel, mobileEditorSlot) : panel);
           })()}
 
           {/* Phase 24d: Session journey moved into the cockpit section
