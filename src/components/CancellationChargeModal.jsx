@@ -21,6 +21,7 @@
 //     therapist can switch to skip (waive) explicitly
 
 import React, { useMemo, useState, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { supabase } from '../lib/supabase';
 import { getStripePublishableKey } from '../lib/paymentMode';
 import AutoGrowingTextarea from './AutoGrowingTextarea';
@@ -124,7 +125,14 @@ export default function CancellationChargeModal({
   // picker was removed Jun 1 2026.
 
   const policy = therapist?.cancellation_policy || {};
-  const startAt = booking?.start_at ? new Date(booking.start_at) : null;
+  // HK Jun 2 2026: the bookings table has no start_at column; it stores
+  // booking_date + start_time separately. Reading booking.start_at made
+  // hoursBefore always 0, which forced the under-2h (100%) fee tier on
+  // every cancel. Derive the real local start datetime from the two
+  // columns, keeping start_at as a fallback for any other caller.
+  const startAt = (booking?.booking_date && booking?.start_time)
+    ? new Date(`${booking.booking_date}T${booking.start_time}`)
+    : (booking?.start_at ? new Date(booking.start_at) : null);
   const hoursBefore = startAt
     ? Math.max(0, (startAt.getTime() - Date.now()) / (1000 * 60 * 60))
     : 0;
@@ -554,7 +562,13 @@ export default function CancellationChargeModal({
   }
 
   const isMobileW = typeof window !== 'undefined' && window.innerWidth < 768;
-  return (
+  // HK Jun 2 2026: portal to document.body. This modal previously rendered
+  // inline in the page tree, unlike CheckoutModal and BookingModal which
+  // portal out. On the mobile booking page that left it subject to ancestor
+  // stacking/clipping, so the cancel sheet half-rendered (just the close X
+  // showed) and cancelling did nothing. Portaling matches the modals that
+  // already work on mobile and frees its fixed positioning from any ancestor.
+  const modalUi = (
     <>
       {/* HK Jun 1 2026: responsive. On phone it is an edge-to-edge full
           screen (480px = the whole device, Amazon-style). On desktop a
@@ -964,4 +978,5 @@ export default function CancellationChargeModal({
       </div>
     </>
   );
+  return createPortal(modalUi, document.body);
 }
