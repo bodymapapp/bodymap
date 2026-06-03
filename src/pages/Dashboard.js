@@ -4071,8 +4071,14 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
                     const { error: upErr } = await supabase.storage.from('bodymap-assets').upload(path, file, { upsert: true });
                     if (upErr) throw upErr;
                     const { data: { publicUrl } } = supabase.storage.from('bodymap-assets').getPublicUrl(path);
-                    await supabase.from('therapists').update({ photo_url: publicUrl }).eq('id', therapist.id);
+                    // HK Jun 2 2026: this update silently swallowed its error and
+                    // wrote to a photo_url column that did not exist, so the logo
+                    // never persisted ("won't stay uploaded"). Column added; now we
+                    // surface the error and refresh app state so it sticks.
+                    const { error: saveErr } = await supabase.from('therapists').update({ photo_url: publicUrl }).eq('id', therapist.id);
+                    if (saveErr) throw saveErr;
                     setPhotoUrl(publicUrl);
+                    if (typeof refreshTherapist === 'function') await refreshTherapist();
                   } catch(err) { console.error(err); alert('Upload failed. Please try again.'); }
                   finally { setPhotoUploading(false); }
                 }} />
@@ -4080,8 +4086,10 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
             {(photoUrl || therapist?.photo_url) && (
               <button onClick={async () => {
                 const { supabase } = await import('../lib/supabase');
-                await supabase.from('therapists').update({ photo_url: null }).eq('id', therapist.id);
+                const { error: rmErr } = await supabase.from('therapists').update({ photo_url: null }).eq('id', therapist.id);
+                if (rmErr) { console.error(rmErr); alert('Could not remove photo. Please try again.'); return; }
                 setPhotoUrl('');
+                if (typeof refreshTherapist === 'function') await refreshTherapist();
               }} style={{ marginLeft: '8px', background: 'none', border: 'none', fontSize: '11px', color: '#EF4444', cursor: 'pointer', fontWeight: '600' }}>Remove</button>
             )}
           </div>
