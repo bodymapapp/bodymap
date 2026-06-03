@@ -1114,6 +1114,13 @@ export default function BookingPage() {
   const effectiveDuration = svc
     ? svc.duration + selectedAddonIds.reduce((sum,id)=>sum+(availableAddons.find(a=>a.id===id)?.extra_minutes||0), 0)
     : 0;
+  // HK Jun 2 2026: effective service PRICE including selected add-ons. Use
+  // this anywhere a price is shown or charged so add-ons are never dropped.
+  // Ashley/Puro Glow saw base-only prices on the card screen because several
+  // spots read svc.price directly.
+  const effectivePrice = svc
+    ? Number(svc.price) + selectedAddonIds.reduce((sum,id)=>sum+Number(availableAddons.find(a=>a.id===id)?.price||0), 0)
+    : 0;
 
   useEffect(()=>{if(date&&svc)loadSlots();},[date,svc,effectiveDuration]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -2072,7 +2079,7 @@ export default function BookingPage() {
 
     // Apply gift certificate if present
     if (giftCert) {
-      const newRemaining = Math.max(0, giftCert.remaining - svc.price);
+      const newRemaining = Math.max(0, giftCert.remaining - effectivePrice);
       await supabase.from('gift_certificates').update({
         remaining: newRemaining,
         status: newRemaining <= 0 ? 'redeemed' : 'active',
@@ -3605,7 +3612,7 @@ export default function BookingPage() {
               // it here too because the gate fires after this block.
               const _approvalDepositMaybe = !!therapist.require_approval && !isRepeat && therapist.deposit_enabled && !giftCert;
               if(needsDeposit || _approvalDepositMaybe){
-                const amt=Math.round((svc.price*(therapist.deposit_percent||20)/100)*100);
+                const amt=Math.round((effectivePrice*(therapist.deposit_percent||20)/100)*100);
                 setDepositAmount(amt);
               }
 
@@ -3716,7 +3723,7 @@ export default function BookingPage() {
               {[
                 ['Service',svc.name],['Duration',`${svc.duration} min`],['Date',fmtDate(date)],
                 ['Time',slot.display],['Therapist',therapist.business_name||therapist.full_name],
-                ['Price', redeemContext ? 'Redeemed from your package ($0)' : `$${svc.price}, pay at session`],['Name',form.name],['Email',form.email],
+                ['Price', redeemContext ? 'Redeemed from your package ($0)' : `$${effectivePrice}, pay at session`],['Name',form.name],['Email',form.email],
                 ...(form.phone?[['Phone',form.phone]]:[]),
               ].map(([l,v],i,arr)=>(
                 <div key={l} style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',gap:16,padding:'10px 0',borderBottom:i<arr.length-1?`1px solid ${C.light}`:'none'}}>
@@ -3754,7 +3761,7 @@ export default function BookingPage() {
                 <div>
                   <div style={{fontSize:14,fontWeight:700,color:'#92400E',marginBottom:4}}>A deposit of ${(depositAmount/100).toFixed(0)} is required to confirm your spot</div>
                   <div style={{fontSize:12,color:'#92400E',lineHeight:1.5}}>
-                    As a new client, {therapist.deposit_percent||20}% of the ${svc.price} session fee is collected now to reserve your appointment. The remaining ${svc.price - Math.round(svc.price*(therapist.deposit_percent||20)/100)} is paid directly to your therapist at the session.
+                    As a new client, {therapist.deposit_percent||20}% of the ${effectivePrice} session fee is collected now to reserve your appointment. The remaining ${effectivePrice - Math.round(effectivePrice*(therapist.deposit_percent||20)/100)} is paid directly to your therapist at the session.
                   </div>
                 </div>
               </div>
@@ -3797,7 +3804,7 @@ export default function BookingPage() {
                     />
                     <div style={{ flex: 1 }}>
                       <div style={{ fontSize: 14, fontWeight: 600, color: C.dark }}>
-                        {depositRequired ? `Pay deposit ($${(Math.round((svc.price * (therapist.deposit_percent || 20) / 100) * 100) / 100).toFixed(0)})` : 'Pay at session'}
+                        {depositRequired ? `Pay deposit ($${(Math.round(((Number(svc.price) + selectedAddonIds.reduce((s,id)=>s+Number(availableAddons.find(a=>a.id===id)?.price||0),0)) * (therapist.deposit_percent || 20) / 100) * 100) / 100).toFixed(0)})` : 'Pay at session'}
                       </div>
                       <div style={{ fontSize: 12, color: C.gray, marginTop: 2 }}>
                         {depositRequired
@@ -3824,7 +3831,7 @@ export default function BookingPage() {
                     />
                     <div style={{ flex: 1 }}>
                       <div style={{ fontSize: 14, fontWeight: 600, color: C.dark }}>
-                        Pay in full now (${svc.price})
+                        Pay in full now (${(Number(svc.price) + selectedAddonIds.reduce((s,id)=>s+Number(availableAddons.find(a=>a.id===id)?.price||0),0)).toFixed(0)})
                       </div>
                       <div style={{ fontSize: 12, color: C.gray, marginTop: 2 }}>
                         Skip the at-session payment.{therapist.accept_tips !== false ? ' Add a tip if you like.' : ''}
@@ -3849,7 +3856,7 @@ export default function BookingPage() {
                         { label: `${therapist.tip_preset_3 ?? 20}%`, value: therapist.tip_preset_3 ?? 20, kind: 'percent' },
                       ].map((chip, idx) => {
                         const computedCents = chip.kind === 'percent'
-                          ? Math.round(svc.price * 100 * chip.value / 100)
+                          ? Math.round(effectivePrice * 100 * chip.value / 100)
                           : 0;
                         const isActive = tipCents === computedCents;
                         return (
@@ -3883,7 +3890,7 @@ export default function BookingPage() {
                     }}>
                       <span style={{ fontSize: 12, color: '#166534', fontWeight: 600 }}>You'll be charged today</span>
                       <span style={{ fontSize: 16, color: '#166534', fontWeight: 700 }}>
-                        ${((svc.price * 100 + tipCents) / 100).toFixed(2)}
+                        ${((effectivePrice * 100 + tipCents) / 100).toFixed(2)}
                       </span>
                     </div>
                   </div>
@@ -4380,7 +4387,7 @@ export default function BookingPage() {
                     : (requiresApproval
                         ? 'Send Request'
                         : (paymentMode === 'full'
-                            ? `✓ Confirm & Pay $${((svc.price*100 + tipCents)/100).toFixed(0)}`
+                            ? `✓ Confirm & Pay $${((effectivePrice*100 + tipCents)/100).toFixed(0)}`
                             : (depositRequired
                                 ? `✓ Confirm & Pay $${(depositAmount/100).toFixed(0)} Deposit`
                                 : '✓ Confirm Booking'))))}
@@ -4431,7 +4438,7 @@ export default function BookingPage() {
                 </div>
               </div>
               <p style={{fontSize:12,color:C.gray,margin:'0 0 4px',lineHeight:1.5}}>
-                This secures your appointment. The remaining ${svc.price - (depositAmount/100)} session fee is paid directly to your therapist when you arrive.
+                This secures your appointment. The remaining ${effectivePrice - (depositAmount/100)} session fee is paid directly to your therapist when you arrive.
               </p>
             </div>
             {paymentError&&(
