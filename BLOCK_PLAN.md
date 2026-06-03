@@ -16,6 +16,13 @@ Last refreshed: 2026-05-02 — after Tier A0 smart defaults shipped + Comparison
 - 4 Facebook marketing graphics built (1080x1350) for Bo Ma persona Facebook + Instagram posting.
 
 ## Active fires
+
+### TOP PRIORITY (Jun 3 2026)
+
+**TODAY: Square works end to end for Jacquie.** She is Square only (no Stripe), keeping deposits ON, turning on the QR for online booking. Verify the Square payment workflows her clients and she will hit first, in priority order, including notifications. Step by step with HK. Plan: (1) connection health so her token is not stale, (2) online booking with a Square deposit via the QR, (3) confirmation plus new booking notifications to both client and therapist, (4) at session remainder charge via Square, (5) cancellation, no show, and refund via Square, (6) card on file if her policy needs it.
+
+**PRIORITY BLOCK 1: Event consent uploads, Phase 1.** Reuse existing schema. An `events` row per chair event (add a nullable `kind`, 'class' or 'field'). Each photographed consent stored as a `waiver_signatures` row with a new nullable `event_id`, `client_id` left null, `pdf_url` set to the image, in a PRIVATE storage bucket (RLS plus signed URLs). Mobile first batch camera upload with compression and retry. No per person mapping in Phase 1 (solves Ashley's literal ask). Lay the Phase 2 and 3 rails now (event_id nullable, dedupe ready, the image is the legal record). Phase 2: vision OCR fills name, email, phone onto the consent row plus a batch review screen. Phase 3: promote to a client on rebook (dedupe by phone or email), surface in Practice Pulse, invite to book. HK thinks Phase 1 may be easy. Build right after today's Square verification.
+
 1. **Twilio setup in progress** — HK has authorized investing. Step-by-step in the Twilio dashboard tonight. After purchase + creds, he will plug in to MyBodyMap and broadcast to 23 textable users.
 2. **A2P 10DLC registration** — required for US production sends. Sole proprietor low-volume path. ~$4 brand fee + $10/mo campaign. 1-3 business days approval.
 3. **Mass broadcast pending** — wait until Twilio number provisioned + 10DLC approved before sending to all 23.
