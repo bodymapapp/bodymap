@@ -804,16 +804,24 @@ export default function BookingPage() {
   useEffect(() => {
     if (!svc || !therapist) return;
     if (requiresApproval) return; // Approval flow has no charge at booking
+    // HK Jun 2 2026: include selected add-on prices. Both branches used
+    // svc.price alone, so a guest who added an add-on saw (and was charged)
+    // only the base service on the card screen (Ashley/Puro Glow). The deps
+    // also now watch the add-on selection so the amount recomputes when it
+    // changes.
+    const addonPrice = (selectedAddonIds || []).reduce(
+      (s, id) => s + Number(availableAddons.find(a => a.id === id)?.price || 0), 0);
+    const fullPrice = Number(svc.price) + addonPrice;
     if (paymentMode === 'full') {
-      const fullCents = Math.round(svc.price * 100);
+      const fullCents = Math.round(fullPrice * 100);
       setDepositAmount(fullCents + (tipCents || 0));
     } else if (depositRequired) {
-      // Deposit-only: percent of base service price (existing logic)
-      const depositCents = Math.round((svc.price * (therapist.deposit_percent || 20) / 100) * 100);
+      // Deposit-only: percent of full price (base service + add-ons)
+      const depositCents = Math.round((fullPrice * (therapist.deposit_percent || 20) / 100) * 100);
       setDepositAmount(depositCents);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [paymentMode, tipCents, svc?.price, therapist?.deposit_percent, depositRequired, requiresApproval]);
+  }, [paymentMode, tipCents, svc?.price, therapist?.deposit_percent, depositRequired, requiresApproval, selectedAddonIds, availableAddons]);
 
   // Allow forcing a hard service-worker reset via ?fresh=1 in the URL.
   // For therapists who installed the PWA at v3 and are stuck seeing
