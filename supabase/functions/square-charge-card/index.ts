@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { isSquareScopeError, flagSquareReconnect } from "../_shared/squareReconnect.ts";
 
 const cors = {
   'Access-Control-Allow-Origin': '*',
@@ -70,7 +71,12 @@ serve(async (req) => {
     });
 
     const payData = await payRes.json();
-    if (!payRes.ok) return respond({ error: payData.errors?.[0]?.detail || 'Payment failed' }, 400);
+    if (!payRes.ok) {
+      if (isSquareScopeError(payRes.status, payData)) {
+        await flagSquareReconnect(therapist_id, payData.errors?.[0]?.detail || 'Square charge: permission error');
+      }
+      return respond({ error: payData.errors?.[0]?.detail || 'Payment failed' }, 400);
+    }
 
     return respond({
       success: true,

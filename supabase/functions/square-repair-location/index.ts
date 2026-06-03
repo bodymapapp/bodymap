@@ -12,6 +12,7 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { isSquareScopeError, flagSquareReconnect } from "../_shared/squareReconnect.ts";
 
 const cors = {
   'Access-Control-Allow-Origin': '*',
@@ -55,6 +56,13 @@ serve(async (req) => {
     });
     const locData = await locRes.json();
     if (!locRes.ok) {
+      // HK Jun 2 2026: a missing-scope failure here means a stale token
+      // (connected before MERCHANT_PROFILE_READ). Flag it so the dashboard
+      // shows a one-tap reconnect instead of this raw error.
+      if (isSquareScopeError(locRes.status, locData)) {
+        await flagSquareReconnect(therapist_id, locData.errors?.[0]?.detail || 'Square repair: missing MERCHANT_PROFILE_READ');
+        return respond({ error: 'needs_reconnect', detail: locData.errors?.[0]?.detail || 'Square needs to be reconnected' }, 400);
+      }
       return respond({
         error: locData.errors?.[0]?.detail || 'square_locations_api_failed',
         raw: locData,

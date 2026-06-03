@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { isSquareScopeError, flagSquareReconnect } from "../_shared/squareReconnect.ts";
 
 const cors = {
   'Access-Control-Allow-Origin': '*',
@@ -45,6 +46,9 @@ serve(async (req) => {
         }),
       });
       const custData = await custRes.json();
+      if (!custRes.ok && isSquareScopeError(custRes.status, custData)) {
+        await flagSquareReconnect(therapist_id, custData.errors?.[0]?.detail || 'Square save-card: permission error');
+      }
       customerId = custData.customer?.id;
       if (customerId) {
         await supabase.from('clients').update({ square_customer_id: customerId }).eq('id', client_id);
@@ -65,7 +69,12 @@ serve(async (req) => {
     });
     const cardData = await cardRes.json();
 
-    if (!cardRes.ok || !cardData.card) return respond({ error: cardData.errors?.[0]?.detail || 'Failed to save card' }, 400);
+    if (!cardRes.ok || !cardData.card) {
+      if (isSquareScopeError(cardRes.status, cardData)) {
+        await flagSquareReconnect(therapist_id, cardData.errors?.[0]?.detail || 'Square save-card: permission error');
+      }
+      return respond({ error: cardData.errors?.[0]?.detail || 'Failed to save card' }, 400);
+    }
 
     const card = cardData.card;
 

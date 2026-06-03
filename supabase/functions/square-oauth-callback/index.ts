@@ -99,6 +99,12 @@ serve(async (req) => {
     square_merchant_id: tokenData.merchant_id,
     square_location_id: locationId,
     square_connected: true,
+    // HK Jun 2 2026: a fresh token carries the current scope set, so clear
+    // any stale-token reconnect flag. This closes the self-healing loop:
+    // sweep/charge flags it, the therapist reconnects, the flag clears.
+    square_needs_reconnect: false,
+    square_reconnect_reason: null,
+    square_reconnect_checked_at: new Date().toISOString(),
   }).eq('id', therapistId);
 
   // HK May 31 2026: page must be invisible (no checkmark glyph
