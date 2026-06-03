@@ -5146,6 +5146,32 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
                 </div>
               </div>
 
+              {/* HK Jun 2 2026: always-available reconnect. Square never
+                  upgrades an existing token's scopes, so a therapist who
+                  connected before a scope was added (e.g. MERCHANT_PROFILE_READ)
+                  silently loses features with no way to refresh. This re-runs
+                  OAuth to re-grant the current scope set. NOT gated on a missing
+                  location, unlike the indicator below (that gate is exactly why
+                  Puro Glow looked healthy but stayed broken). */}
+              <button onClick={async () => {
+                const anonKey = process.env.REACT_APP_SUPABASE_ANON_KEY;
+                const res = await fetch('https://rmnqfrljoknmellbnpiy.supabase.co/functions/v1/square-oauth', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${anonKey}`, 'apikey': anonKey },
+                  body: JSON.stringify({ therapist_id: therapist.id }),
+                });
+                const data = await res.json();
+                if (data?.url) window.location.href = data.url;
+              }} style={{
+                marginTop: 8,
+                background: 'transparent', color: '#2A5741',
+                border: 'none', padding: '6px 0', fontSize: 12, fontWeight: 700,
+                textDecoration: 'underline', cursor: 'pointer', fontFamily: 'inherit',
+              }}>Refresh Square permissions</button>
+              <div style={{ fontSize: 11, color: '#6B7280', marginTop: 2, lineHeight: 1.5 }}>
+                Use this if Square payments or card-on-file stop working. It takes about 10 seconds and keeps all your existing transactions.
+              </div>
+
               {/* Health indicator: warns if Square is connected but the
                   location_id is missing. This can happen for therapists
                   who connected before May 2026 when the OAuth callback
