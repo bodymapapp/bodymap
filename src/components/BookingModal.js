@@ -96,6 +96,7 @@ export default function BookingModal({ therapist, mode = 'create', existingBooki
   const [error,  setError]  = useState('');
   const [loadingSlots, setLoadingSlots] = useState(false);
   const [blockedDates, setBlockedDates] = useState(new Set());
+  const [blockedDay, setBlockedDay] = useState(false);
   // Phase 9.1: partial-day blocks keyed by date string.
   const [partialBlocksByDate, setPartialBlocksByDate] = useState({});
   // HK May 29 2026: existing-bookings count per date for the sage-dots
@@ -283,12 +284,20 @@ export default function BookingModal({ therapist, mode = 'create', existingBooki
   useEffect(() => {
     if (!date || !serviceId) return;
     generateSlots();
-  }, [date, serviceId]);
+  }, [date, serviceId, blockedDates]);
 
   async function generateSlots() {
     setLoadingSlots(true);
     setSlots([]);
     setSlot(null);
+
+    // HK Jun 3 2026: a full-day blocked date (one-off OR recurring, e.g.
+    // "Every Sat") never offers standard times, even though the calendar
+    // still lets the day be tapped (allowOverrideOffDay). The custom-time
+    // field below remains, so a deliberate book-over-block is still possible.
+    const isFullBlocked = blockedDates.has(date);
+    setBlockedDay(isFullBlocked);
+    if (isFullBlocked) { setSlots([]); setLoadingSlots(false); return; }
 
     const svc = services.find(s => s.id === serviceId);
     if (!svc) { setLoadingSlots(false); return; }
@@ -1132,7 +1141,11 @@ export default function BookingModal({ therapist, mode = 'create', existingBooki
                     </div>
                   )}
                   {slots.length === 0 && (
-                    <div style={{ fontSize: 13, color: C.gray, marginBottom: 10 }}>No standard slots on this day.</div>
+                    <div style={{ fontSize: 13, color: blockedDay ? '#B45309' : C.gray, marginBottom: 10 }}>
+                      {blockedDay
+                        ? 'This day is blocked on your schedule. Use a custom time below only if you mean to book over the block.'
+                        : 'No standard slots on this day.'}
+                    </div>
                   )}
                   {/* Custom time override */}
                   <div style={{ borderTop: `1px dashed ${C.border}`, paddingTop: 10 }}>
