@@ -41,3 +41,22 @@ Run the parity test in Pending Tests #1 first. Capture each screen's blocked-day
 Next time we are already editing booking or availability code, or before we add a third kind of block rule. Not urgent. Nothing is broken today.
 
 ---
+
+## #2: Scheduled digests assume all therapists are US Central
+
+**Status:** Open  
+**Logged:** June 3, 2026 (when fixing the Practice Pulse send time)
+
+### What it is
+The daily Practice Pulse runs from a single pg_cron job at a fixed UTC time, and the practice-pulse function computes "today" and "tomorrow" in `America/Chicago` (Central). That is correct for every therapist on the platform today, because they are all US Central.
+
+### Why it matters
+A single cron time cannot be "8pm local" for therapists in different timezones, and computing the digest day in Central means a therapist in another timezone could get a digest for the wrong calendar day near midnight. Harmless now, wrong once we onboard outside Central.
+
+### The cleanup
+Add a `timezone` column to `therapists` (default `America/Chicago`), compute each therapist's day in their own timezone inside the function, and decide on send timing: either one cron that emails each therapist only when it is evening in their timezone, or group by timezone.
+
+### Trigger to act
+First therapist who is not US Central. Not before.
+
+---
