@@ -149,7 +149,10 @@ export default function CollapsibleSection({
           flexDirection: 'column',
           alignItems: 'center',
           width: 28,
+          minWidth: 28,
+          maxWidth: 28,
           flexShrink: 0,
+          overflow: 'hidden',
           gap: 2,
         }}>
           {taxonomy && (
@@ -165,10 +168,23 @@ export default function CollapsibleSection({
           )}
           {icon && (
             <div style={{
-              width: 22, height: 22, color: C.sage,
+              width: 22, height: 22, color: C.sage, flexShrink: 0, overflow: 'hidden',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
             }}>
-              {icon}
+              {/* HK Jun 2 2026: the inline icon SVGs are authored without
+                  width/height. An unsized SVG falls back to its default
+                  intrinsic size (300x150 in many engines), which on mobile
+                  inflated this column's min-content and pushed that row's
+                  label to the right (the "3.1 is indented" report). Force a
+                  fixed 22px on whatever icon is passed so every row is
+                  identical and deterministic. */}
+              {React.isValidElement(icon)
+                ? React.cloneElement(icon, {
+                    width: 22,
+                    height: 22,
+                    style: { width: 22, height: 22, display: 'block', ...(icon.props.style || {}) },
+                  })
+                : icon}
             </div>
           )}
         </div>
