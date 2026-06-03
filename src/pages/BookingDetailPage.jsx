@@ -300,7 +300,16 @@ export default function BookingDetailPage({ therapist }) {
   ] : [];
 
   return (
-    <div style={{ padding: '20px 32px 48px', maxWidth: 1320, margin: '0 auto' }}>
+    <div style={isDesktop
+      ? { padding: '20px 32px 48px', maxWidth: 1320, margin: '0 auto' }
+      : { padding: '4px 0 24px', maxWidth: '100%', margin: 0 }}>
+      {/* HK Jun 2 2026: desktop and mobile wrappers are now fully separate
+          style objects. The booking page lives inside the dashboard shell
+          (which already adds 12px gutter + a 16px card pad on mobile), so
+          this wrapper adds ZERO side padding on mobile (was 32px, which
+          stacked to ~60px per side and crushed the content to a narrow
+          strip). Desktop keeps its centered, padded column. Because the two
+          are independent, tuning one viewport can no longer break the other.*/}
       <div style={{ marginBottom: 14, display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
         <button onClick={handleBack}
           style={{
