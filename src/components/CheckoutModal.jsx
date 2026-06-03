@@ -114,10 +114,11 @@ export default function CheckoutModal({
 
   // HK May 31 2026: when therapist enters a new card to charge, default
   // to saving it for future card-on-file charges. Stripe's SetupIntent
-  // flow attaches the card to the customer automatically, so saving is
-  // free; we just persist the IDs to bookings + clients so future
-  // "Charge saved card" works without re-entering. Hidden in the Square
-  // path until square-charge-card supports separate save-card tokenization.
+  // flow attaches the card to the customer automatically; we persist the
+  // IDs to bookings + clients so future "Charge saved card" works without
+  // re-entering. HK Jun 3 2026: Square now supported too. The Square path
+  // vaults the card via square-save-card (Square CreateCard) before
+  // charging, so the toggle is shown for both processors.
   const [saveCardForLater, setSaveCardForLater] = useState(true);
 
   // Stripe Elements refs for new-card path
@@ -1143,6 +1144,53 @@ export default function CheckoutModal({
         ? `${packagePurchase.name} - ${packagePurchase.sessions} sessions`
         : `Session with ${therapist.business_name || therapist.full_name || 'your therapist'}`;
 
+      // HK Jun 3 2026: card-on-file for Square. When "save for next time"
+      // is on, vault the card first via square-save-card (creates a Square
+      // customer if needed, runs Square CreateCard, persists square_card_id
+      // + square_customer_id on the client), then charge the vaulted card,
+      // exactly like the card-on-file path. Mirrors the Stripe save-then-
+      // charge flow. WORKAROUND FLAGGED: if vaulting fails we do NOT block
+      // the charge. We fall back to the one-time nonce so the client is
+      // still charged, and warn that the card was not saved. A save hiccup
+      // must never cost the therapist the payment.
+      let chargeSourceId = sourceToken;        // one-time nonce by default
+      let chargeCustomerId = squareCustomerId;  // may be null for a new client
+      let cardWasSaved = false;
+      let saveCardWarning = null;
+      if (saveCardForLater) {
+        try {
+          const saveRes = await fetch(`${supabaseUrl}/functions/v1/square-save-card`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${anonKey}`,
+              'apikey': anonKey,
+            },
+            body: JSON.stringify({
+              therapist_id: therapist.id,
+              client_id: client.id,
+              client_email: client.email || appt?.email,
+              client_name: client.name || appt?.client,
+              card_nonce: sourceToken,
+            }),
+          });
+          const saveData = await saveRes.json().catch(() => null);
+          if (saveData?.success && saveData?.card_id) {
+            chargeSourceId = saveData.card_id; // durable vaulted card
+            // square-save-card persisted square_customer_id on the client;
+            // reload it so the charge attaches to the saved card.
+            const { data: savedClient } = await supabase
+              .from('clients').select('square_customer_id').eq('id', client.id).single();
+            chargeCustomerId = savedClient?.square_customer_id || chargeCustomerId;
+            cardWasSaved = true;
+          } else {
+            saveCardWarning = saveData?.error || 'Card could not be saved for next time.';
+          }
+        } catch (saveErr) {
+          saveCardWarning = saveErr?.message || 'Card could not be saved for next time.';
+        }
+      }
+
       const chargeRes = await fetch(`${supabaseUrl}/functions/v1/square-charge-card`, {
         method: 'POST',
         headers: {
@@ -1152,8 +1200,8 @@ export default function CheckoutModal({
         },
         body: JSON.stringify({
           therapist_id: therapist.id,
-          square_card_id: sourceToken, // one-time nonce works as source_id
-          square_customer_id: squareCustomerId,
+          square_card_id: chargeSourceId,
+          square_customer_id: chargeCustomerId,
           amount_cents: amountCents,
           tip_cents: tipCents,
           description: chargeDescription,
@@ -1239,8 +1287,8 @@ export default function CheckoutModal({
       }
 
       setSuccessDetail({
-        method: 'Card entered',
-        detail: cardDetail,
+        method: cardWasSaved ? 'Card entered and saved' : 'Card entered',
+        detail: cardDetail + (saveCardWarning ? ' (charged, but not saved for next time)' : ''),
         total: (totalCents / 100).toFixed(2),
       });
       setStep('success');
@@ -2118,6 +2166,27 @@ function NewCardForm({
         <div style={{ marginBottom: 12 }}>
           <div style={{ fontSize: 12, color: C.inkSoft, fontWeight: 600, letterSpacing: '0.04em', textTransform: 'uppercase', marginBottom: 8 }}>Card details</div>
         </div>
+        {/* HK Jun 3 2026: Square now supports saving the card on file.
+            Same default-on checkbox as the Stripe path. When checked,
+            chargeNewCardSquare vaults the card via square-save-card before
+            charging it. */}
+        <label style={{
+          display: 'flex', alignItems: 'center', gap: 10,
+          padding: '12px 14px', marginBottom: 14,
+          background: '#FAFAF7',
+          border: `1px solid ${C.border}`, borderRadius: 10,
+          cursor: 'pointer', userSelect: 'none',
+        }}>
+          <input
+            type="checkbox"
+            checked={!!saveCardForLater}
+            onChange={(e) => setSaveCardForLater && setSaveCardForLater(e.target.checked)}
+            style={{ width: 18, height: 18, accentColor: C.forest, cursor: 'pointer' }}
+          />
+          <span style={{ fontSize: 13, color: C.ink, lineHeight: 1.45 }}>
+            Save this card for {clientName || 'this client'} so you can charge it next time without re-entering.
+          </span>
+        </label>
         <SquareCardForm
           clientSecret={squareCardSecret}
           buttonLabel={processing ? 'Processing…' : `Charge $${(totalCents / 100).toFixed(2)}`}
@@ -2162,9 +2231,8 @@ function NewCardForm({
       </div>
       {/* HK May 31 2026: save-card-for-future checkbox. Default checked
           so most therapists get the card-on-file benefit without thinking
-          about it. Unchecking is one tap. Stripe path only for now; the
-          Square path will get its own save flow when square-charge-card
-          supports the STORE intent token. */}
+          about it. Unchecking is one tap. HK Jun 3 2026: the Square path
+          now shows the same checkbox and vaults via square-save-card. */}
       <label style={{
         display: 'flex', alignItems: 'center', gap: 10,
         padding: '12px 14px', marginBottom: 16,
