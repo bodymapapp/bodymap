@@ -18,6 +18,7 @@ const MORE_ITEMS = [
 
 export default function MobileBottomNav({ active, onChange, unreadCount, onSignOut, therapist }) {
   const [showMore, setShowMore] = useState(false);
+  const [kbOpen, setKbOpen] = useState(false);
   const activeTab = ['ai','gifts','settings'].includes(active) ? 'more' : active;
 
   // Hide PracticeIQ item when the therapist has turned Platform features off
@@ -31,6 +32,21 @@ export default function MobileBottomNav({ active, onChange, unreadCount, onSignO
     const handler = () => setShowMore(false);
     window.addEventListener('popstate', handler);
     return () => window.removeEventListener('popstate', handler);
+  }, []);
+
+  // HK Jun 3 2026: hide the fixed bottom nav while the on-screen keyboard
+  // is open. On iOS the bar is anchored to the layout viewport, so when
+  // the keyboard opens it floats up into the middle of the screen over
+  // the content (Jacquie saw the ribbon land mid-screen while searching).
+  // visualViewport height shrinks when the keyboard shows; use that to
+  // detect it and drop the bar until typing finishes.
+  useEffect(() => {
+    const vv = window.visualViewport;
+    if (!vv) return undefined;
+    const onResize = () => setKbOpen((window.innerHeight - vv.height) > 150);
+    vv.addEventListener('resize', onResize);
+    onResize();
+    return () => vv.removeEventListener('resize', onResize);
   }, []);
 
   // NOTE: we intentionally do NOT lock body scroll. iOS Safari has a known
@@ -202,7 +218,7 @@ export default function MobileBottomNav({ active, onChange, unreadCount, onSignO
         WebkitBackdropFilter: 'saturate(180%) blur(20px)',
         borderTop: '0.5px solid rgba(0,0,0,0.08)',
         boxShadow: '0 -4px 20px rgba(42,87,65,0.06)',
-        display: 'flex',
+        display: kbOpen ? 'none' : 'flex',
         paddingBottom: 'env(safe-area-inset-bottom, 0px)',
         height: `calc(${navHeight}px + env(safe-area-inset-bottom, 0px))`,
       }}>

@@ -504,6 +504,54 @@ export default function BookingModal({ therapist, mode = 'create', existingBooki
         return;
       }
 
+      // ─── DOUBLE-BOOKING GUARD (HK Jun 3 2026) ────────────────────
+      // The series path above already checks conflicts. The single
+      // new-booking and reschedule paths did not, which let a manual
+      // booking land on top of an existing client (Julie over Cathy).
+      // Mirror the series check here for both branches. The database
+      // trigger is the hard backstop; this gives a clear message first.
+      {
+        const slotStart = slot.start;
+        const slotEnd = slot.end;
+        const overlaps = (aS, aE, bS, bE) => aS < bE && bS < aE;
+        const selfId = isReschedule ? (existingBooking?.id || null) : null;
+        const [bkRes, blkRes] = await Promise.all([
+          supabase
+            .from('bookings')
+            .select('id, start_time, end_time, client_name, status')
+            .eq('therapist_id', therapist.id)
+            .eq('booking_date', date),
+          supabase
+            .from('blocked_days')
+            .select('date, start_time, end_time')
+            .eq('therapist_id', therapist.id)
+            .eq('date', date),
+        ]);
+        const skip = ['cancelled', 'rescheduled', 'no_show', 'pending-approval'];
+        let hit = null;
+        for (const r of (bkRes.data || [])) {
+          if (r.id === selfId) continue;
+          if (skip.includes(r.status)) continue;
+          if (overlaps(slotStart, slotEnd, (r.start_time || '').slice(0, 5), (r.end_time || '').slice(0, 5))) {
+            hit = { name: r.client_name || 'another client' };
+            break;
+          }
+        }
+        if (!hit) {
+          for (const b of (blkRes.data || [])) {
+            if (!b.start_time) { hit = { block: true }; break; }
+            if (overlaps(slotStart, slotEnd, (b.start_time || '').slice(0, 5), (b.end_time || '').slice(0, 5))) { hit = { block: true }; break; }
+          }
+        }
+        if (hit) {
+          setSaving(false);
+          setError(hit.block
+            ? 'That time falls on blocked-off time. Pick another time.'
+            : `That time overlaps ${hit.name}. Pick another time, or reschedule the other booking first.`);
+          return;
+        }
+      }
+
       if (isReschedule && existingBooking?.id) {
         // Update existing booking date/time. location_id only sent
         // when therapist has multi-location active (otherwise the

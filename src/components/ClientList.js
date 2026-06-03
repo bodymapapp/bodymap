@@ -71,12 +71,24 @@ export default function ClientList({ therapistId, therapist, onSelectClient, pla
     archived: c => c.do_not_rebook === true,
   };
 
-  const filtered = sortedClients.filter(c =>
-    (c.name?.toLowerCase().includes(search.toLowerCase()) ||
-     c.phone?.includes(search) ||
-     c.email?.toLowerCase().includes(search.toLowerCase())) &&
-    filterFns[filter](c)
-  );
+  // HK Jun 3 2026: when the therapist is searching, search across ALL
+  // clients regardless of the selected segment tab. Previously the search
+  // was ANDed with the active tab, so typing a name while "New" was
+  // selected returned nothing for any returning client (Cathy Green did
+  // not show up). Archived clients still stay hidden unless the Archived
+  // tab is the one selected.
+  const q = search.trim().toLowerCase();
+  const filtered = sortedClients.filter(c => {
+    if (q) {
+      const matches =
+        c.name?.toLowerCase().includes(q) ||
+        c.phone?.includes(search.trim()) ||
+        c.email?.toLowerCase().includes(q);
+      if (!matches) return false;
+      return filter === "archived" ? c.do_not_rebook === true : !c.do_not_rebook;
+    }
+    return filterFns[filter](c);
+  });
 
   if (loading) return (
     <div style={{ display: "flex", justifyContent: "center", padding: "60px", color: C.gray }}>
