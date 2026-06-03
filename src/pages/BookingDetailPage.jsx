@@ -45,8 +45,10 @@ export default function BookingDetailPage({ therapist }) {
   const [rescheduleAppt, setRescheduleAppt] = useState(null);
   const [rebookAppt, setRebookAppt] = useState(null);
   const checkoutFnRef = useRef(null);
+  const refundFnRef = useRef(null);
   const sessionEditRef = useRef(null);
   const [sessionEditorSlot, setSessionEditorSlot] = useState(null);
+  const [packageSlot, setPackageSlot] = useState(null);
   // HK Jun 1 2026: the left-rail no-show/cancel buttons open the same
   // full-screen CancellationChargeModal used elsewhere, rendered at this
   // page level so a refresh cannot tear it down.
@@ -347,11 +349,13 @@ export default function BookingDetailPage({ therapist }) {
                   {appt.clientId && <a href={`/dashboard/clients/${appt.clientId}`} style={{ display: 'inline-block', marginTop: 2, fontSize: 12, fontWeight: 600, color: C.forest, textDecoration: 'none' }}>View profile ›</a>}
                 </div>
               </div>
-              {(appt.status === 'pending-intake' || appt.status === 'intake-done' || appt.status === 'complete' || (appt.deposit_required && appt.deposit_paid) || appt.reminder_sent) && (
+              {(appt.status === 'pending-intake' || appt.status === 'intake-done' || appt.status === 'complete' || (appt.deposit_required && appt.deposit_paid) || appt.reminder_sent || appt.paid_cents > 0 || appt.refundedCents > 0) && (
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 14 }}>
                   {appt.status === 'pending-intake' && <span style={{ background: '#FEF3C7', color: '#B45309', border: '1px solid #FDE68A', borderRadius: 999, padding: '4px 10px', fontSize: 12, fontWeight: 700 }}>No Intake</span>}
                   {(appt.status === 'intake-done' || appt.status === 'complete') && <span style={{ background: '#EAF6EE', color: '#15803D', border: '1px solid #BBE7C9', borderRadius: 999, padding: '4px 10px', fontSize: 12, fontWeight: 700 }}>✓ Intake received</span>}
                   {appt.deposit_required && appt.deposit_paid && <span style={{ background: '#EAF6EE', color: '#15803D', border: '1px solid #BBE7C9', borderRadius: 999, padding: '4px 10px', fontSize: 12, fontWeight: 700 }}>✓ Deposit paid</span>}
+                  {appt.paid_cents > 0 && !(appt.refundedCents > 0) && <span style={{ background: '#EAF6EE', color: '#15803D', border: '1px solid #BBE7C9', borderRadius: 999, padding: '4px 10px', fontSize: 12, fontWeight: 700 }}>✓ Paid ${(appt.paid_cents / 100).toFixed(2)}</span>}
+                  {appt.refundedCents > 0 && <span style={{ background: '#EDE9FE', color: '#6D28D9', border: '1px solid #DDD0F7', borderRadius: 999, padding: '4px 10px', fontSize: 12, fontWeight: 700 }}>↩ Refunded ${(appt.refundedCents / 100).toFixed(2)}</span>}
                   {appt.reminder_sent && <span style={{ background: '#EAF6EE', color: '#15803D', border: '1px solid #BBE7C9', borderRadius: 999, padding: '4px 10px', fontSize: 12, fontWeight: 700 }}>🔔 Reminded</span>}
                 </div>
               )}
@@ -423,8 +427,14 @@ export default function BookingDetailPage({ therapist }) {
             <div style={{ background: '#fff', border: `1px solid ${C.line}`, borderRadius: 16, padding: 16, display: 'flex', flexDirection: 'column', gap: 10 }}>
               <button onClick={() => { if (checkoutFnRef.current) checkoutFnRef.current(); }}
                 style={{ width: '100%', background: 'linear-gradient(135deg, #2A5741 0%, #1F4030 100%)', color: '#fff', border: 'none', borderRadius: 12, padding: '14px 18px', fontSize: 15, fontWeight: 700, cursor: 'pointer', boxShadow: '0 4px 14px rgba(31,64,48,0.28), 0 1px 0 rgba(255,255,255,0.15) inset', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
-                <span style={{ fontSize: 15 }}>💳</span> Checkout
+                <span style={{ fontSize: 15 }}>💳</span> {appt.paid_cents > 0 ? 'Add payment' : 'Checkout'}
               </button>
+              {appt.paid_cents > 0 && (
+                <button onClick={() => { if (refundFnRef.current) refundFnRef.current(); }}
+                  style={{ width: '100%', background: '#fff', color: '#B91C1C', border: '1.5px solid #FCA5A5', borderRadius: 12, padding: '12px 14px', fontSize: 14, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+                  <span>↩</span> Refund
+                </button>
+              )}
               <button onClick={() => setRebookAppt(appt)}
                 style={{ width: '100%', background: '#fff', color: C.ink, border: `1.5px solid ${C.line}`, borderRadius: 12, padding: '12px 14px', fontSize: 14, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
                 <span>📅</span> Book next session
@@ -457,8 +467,10 @@ export default function BookingDetailPage({ therapist }) {
         railPresent={isDesktop}
         onInsight={setInsight}
         checkoutFnRef={checkoutFnRef}
+        refundFnRef={refundFnRef}
         sessionEditRef={sessionEditRef}
         sessionEditorSlot={sessionEditorSlot}
+        packageSlot={packageSlot}
         showToast={(msg) => setToast(msg)}
         onRequestCheckout={(payload) => setCheckoutContext(payload)}
         paymentsRefreshTick={paymentsRefreshTick}

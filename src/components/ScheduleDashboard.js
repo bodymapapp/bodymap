@@ -1571,7 +1571,7 @@ function RecapEditor({ session, parsedSoap, therapist, allSessions, onSaved, onR
 
 // HK May 31 2026 (Side panel A): DetailPanel exported so BookingDetailPage
 // can render it in mode='page' as a full-page route.
-export function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled, showToast, onRequestCheckout, onRequestCancel, railPresent = false, onInsight, checkoutFnRef, sessionEditRef, sessionEditorSlot, paymentsRefreshTick = 0, mode = 'slide' }) {
+export function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled, showToast, onRequestCheckout, onRequestCancel, railPresent = false, onInsight, checkoutFnRef, refundFnRef, sessionEditRef, sessionEditorSlot, packageSlot, paymentsRefreshTick = 0, mode = 'slide' }) {
   const notify = showToast || (() => {});
   // Mobile detection for paddingBottom that clears the mobile bottom nav
   // (74px) so the Cancel button doesn't get cut off. HK reported May 25
@@ -2272,6 +2272,14 @@ export function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelle
   // ref each render so the button always invokes the latest closure.
   useEffect(() => {
     if (checkoutFnRef) checkoutFnRef.current = openCheckout;
+    // HK Jun 2 2026: the page Actions box also owns Refund on desktop. Expose
+    // the same in-panel refund flow (last succeeded payment) so the button
+    // there triggers the panel's RefundModal. Refreshed each render so it
+    // always points at the latest payment rows.
+    if (refundFnRef) refundFnRef.current = () => {
+      const r = paymentRows.filter(p => p.status === 'succeeded').slice(-1)[0];
+      if (r) setRefundTarget({ ...r, client_name: appt.client });
+    };
   });
 
   // HK Jun 2 2026: on the desktop page the When / Service pencils live in
@@ -4696,7 +4704,11 @@ export function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelle
                 the end of a session, presented as a single composed card
                 with the action sized appropriately. Mark as paid lives
                 inside the same card as a paired link, not floating below. */}
-            {!appt.preview && appt.status !== 'cancelled' && !paymentsLoading && (
+            {/* HK Jun 2 2026: on the desktop page the payment status moves to
+                a stamp in the left box and +Add payment / Refund move into the
+                Actions box, so this in-panel block is hidden there (railPresent).
+                Slide-over and mobile page still show it inline. */}
+            {!appt.preview && appt.status !== 'cancelled' && !paymentsLoading && !railPresent && (
               <>
                 {paidTotalCents > 0 ? (
                   /* PAID STATE: warm sage receipt card. Calm, finished, complete. */
