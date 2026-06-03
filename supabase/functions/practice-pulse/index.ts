@@ -37,10 +37,21 @@ serve(async (req) => {
     return new Response(JSON.stringify({ error: therapistsErr.message, processed: 0 }), { status: 500, headers: { ...cors, 'Content-Type': 'application/json' } });
   }
 
+  // HK Jun 3 2026: the daily Pulse is an END-OF-DAY digest. The cron now
+  // fires in the evening Central time. It used to run at 18:00 UTC, which
+  // is 1pm Central, a timezone mistake (whoever set it meant 6pm). Because
+  // evening Central crosses midnight UTC, "today" must be computed in
+  // Central, not UTC, or the digest would summarize the wrong calendar
+  // day. All current therapists are US Central; revisit per-therapist
+  // timezones if we onboard other regions (logged in Future Code Cleanup).
+  const TZ = 'America/Chicago';
   const today = new Date();
-  const todayStr = today.toISOString().split('T')[0];
-  const tomorrow = new Date(today); tomorrow.setDate(today.getDate() + 1);
-  const tomorrowStr = tomorrow.toISOString().split('T')[0];
+  const ymd = (d: Date) =>
+    new Intl.DateTimeFormat('en-CA', { timeZone: TZ, year: 'numeric', month: '2-digit', day: '2-digit' }).format(d);
+  const todayStr = ymd(today);
+  const tomorrowStr = ymd(new Date(new Date(todayStr + 'T12:00:00Z').getTime() + 86400000));
+  const displayLong = new Intl.DateTimeFormat('en-US', { timeZone: TZ, weekday: 'long', month: 'long', day: 'numeric' }).format(today);
+  const displayShort = new Intl.DateTimeFormat('en-US', { timeZone: TZ, weekday: 'short', month: 'short', day: 'numeric' }).format(today);
 
   const results = [];
   // Per-therapist skip reasons for debug visibility. HK May 24 2026:
@@ -200,7 +211,7 @@ serve(async (req) => {
   <div style="text-align:center;margin-bottom:20px;">
     <span style="font-size:28px;">🌿</span>
     <div style="font-family:Georgia,serif;font-size:13px;font-weight:700;color:#2A5741;margin:6px 0 2px;text-transform:uppercase;letter-spacing:0.1em;">Practice Pulse</div>
-    <div style="font-size:12px;color:#6B7280;">${today.toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'})}</div>
+    <div style="font-size:12px;color:#6B7280;">${displayLong}</div>
   </div>
 
   <div style="background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 2px 16px rgba(0,0,0,0.08);">
@@ -294,7 +305,7 @@ serve(async (req) => {
         from: 'Practice Pulse <reminders@mybodymap.app>',
         to: therapist.practice_pulse_email ? [therapist.email, therapist.practice_pulse_email] : [therapist.email],
         reply_to: therapist.email,
-        subject: `Your Practice Pulse for ${today.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'})}`,
+        subject: `Your Practice Pulse for ${displayShort}`,
         html: emailHtmlWithUnsub,
       }),
     });
@@ -302,7 +313,7 @@ serve(async (req) => {
     const data = await res.json();
 
     // Log to notification_log for founder dashboard comms grid
-    const subjectLine = `Your Practice Pulse for ${today.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'})}`;
+    const subjectLine = `Your Practice Pulse for ${displayShort}`;
     try {
       await supabase.from('notification_log').insert({
         therapist_id: therapist.id,

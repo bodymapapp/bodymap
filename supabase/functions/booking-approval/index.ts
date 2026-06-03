@@ -524,6 +524,55 @@ serve(async (req) => {
           subject,
         });
       } catch (_) { /* non-blocking */ }
+
+      // HK Jun 3 2026: send the therapist their own copy of a decline,
+      // showing the exact note that went to the client. The decline
+      // "reason" is emailed to the client verbatim as "A note from
+      // <therapist>", and therapists did not always realize that. This
+      // copy closes the gap: they see what the client saw. Sent as a
+      // separate email, not a CC, so the therapist's address is never
+      // exposed in the client's email headers.
+      if (action === 'decline' && therapist?.email) {
+        const noteSent = reason ? String(reason).replace(/[<>]/g, '').slice(0, 500) : '';
+        const tSubject = `Copy: you declined ${booking.client_name || firstName}'s request`;
+        const tNoteBlock = noteSent
+          ? `<div style="background:#F9FAFB;border-left:3px solid #D1D5DB;padding:14px 16px;margin:16px 0;border-radius:6px;"><div style="font-size:12px;color:#6B7280;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:6px;">The note ${booking.client_name || firstName} saw, shown as "A note from ${therapistFirst}"</div><div style="font-size:14px;color:#374151;line-height:1.7;">${noteSent}</div></div>`
+          : `<p style="font-size:14px;color:#6B7280;line-height:1.7;margin:14px 0;">You did not include a note, so none was shown to the client.</p>`;
+        const tHtml = `<!DOCTYPE html><html><body style="margin:0;padding:0;font-family:system-ui,-apple-system,sans-serif;background:#F5F0E8;">
+<div style="max-width:540px;margin:0 auto;background:#fff;border-radius:14px;overflow:hidden;box-shadow:0 8px 24px rgba(0,0,0,0.06);">
+<div style="background:linear-gradient(135deg,#6B7280 0%,#9CA3AF 100%);padding:24px;text-align:center;">
+  <div style="color:rgba(255,255,255,0.85);font-size:11px;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;margin-bottom:6px;">🌿 Your copy</div>
+  <div style="color:#fff;font-family:Georgia,serif;font-size:20px;font-weight:700;">You declined a request</div>
+</div>
+<div style="padding:24px;">
+  <p style="font-size:14px;color:#374151;line-height:1.7;margin:0 0 12px;">Hi ${therapistFirst},</p>
+  <p style="font-size:14px;color:#374151;line-height:1.7;margin:0 0 12px;">You declined <strong>${booking.client_name || firstName}</strong>'s request for <strong>${dateStr}</strong> at <strong>${timeStr}</strong>${service?.name ? `, ${service.name}` : ''}. No payment was taken. Here is exactly what they were sent on your behalf:</p>
+  ${tNoteBlock}
+  <p style="font-size:13px;color:#6B7280;line-height:1.6;margin:14px 0 0;">We send you this copy so you always know what went out under your name. No action needed.</p>
+</div>
+</div></body></html>`;
+        const tResult = await sendResendEmail(RESEND_API_KEY, {
+          from: 'MyBodyMap <hello@mybodymap.app>',
+          to: [therapist.email],
+          subject: tSubject,
+          html: tHtml,
+        });
+        try {
+          await logNotification(supabase, {
+            therapist_id: booking.therapist_id || therapist?.id,
+            client_id: booking.client_id || null,
+            booking_id: booking.id,
+            notification_type: 'approval_declined_therapist_copy',
+            audience: 'therapist',
+            channel: 'email',
+            recipient: therapist.email,
+            status: tResult?.ok ? 'sent' : 'failed',
+            provider_id: tResult?.id || null,
+            error_message: tResult?.ok ? null : (tResult?.error || 'unknown'),
+            subject: tSubject,
+          });
+        } catch (_) { /* non-blocking */ }
+      }
     }
 
     // ─── Email the therapist when a deposit was collected or failed ───
