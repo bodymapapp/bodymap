@@ -5075,6 +5075,32 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
           {/* Square — reframed as in-person companion */}
           {therapist?.square_connected ? (
             <div>
+              {/* HK Jun 2 2026: when a Square call hit a permission error, or
+                  the health sweep found a stale token, we flag the connection.
+                  Surface a loud one-tap reconnect here instead of letting the
+                  therapist discover it as a silent failure (the churn path). */}
+              {therapist?.square_needs_reconnect && (
+                <div style={{ background:'#FEF3C7', border:'1.5px solid #F59E0B', borderRadius:10, padding:'12px 14px', marginBottom:10 }}>
+                  <div style={{ fontSize:'13px', fontWeight:'800', color:'#92400E' }}>Your Square connection needs a quick refresh</div>
+                  <div style={{ fontSize:'12px', color:'#92400E', marginTop:3, lineHeight:1.5 }}>
+                    Square added new permissions since you first connected. Tap below to refresh (about 10 seconds). It keeps all your existing transactions, and your payments and cards on file will work normally again.
+                  </div>
+                  <button onClick={async () => {
+                    const anonKey = process.env.REACT_APP_SUPABASE_ANON_KEY;
+                    const res = await fetch('https://rmnqfrljoknmellbnpiy.supabase.co/functions/v1/square-oauth', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${anonKey}`, 'apikey': anonKey },
+                      body: JSON.stringify({ therapist_id: therapist.id }),
+                    });
+                    const data = await res.json();
+                    if (data?.url) window.location.href = data.url;
+                  }} style={{
+                    marginTop: 10, background: '#92400E', color: '#fff', border: 'none',
+                    borderRadius: 10, padding: '10px 18px', fontSize: 13, fontWeight: 800,
+                    cursor: 'pointer', minHeight: 44,
+                  }}>Refresh Square now</button>
+                </div>
+              )}
               <div style={{ background:'#F0FDF4', border:'1.5px solid #86EFAC', borderRadius:10, padding:'10px 14px' }}>
                 <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
                   <div style={{ display:'flex', alignItems:'center', gap:8 }}>

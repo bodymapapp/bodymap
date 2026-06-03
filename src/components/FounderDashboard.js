@@ -541,6 +541,7 @@ export default function FounderDashboard() {
               📧 Email & SMS review
             </a>
             <RunDigestButton />
+            <SquareSweepButton />
             <button
               onClick={fetchAll}
               style={{ padding: "8px 16px", borderRadius: 8, border: `1.5px solid ${C.light}`, background: "#fff", cursor: "pointer", fontSize: 13, color: C.dark, fontWeight: 600 }}
@@ -3195,6 +3196,55 @@ function RunDigestButton() {
       {status === "sent" && (
         <div style={{ fontSize: 10, color: C.rise, fontWeight: 600 }}>
           Landing in bodymap01@gmail.com
+        </div>
+      )}
+    </div>
+  );
+}
+
+// HK Jun 2 2026: one-tap Square health sweep. Tests every connected Square
+// token against a MERCHANT_PROFILE_READ-gated endpoint and flags the stale
+// ones (square_needs_reconnect), so their dashboard nudges them to reconnect
+// before they hit a silent failure. Safe to run anytime.
+function SquareSweepButton() {
+  const [status, setStatus] = useState("idle"); // idle | running | done | failed
+  const [msg, setMsg] = useState("");
+
+  const run = async () => {
+    if (status === "running") return;
+    setStatus("running");
+    setMsg("");
+    try {
+      const { data, error } = await supabase.functions.invoke("square-health-sweep", { body: {} });
+      if (error) { setStatus("failed"); setMsg(error.message || "transport error"); return; }
+      const flagged = data?.flagged ?? 0;
+      const checked = data?.checked ?? 0;
+      const names = (data?.flagged_businesses || []).map((b) => b.business_name || b.id).join(", ");
+      setStatus("done");
+      setMsg(flagged > 0 ? `${flagged} of ${checked} need reconnect: ${names}` : `All ${checked} Square connections healthy`);
+      setTimeout(() => setStatus("idle"), 12000);
+    } catch (e) {
+      setStatus("failed");
+      setMsg(e?.message || "request failed");
+    }
+  };
+
+  const bg = status === "running" ? C.stale : status === "done" ? C.rise : status === "failed" ? C.fall : C.forest;
+  const label = status === "running" ? "Checking Square..." : status === "done" ? "✓ Square checked" : status === "failed" ? "✗ Failed" : "Check Square health";
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 3 }}>
+      <button
+        onClick={run}
+        disabled={status === "running"}
+        style={{ padding: "8px 14px", borderRadius: 8, border: "none", background: bg, color: "#fff", cursor: status === "running" ? "wait" : "pointer", fontSize: 13, fontWeight: 700, whiteSpace: "nowrap" }}
+        title="Tests every connected Square token and flags any that need reconnecting."
+      >
+        {label}
+      </button>
+      {msg && (status === "done" || status === "failed") && (
+        <div style={{ fontSize: 10, color: status === "failed" ? C.fall : C.dark, fontWeight: 600, maxWidth: 260, textAlign: "right" }}>
+          {msg}
         </div>
       )}
     </div>
