@@ -677,6 +677,11 @@ export default function BookingPage() {
   const [cartCheckoutError,setCartCheckoutError]=useState(null);
   const [cartFlash,setCartFlash]=useState(null); // brief 'Added to cart' confirmation
   const [availability,setAvailability]=useState([]);
+  // Date-specific availability overrides (HK Jun 4 2026), keyed by
+  // 'YYYY-MM-DD'. A row here wins over the recurring weekly hours for
+  // that date: it can set custom hours, mark a day off, or open a day
+  // that is normally closed.
+  const [overridesByDate,setOverridesByDate]=useState({});
   const [loading,setLoading]=useState(true);
   const [notFound,setNotFound]=useState(false);
   const [step,setStep]=useState(1);
@@ -1178,7 +1183,7 @@ export default function BookingPage() {
       console.warn('[MyBodyMap] schema log failed', e);
     }
 
-    const [{data:s},{data:a},{data:bd},{data:addons},pkgRes,memRes,{data:locs},{data:rb},{data:re}]=await Promise.all([
+    const [{data:s},{data:a},{data:bd},{data:addons},pkgRes,memRes,{data:locs},{data:rb},{data:re},{data:ovr}]=await Promise.all([
       supabase.from('services').select('*').eq('therapist_id',t.id).eq('active',true).is('archived_at', null).neq('visibility','private').order('sort_order', { ascending: true }).order('price', { ascending: true }),
       supabase.from('availability').select('*').eq('therapist_id',t.id).eq('active',true),
       // Phase 9.1 (May 16 2026): fetch start_time and end_time so we
@@ -1196,9 +1201,19 @@ export default function BookingPage() {
       // hasn't run, so we tolerate empty data gracefully.
       supabase.from('recurring_blocks').select('*').eq('therapist_id',t.id),
       supabase.from('recurring_block_exceptions').select('*').eq('therapist_id',t.id),
+      // Date-specific availability overrides (HK Jun 4 2026). Tolerates
+      // the table not existing yet (returns null), same as the calendar
+      // v2 tables above.
+      supabase.from('availability_overrides').select('*').eq('therapist_id',t.id),
     ]);
     setServices(s||[]);
     setAvailability(a||[]);
+    // Bucket date overrides by their date string for O(1) lookup during
+    // slot generation. One row per date (UNIQUE constraint), so a plain
+    // map is correct.
+    const ovMap={};
+    for(const o of (ovr||[])){ if(o&&o.override_date) ovMap[o.override_date]=o; }
+    setOverridesByDate(ovMap);
     // Split blocked_days into full-day (no times) and partial (both
     // times set). Full-day continues to drive the calendar's disabled-
     // date logic. Partial gets bucketed by date and turned into
@@ -1302,6 +1317,20 @@ export default function BookingPage() {
       av = serviceSpecificRows.find(a => a.day_of_week === dow);
     } else {
       av = availability.find(a => a.day_of_week === dow && !a.service_id);
+    }
+    // Date-specific override (HK Jun 4 2026). If the therapist set custom
+    // hours or a day off for THIS exact date, it wins over the recurring
+    // weekly row above, for every service. An override can also OPEN a
+    // day that is normally closed (no recurring row), so we apply it even
+    // when av is currently undefined.
+    const ov = overridesByDate[date];
+    if (ov) {
+      if (ov.is_closed) { setLoadingSlots(false); return; }
+      av = {
+        start_time: ov.start_time,
+        end_time: ov.end_time,
+        time_blocks: (Array.isArray(ov.time_blocks) && ov.time_blocks.length > 0) ? ov.time_blocks : null,
+      };
     }
     if(!av){setLoadingSlots(false);return;}
     const {data:existing}=await supabase.from('bookings').select('start_time,end_time').eq('therapist_id',therapist.id).eq('booking_date',date).neq('status','cancelled');
