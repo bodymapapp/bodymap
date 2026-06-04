@@ -2218,15 +2218,68 @@ export default function BookingPage() {
     // Trade-off: client briefly leaves our domain. For deposits, the
     // simpler hosted flow is the right call for the persona.
     if (needsCharge && !therapist.stripe_account_id && therapist.square_access_token) {
-      console.log('PAYMENT DEBUG: invoking square-create-deposit', { paymentMode, booking_id: bid, amount_cents: depositAmount });
       setDepositLoading(true);
-      // After Square redirects back, this URL re-opens the booking
-      // page in confirmed state. The booking row already exists with
-      // status pending-deposit; the redirect will trigger the
-      // deposit-paid mark-as-confirmed flow. Webhook is the durable
-      // source of truth (TODO Phase 2) but for now the redirect is
-      // good enough for Ashley's use case.
-      // HK May 27 2026: /book/<slug> not /<slug> (see buyOffer comment).
+
+      // PROPER FIX (HK Jun 3 2026): charge the deposit IN-APP on the card the
+      // client already entered and we vaulted in the card-on-file step, the
+      // same single-entry pattern Stripe's embedded form uses (charge plus
+      // save in one card entry). The previous flow created a hosted Square
+      // checkout link and redirected the client, which forced a SECOND card
+      // entry on Square's site and returned to a blank screen. This is the
+      // most-used flow, so the in-app charge is the default whenever we have
+      // a vaulted card on hand.
+      if (cardSavedPaymentMethodId && cardSavedCustomerId) {
+        // depositAmount already includes the tip in pay-in-full mode, so we
+        // send it as the full amount with no separate tip. square-charge-card
+        // computes total = amount + tip, so passing the tip again would
+        // double-count it.
+        const chargeRes = await fetch(
+          `${process.env.REACT_APP_SUPABASE_URL}/functions/v1/square-charge-card`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${process.env.REACT_APP_SUPABASE_ANON_KEY}`,
+              'apikey': process.env.REACT_APP_SUPABASE_ANON_KEY,
+            },
+            body: JSON.stringify({
+              therapist_id: therapist.id,
+              square_card_id: cardSavedPaymentMethodId,
+              square_customer_id: cardSavedCustomerId,
+              amount_cents: depositAmount,
+              tip_cents: 0,
+              description: `${paymentMode === 'full' ? 'Payment' : 'Deposit'} for ${svc.name}`,
+              client_email: form.email.trim().toLowerCase(),
+              send_receipt: true,
+            }),
+          }
+        );
+        const chargeData = chargeRes.ok ? await chargeRes.json() : await chargeRes.json().catch(() => ({}));
+        setDepositLoading(false);
+        console.log('SQUARE IN-APP DEPOSIT CHARGE:', chargeData);
+        if (chargeData?.success && chargeData?.payment_id) {
+          // Mark paid + confirm + send the confirmation, mirroring the
+          // deposit_complete redirect handler. No redirect, so the client
+          // lands on the in-app confirmation screen immediately.
+          await supabase.from('bookings').update({
+            status: 'confirmed',
+            deposit_paid: true,
+            square_deposit_paid_at: new Date().toISOString(),
+          }).eq('id', bid);
+          fireBookingConfirmation(bid);
+          setConfirmed(true);
+          setBookingId(bid);
+          return;
+        }
+        const chargeErr = chargeData?.error || `HTTP ${chargeRes.status}`;
+        setPaymentError(`Deposit charge failed: ${chargeErr}`);
+        return;
+      }
+
+      // Fallback only: a deposit is due but no card was vaulted in-app. Use
+      // Square's hosted checkout link as before so the booking can still be
+      // paid. HK May 27 2026: /book/<slug> not /<slug> (see buyOffer comment).
+      console.log('PAYMENT DEBUG: invoking square-create-deposit (hosted fallback)', { paymentMode, booking_id: bid, amount_cents: depositAmount });
       const redirectUrl = `${window.location.origin}/book/${therapist.custom_url}?deposit_complete=1&booking_id=${bid}`;
       const fnRes = await fetch(
         `${process.env.REACT_APP_SUPABASE_URL}/functions/v1/square-create-deposit`,
@@ -2254,8 +2307,6 @@ export default function BookingPage() {
       setDepositLoading(false);
       console.log('SQUARE DEPOSIT RESPONSE:', data);
       if (data?.url) {
-        // Send the client to Square's hosted checkout. They pay there,
-        // Square redirects them back with deposit_complete=1.
         window.location.href = data.url;
         return;
       }
