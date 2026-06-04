@@ -224,6 +224,12 @@ serve(async (req) => {
     const clientEmail = booking.client_email;
     const serviceName = service?.name || "Massage session";
     const servicePrice = service?.price;
+    // HK Jun 3 2026: the confirmation price must include add-ons, not just
+    // the base service price. A $1 service with a $1 add-on was showing $1
+    // in the email. addon_total_price is stored in dollars on the booking.
+    const addonTotalPrice = Number(booking.addon_total_price) || 0;
+    const displayPrice = (typeof servicePrice === "number" ? servicePrice : 0) + addonTotalPrice;
+    const displayPriceStr = Number.isInteger(displayPrice) ? String(displayPrice) : displayPrice.toFixed(2);
     const intakeUrl = `https://mybodymap.app/${therapist.custom_url}?name=${encodeURIComponent(clientName)}&email=${encodeURIComponent(clientEmail || "")}&booking_id=${booking.id}`;
     const dashboardUrl = `https://mybodymap.app/dashboard`;
     // HK May 25 2026: pending-approval bookings should send the
@@ -308,8 +314,8 @@ serve(async (req) => {
           : (locationName || null);
 
         const extraRows: Array<{ label: string, value: string }> = [];
-        if (typeof servicePrice === 'number' && servicePrice > 0) {
-          extraRows.push({ label: 'Price', value: `$${servicePrice}` });
+        if (displayPrice > 0) {
+          extraRows.push({ label: 'Price', value: `$${displayPriceStr}` });
         }
 
         const html = renderClientEmailDoc(subject, {
@@ -426,7 +432,7 @@ serve(async (req) => {
 
       <div style="background:${C.cream};border-radius:12px;padding:18px;margin-bottom:18px;font-size:14px;color:${C.ink};line-height:1.8;">
         <strong>When:</strong> ${escapeHtml(apt.full)}<br/>
-        <strong>Service:</strong> ${escapeHtml(serviceName)}${servicePrice ? ` ($${servicePrice})` : ""}<br/>
+        <strong>Service:</strong> ${escapeHtml(serviceName)}${displayPrice > 0 ? ` ($${displayPriceStr})` : ""}<br/>
         ${locationName ? `<strong>Location:</strong> ${escapeHtml(locationName)}${locationAddress ? ` (${escapeHtml(locationAddress)})` : ""}<br/>` : ""}
         <strong>Email:</strong> <a href="mailto:${escapeHtml(clientEmail || "")}" style="color:${C.forest};">${escapeHtml(clientEmail || "(not provided)")}</a>
         ${booking.client_phone ? `<br/><strong>Phone:</strong> <a href="tel:${escapeHtml(booking.client_phone)}" style="color:${C.forest};">${escapeHtml(booking.client_phone)}</a>` : ""}
