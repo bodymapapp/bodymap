@@ -576,14 +576,26 @@ export class SquareV1Strategy implements SquareStrategy {
 
   // ─── refund ──────────────────────────────────────────────────────
   async refund(args: RefundArgs): Promise<RefundResult> {
-    // Find the payment id from the order. Square refunds operate on
-    // payments, not orders.
+    // Square refunds operate on PAYMENTS, not orders. The stored
+    // paymentRefId may be either an order id (online-checkout and
+    // payment-link flows store link.order_id) or a payment id directly
+    // (direct card charges via /v2/payments: chargeSavedCard and the
+    // in-app card-on-file save flow). HK Jun 3 2026: the order lookup
+    // used to be unconditional and threw "Order not found for id ..."
+    // whenever paymentRefId was actually a payment id, so refunds of
+    // direct card charges always failed. Now the order lookup is
+    // best-effort and we fall back to using paymentRefId as the payment
+    // id when it is not an order.
     let paymentId: string | undefined;
-    const orderData = await squareFetch(`/v2/orders/${args.paymentRefId}`, { therapist: args.therapist });
-    paymentId = orderData.order?.tenders?.[0]?.payment_id;
-
-    // Fallback: if paymentRefId looks like a payment id directly
-    // (chargeSavedCard returns one of these), use it.
+    let orderTotal: { amount: number; currency: string } | undefined;
+    try {
+      const orderData = await squareFetch(`/v2/orders/${args.paymentRefId}`, { therapist: args.therapist });
+      paymentId = orderData.order?.tenders?.[0]?.payment_id;
+      orderTotal = orderData.order?.total_money;
+    } catch (_) {
+      // Not an order id (the common case for direct card charges).
+      // Fall through to treating paymentRefId as a payment id.
+    }
     if (!paymentId && args.paymentRefId.length > 10) {
       paymentId = args.paymentRefId;
     }
@@ -597,7 +609,7 @@ export class SquareV1Strategy implements SquareStrategy {
     if (args.amountCents !== undefined) {
       refundBody.amount_money = { amount: args.amountCents, currency: 'USD' };
     } else {
-      refundBody.amount_money = orderData.order?.total_money || { amount: 0, currency: 'USD' };
+      refundBody.amount_money = orderTotal || { amount: 0, currency: 'USD' };
     }
     const refundData = await squareFetch('/v2/refunds', {
       method: 'POST', therapist: args.therapist, body: refundBody,
