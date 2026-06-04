@@ -46,6 +46,11 @@ serve(async (req) => {
       tip_cents = 0,
       service_name = 'Massage session',
       client_email,
+      client_name,
+      // HK Jun 3 2026: when delivery is 'email' and we have the client's
+      // email on file, send the payment link to them automatically via
+      // Resend instead of making the therapist hand-send a mailto link.
+      delivery,
     } = await req.json();
 
     if (!therapist_id) return respond({ error: 'therapist_id required' }, 400);
@@ -73,7 +78,7 @@ serve(async (req) => {
     // flow.
     const { data: therapist, error: tErr } = await supabase
       .from('therapists')
-      .select('id, stripe_account_id, stripe_account_connected, square_access_token, square_location_id, square_merchant_id, square_connected, full_name, business_name, custom_url')
+      .select('id, stripe_account_id, stripe_account_connected, square_access_token, square_location_id, square_merchant_id, square_connected, full_name, business_name, custom_url, email')
       .eq('id', therapist_id)
       .single();
     if (tErr || !therapist) return respond({ error: 'therapist_not_found' }, 404);
@@ -82,6 +87,48 @@ serve(async (req) => {
     const hasSquare = !!(therapist.square_access_token && therapist.square_connected);
     if (!hasStripe && !hasSquare) {
       return respond({ error: 'no_payment_processor_connected' }, 400);
+    }
+
+    // HK Jun 3 2026: auto-deliver the payment link to the client's email
+    // on file when email delivery is chosen, so the therapist does not
+    // have to copy a link or hand-send a mailto. Best-effort: a send
+    // failure never blocks link creation (the link is still returned and
+    // remains usable, and the therapist can still copy it).
+    const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY');
+    const therapistDisplayName = therapist.business_name || therapist.full_name || 'Your therapist';
+    const escapeHtml = (s: string) => String(s || '')
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    async function maybeEmailLink(linkUrl: string): Promise<boolean> {
+      if (delivery !== 'email' || !client_email || !RESEND_API_KEY) return false;
+      try {
+        const dollars = (amount_cents + (tip_cents || 0)) / 100;
+        const amountStr = Number.isInteger(dollars) ? `$${dollars}` : `$${dollars.toFixed(2)}`;
+        const greetingName = (client_name && String(client_name).trim().split(' ')[0]) || 'there';
+        const safeName = escapeHtml(therapistDisplayName);
+        const html = `<!DOCTYPE html><html><body style="margin:0;background:#F5F3EE;font-family:Georgia,serif;">`
+          + `<div style="max-width:520px;margin:0 auto;padding:32px 24px;">`
+          + `<div style="background:#ffffff;border-radius:16px;padding:28px;box-shadow:0 1px 4px rgba(0,0,0,0.06);">`
+          + `<p style="font-size:16px;color:#2B2B2B;margin:0 0 14px;">Hi ${escapeHtml(greetingName)},</p>`
+          + `<p style="font-size:15px;color:#4A4A4A;line-height:1.6;margin:0 0 22px;">Here is your secure payment link for ${escapeHtml(service_name)} with ${safeName}. You can pay by card in a moment.</p>`
+          + `<div style="text-align:center;margin:0 0 22px;"><a href="${linkUrl}" style="display:inline-block;background:#2A5741;color:#ffffff;text-decoration:none;border-radius:12px;padding:14px 28px;font-size:16px;font-weight:700;">Pay ${amountStr}</a></div>`
+          + `<p style="font-size:13px;color:#8A8A8A;line-height:1.6;margin:0;">If the button does not work, paste this link into your browser:<br/><a href="${linkUrl}" style="color:#2A5741;word-break:break-all;">${linkUrl}</a></p>`
+          + `</div><p style="text-align:center;font-size:12px;color:#A8A29E;margin:18px 0 0;">Sent via MyBodyMap</p></div></body></html>`;
+        const sendRes = await fetch('https://api.resend.com/emails', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${RESEND_API_KEY}` },
+          body: JSON.stringify({
+            from: `"${escapeHtml(therapistDisplayName)}" <reminders@mybodymap.app>`,
+            to: [client_email],
+            ...(therapist.email ? { reply_to: therapist.email } : {}),
+            subject: `Payment link for ${service_name}`,
+            html,
+          }),
+        });
+        return sendRes.ok;
+      } catch (e) {
+        console.error('[create-payment-link] auto-email failed', String(e));
+        return false;
+      }
     }
 
     // Booking mode: load booking row for client info + ownership check.
@@ -209,12 +256,15 @@ serve(async (req) => {
           })
           .eq('id', paymentRow.id);
 
+        const emailedSquare = await maybeEmailLink(checkoutResult.url);
         return respond({
           success: true,
           payment_link_url: checkoutResult.url,
           payment_link_id: checkoutResult.providerSessionId,
           session_payment_id: paymentRow.id,
           provider: 'square',
+          emailed: emailedSquare,
+          emailed_to: emailedSquare ? client_email : null,
         });
       } catch (squareErr: any) {
         console.error('[create-payment-link] Square error', squareErr?.code, squareErr?.message);
@@ -305,11 +355,14 @@ serve(async (req) => {
       })
       .eq('id', paymentRow.id);
 
+    const emailedStripe = await maybeEmailLink(stripeData.url);
     return respond({
       success: true,
       payment_link_url: stripeData.url,
       payment_link_id: stripeData.id,
       session_payment_id: paymentRow.id,
+      emailed: emailedStripe,
+      emailed_to: emailedStripe ? client_email : null,
     });
 
   } catch (e) {

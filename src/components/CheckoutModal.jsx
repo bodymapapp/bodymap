@@ -1324,6 +1324,8 @@ export default function CheckoutModal({
         amount_cents: amountCents,
         tip_cents: tipCents,
         client_email: client?.email || appt?.email,
+        client_name: client?.name || appt?.client || null,
+        delivery: linkDelivery,
       };
       if (isSubscription) {
         payload.member_subscription_id = subscription.id;
@@ -1359,6 +1361,8 @@ export default function CheckoutModal({
         detail: url,
         total: (totalCents / 100).toFixed(2),
         deliveryHint: linkDelivery,
+        emailed: !!data.emailed,
+        emailedTo: data.emailed_to || null,
       });
       setStep('success');
       onPaid?.();
@@ -2400,13 +2404,18 @@ function SuccessView({ detail, onClose, linkUrl, linkDelivery, clientPhone, clie
           <div style={{ background: C.cream, border: `1px solid ${C.border}`, borderRadius: 10, padding: '10px 14px', marginBottom: 14, fontSize: 11, fontFamily: 'monospace', color: C.inkSoft, wordBreak: 'break-all', textAlign: 'left' }}>
             {linkUrl}
           </div>
+          {detail?.emailed && (
+            <div style={{ background: '#EAF6EE', border: '1px solid #BBE7C9', color: '#15803D', borderRadius: 10, padding: '10px 14px', marginBottom: 14, fontSize: 13, fontWeight: 700, textAlign: 'center' }}>
+              ✓ Payment link emailed to {detail.emailedTo || clientEmail}
+            </div>
+          )}
           <div style={{ display: 'flex', gap: 10 }}>
             {clientPhone && (
               <a href={`sms:${clientPhone}?body=${encodeURIComponent(smsBody)}`} style={{ flex: 1, display: 'block', background: linkDelivery === 'sms' ? `linear-gradient(135deg, ${C.forestDeep}, ${C.forest})` : '#fff', color: linkDelivery === 'sms' ? '#fff' : C.forestDeep, border: linkDelivery === 'sms' ? 'none' : `1.5px solid ${C.border}`, borderRadius: 12, padding: '12px 14px', fontSize: 14, fontWeight: 700, textDecoration: 'none', textAlign: 'center', boxShadow: linkDelivery === 'sms' ? '0 2px 10px rgba(42,87,65,0.2)' : 'none' }}>
                 💬 Open SMS
               </a>
             )}
-            {clientEmail && (
+            {clientEmail && !detail?.emailed && (
               <a href={`mailto:${clientEmail}?subject=${encodeURIComponent(emailSubject)}&body=${emailBody}`} style={{ flex: 1, display: 'block', background: linkDelivery === 'email' ? `linear-gradient(135deg, ${C.forestDeep}, ${C.forest})` : '#fff', color: linkDelivery === 'email' ? '#fff' : C.forestDeep, border: linkDelivery === 'email' ? 'none' : `1.5px solid ${C.border}`, borderRadius: 12, padding: '12px 14px', fontSize: 14, fontWeight: 700, textDecoration: 'none', textAlign: 'center', boxShadow: linkDelivery === 'email' ? '0 2px 10px rgba(42,87,65,0.2)' : 'none' }}>
                 📧 Open Email
               </a>
