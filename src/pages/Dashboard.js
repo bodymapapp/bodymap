@@ -2100,7 +2100,7 @@ function ServicesAndAvailability({ therapist }) {
           </p>
         )}
         <p style={{ fontSize:'11px', color:C2.gray, background:C2.beige, borderRadius:8, padding:'8px 10px', margin:'0 0 14px', lineHeight:1.5 }}>
-          💡 Prefer Square or cash? Keep deposits off, clients pay you directly at the session. MyBodyMap handles scheduling, intake, and reminders regardless.
+          💡 Deposits work with both Square and Stripe. The client pays on the one card they enter at booking, no second step. Prefer to collect in person or by cash? Keep deposits off and clients pay you directly at the session. MyBodyMap handles scheduling, intake, and reminders either way.
         </p>
         <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:16 }}>
           <button onClick={async () => {
