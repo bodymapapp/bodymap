@@ -36,6 +36,7 @@ import { findOrCreateClient } from '../lib/findOrCreateClient';
 import { OFFLINE_PAYMENT_METHODS_FOR_PICKER as OFFLINE_METHODS_FROM_ENUM } from '../lib/enums';
 import SquareCardForm from './payments/SquareCardForm';
 import CloseButton from './CloseButton';
+import ResultScreen from './ResultScreen';
 
 const C = {
   forest: '#2A5741',
@@ -2388,6 +2389,55 @@ function SuccessView({ detail, onClose, linkUrl, linkDelivery, clientPhone, clie
     subline = parseFloat(detail?.total) > 0
       ? `${detail?.method} · ${detail?.detail}. Receipt emailed to client.`
       : `${detail?.method}${detail?.detail ? ` · ${detail?.detail}` : ''}. No money exchanged.`;
+  }
+
+  // Group A (approved Jun 3 2026): the session charge / no-money result and
+  // the payment-link result now use the standardized ResultScreen. Group B
+  // (package redemption, package active, membership) still falls through to
+  // the legacy block below until its before/after is approved.
+  const isSessionResult = !isLink && !isPackageRedemption && !isPackage && !isSubscription;
+  if (isSessionResult) {
+    const isMoney = parseFloat(detail?.total) > 0;
+    return (
+      <ResultScreen
+        variant={isMoney ? 'money' : 'success'}
+        amount={isMoney ? `$${detail?.total}` : undefined}
+        headline={isMoney ? 'Payment received' : 'Session recorded as paid'}
+        subline={subline}
+        primary={{ label: 'Done', onClick: onClose }}
+      />
+    );
+  }
+  if (isLink) {
+    return (
+      <ResultScreen
+        variant="share"
+        headline="Payment link ready"
+        subline={subline}
+        linkUrl={linkUrl}
+        banner={detail?.emailed ? `Payment link emailed to ${detail.emailedTo || clientEmail}` : null}
+        primary={{ label: 'Done', onClick: onClose }}
+      >
+        <div style={{ display: 'flex', gap: 10 }}>
+          {clientPhone && (
+            <a href={`sms:${clientPhone}?body=${encodeURIComponent(smsBody)}`} style={{ flex: 1, display: 'block', background: linkDelivery === 'sms' ? `linear-gradient(135deg, ${C.forestDeep}, ${C.forest})` : '#fff', color: linkDelivery === 'sms' ? '#fff' : C.forestDeep, border: linkDelivery === 'sms' ? 'none' : `1.5px solid ${C.border}`, borderRadius: 12, padding: '12px 14px', fontSize: 14, fontWeight: 700, textDecoration: 'none', textAlign: 'center', boxShadow: linkDelivery === 'sms' ? '0 2px 10px rgba(42,87,65,0.2)' : 'none' }}>
+              💬 Open SMS
+            </a>
+          )}
+          {clientEmail && !detail?.emailed && (
+            <a href={`mailto:${clientEmail}?subject=${encodeURIComponent(emailSubject)}&body=${emailBody}`} style={{ flex: 1, display: 'block', background: linkDelivery === 'email' ? `linear-gradient(135deg, ${C.forestDeep}, ${C.forest})` : '#fff', color: linkDelivery === 'email' ? '#fff' : C.forestDeep, border: linkDelivery === 'email' ? 'none' : `1.5px solid ${C.border}`, borderRadius: 12, padding: '12px 14px', fontSize: 14, fontWeight: 700, textDecoration: 'none', textAlign: 'center', boxShadow: linkDelivery === 'email' ? '0 2px 10px rgba(42,87,65,0.2)' : 'none' }}>
+              📧 Open Email
+            </a>
+          )}
+        </div>
+        <button
+          type="button"
+          onClick={() => { navigator.clipboard.writeText(linkUrl); }}
+          style={{ marginTop: 10, background: 'transparent', border: 'none', color: C.sage, fontSize: 12, fontWeight: 600, cursor: 'pointer', fontStyle: 'italic', fontFamily: 'Georgia, serif', textDecoration: 'underline' }}>
+          Copy link instead
+        </button>
+      </ResultScreen>
+    );
   }
 
   return (

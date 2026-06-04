@@ -58,7 +58,7 @@ const KEYFRAMES = `
 
 export default function ResultScreen({
   variant = 'success', amount, amountColor, headline, subline,
-  rows, banner, linkUrl, primary, secondary, onClose,
+  rows, banner, linkUrl, primary, secondary, onClose, children,
 }) {
   const v = VARIANTS[variant] || VARIANTS.success;
   return (
@@ -105,6 +105,14 @@ export default function ResultScreen({
         }}>{subline}</div>
       )}
 
+      {linkUrl && (
+        <div className="rs-rise rs-d3" style={{
+          background: '#F5F3EE', border: `1px solid ${RS.line}`, borderRadius: 10,
+          padding: '10px 13px', fontFamily: 'ui-monospace, monospace', fontSize: 11,
+          color: RS.inkSoft, wordBreak: 'break-all', textAlign: 'left', margin: '0 0 12px',
+        }}>{linkUrl}</div>
+      )}
+
       {banner && (
         <div className="rs-rise rs-d3" style={{
           background: RS.checkBg, border: `1px solid ${RS.checkRing}`, color: '#15803D',
@@ -112,12 +120,8 @@ export default function ResultScreen({
         }}>{banner}</div>
       )}
 
-      {linkUrl && (
-        <div className="rs-rise rs-d3" style={{
-          background: '#F5F3EE', border: `1px solid ${RS.line}`, borderRadius: 10,
-          padding: '10px 13px', fontFamily: 'ui-monospace, monospace', fontSize: 11,
-          color: RS.inkSoft, wordBreak: 'break-all', textAlign: 'left', margin: '0 0 12px',
-        }}>{linkUrl}</div>
+      {children && (
+        <div className="rs-rise rs-d3" style={{ margin: '0 0 14px' }}>{children}</div>
       )}
 
       {rows && rows.length > 0 && (
