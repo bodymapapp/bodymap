@@ -97,7 +97,7 @@ export default function FounderDashboard() {
 
   // Which dashboard tables are expanded. Default all collapsed because the
   // page is dense -- HK tap to drill in.
-  const [openTables, setOpenTables] = useState({ t1: false, t2: false, t3: false });
+  const [openTables, setOpenTables] = useState({ t1: false, t2: false, t3: false, t4: false });
   const toggleTable = (k) => setOpenTables((prev) => ({ ...prev, [k]: !prev[k] }));
   const toggleCell = (therapistId, colKey) => {
     const k = therapistId + ":" + colKey;
@@ -687,6 +687,19 @@ export default function FounderDashboard() {
           />
         </CollapsibleTableCard>
 
+        {/* ====== TABLE 4: Test Plan ====== */}
+        <CollapsibleTableCard
+          number={4}
+          title="Test Plan"
+          subtitle="What still needs hands-on testing. Check items off as you verify them on a real device. Saved to your account."
+          summary={`${TEST_PLAN_ITEMS.length} items`}
+          isOpen={openTables.t4}
+          onToggle={() => toggleTable("t4")}
+          anchorId="test-plan"
+        >
+          <FounderTestPlan />
+        </CollapsibleTableCard>
+
         {data.adminFlagMissing && (
           <div style={{ marginTop: 16, padding: "12px 16px", background: "#FEF9E7", border: "1px solid #E8C890", borderRadius: 8, fontSize: 12, color: "#7A5C1A" }}>
             <strong>Flagging disabled:</strong> run <code>supabase/migrations/founder_admin_flag.sql</code> in the Supabase SQL editor to enable per-account flagging (normal / mine / suspicious). Heuristic dummy detection still works in the meantime.
@@ -1078,6 +1091,92 @@ function firstName(t) {
 // state shows a single-row tappable header with the table number, title,
 // and one-line summary. Open state expands into the full table content.
 // Default styling matches the page's cream + sage palette.
+// HK Jun 4 2026: durable test plan. The item list is the version-
+// controlled record; done state persists in founder_test_plan (per
+// founder, cross-device). Append items here as features ship.
+const TEST_PLAN_ITEMS = [
+  { key: 'av_sched_bar_hours', area: 'Availability · Schedule', label: 'Hours bar shows the right hours for each day (swipe across the day strip).' },
+  { key: 'av_sched_adjusted', area: 'Availability · Schedule', label: 'After setting a custom day, the bar shows the "adjusted" badge.' },
+  { key: 'av_sched_dayoff', area: 'Availability · Schedule', label: 'Set a Day off for a date, then the public booking page shows no slots that date.' },
+  { key: 'av_sched_custom', area: 'Availability · Schedule', label: 'Set custom hours for a date, then the booking page only offers slots inside those hours.' },
+  { key: 'av_open_closed', area: 'Availability · Schedule', label: 'Set custom hours on a normally-closed weekday, confirm the booking page now opens that day.' },
+  { key: 'av_sched_remove', area: 'Availability · Schedule', label: 'Remove adjustment reverts the date to the weekly hours.' },
+  { key: 'av_set_single', area: 'Availability · Settings', label: 'Date-specific hours: add a single date, confirm it appears in the upcoming list.' },
+  { key: 'av_set_multi', area: 'Availability · Settings', label: 'Add several dates as chips, tap "Apply to N dates", confirm all saved.' },
+  { key: 'av_set_edit', area: 'Availability · Settings', label: 'Edit changes an override\u2019s hours; Remove deletes it.' },
+  { key: 'av_link', area: 'Availability · Settings', label: 'Schedule sheet "Edit my recurring weekly hours" link lands on Settings at Working hours.' },
+  { key: 'av_booking_fresh', area: 'Availability · Booking', label: 'Overrides take effect on a fresh booking-page load (signed out / incognito).' },
+  { key: 'av_copy_week', area: 'Follow-up (not built yet)', label: 'Build the copy-week-forward accelerator (Method 2) once a clean definition is set.' },
+];
+
+function FounderTestPlan() {
+  const [uid, setUid] = useState(null);
+  const [doneMap, setDoneMap] = useState({});
+  const [loading, setLoading] = useState(true);
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const { data: u } = await supabase.auth.getUser();
+      const id = u?.user?.id || null;
+      if (cancelled) return;
+      setUid(id);
+      if (id) {
+        const { data } = await supabase.from('founder_test_plan').select('item_key,done').eq('user_id', id);
+        if (cancelled) return;
+        const m = {};
+        for (const r of (data || [])) m[r.item_key] = r.done;
+        setDoneMap(m);
+      }
+      setLoading(false);
+    })();
+    return () => { cancelled = true; };
+  }, []);
+  const toggle = async (key) => {
+    if (!uid) return;
+    const next = !doneMap[key];
+    setDoneMap(prev => ({ ...prev, [key]: next }));
+    try {
+      await supabase.from('founder_test_plan').upsert({ user_id: uid, item_key: key, done: next, updated_at: new Date().toISOString() }, { onConflict: 'user_id,item_key' });
+    } catch {
+      setDoneMap(prev => ({ ...prev, [key]: !next }));
+    }
+  };
+  const groups = useMemo(() => {
+    const order = [];
+    const byArea = {};
+    for (const it of TEST_PLAN_ITEMS) {
+      if (!byArea[it.area]) { byArea[it.area] = []; order.push(it.area); }
+      byArea[it.area].push(it);
+    }
+    return order.map(area => ({ area, items: byArea[area] }));
+  }, []);
+  const doneCount = TEST_PLAN_ITEMS.filter(i => doneMap[i.key]).length;
+  return (
+    <div style={{ padding: '4px 2px' }}>
+      <div style={{ fontSize: 12, color: '#6B7280', marginBottom: 14 }}>
+        {loading ? 'Loading...' : `${doneCount} of ${TEST_PLAN_ITEMS.length} done`}{!uid && !loading ? ' (sign in to save check marks)' : ''}
+      </div>
+      {groups.map(g => (
+        <div key={g.area} style={{ marginBottom: 16 }}>
+          <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: '#8A8A8A', marginBottom: 8 }}>{g.area}</div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {g.items.map(it => {
+              const checked = !!doneMap[it.key];
+              return (
+                <button key={it.key} onClick={() => toggle(it.key)} disabled={!uid}
+                  style={{ display: 'flex', alignItems: 'flex-start', gap: 10, textAlign: 'left', background: checked ? '#F2F7F4' : '#F9FAFB', border: '1px solid #EEF2F7', borderRadius: 8, padding: '9px 11px', cursor: uid ? 'pointer' : 'default', width: '100%' }}>
+                  <span style={{ flexShrink: 0, width: 18, height: 18, borderRadius: 5, border: `1.5px solid ${checked ? '#2A5741' : '#CBD5E1'}`, background: checked ? '#2A5741' : '#fff', color: '#fff', fontSize: 12, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', marginTop: 1 }}>{checked ? '✓' : ''}</span>
+                  <span style={{ fontSize: 13, color: checked ? '#6B7280' : '#1F2937', textDecoration: checked ? 'line-through' : 'none', lineHeight: 1.4 }}>{it.label}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function CollapsibleTableCard({ number, title, subtitle, summary, isOpen, onToggle, anchorId, children }) {
   return (
     <div
