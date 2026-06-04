@@ -256,6 +256,14 @@ function ServicesAndAvailability({ therapist }) {
   const [collapsedGroups, setCollapsedGroups] = React.useState(new Set());
   const [services, setServices] = React.useState([]);
   const [availability, setAvailability] = React.useState([]);
+  // Date-specific overrides (HK Jun 4 2026). Managed here in Settings;
+  // the Schedule hours bar writes the same rows. ovDraft is the add/edit
+  // form: { dates:[...], mode:'custom'|'off', start, end, editingId }.
+  const [overrides, setOverrides] = React.useState([]);
+  const [ovDraft, setOvDraft] = React.useState(null);
+  const [ovDateInput, setOvDateInput] = React.useState('');
+  const [ovSaving, setOvSaving] = React.useState(false);
+  const [ovError, setOvError] = React.useState('');
   // Multi-location support (HK May 18 2026): list of therapist
   // locations. Empty array if therapist has none (the most common
   // case, including most current accounts). When length >= 2 the
@@ -341,7 +349,7 @@ function ServicesAndAvailability({ therapist }) {
   }
 
   async function load() {
-    const [{ data: svcs }, { data: avail }, { data: locs }] = await Promise.all([
+    const [{ data: svcs }, { data: avail }, { data: locs }, { data: ovr }] = await Promise.all([
       // is_('archived_at', null) filters out soft-deleted services so
       // they don't reappear in the management list after Remove. The
       // archived rows still exist for FK integrity but the therapist
@@ -351,6 +359,10 @@ function ServicesAndAvailability({ therapist }) {
       // Locations (HK May 18 2026): only active rows. Sorted by
       // sort_order so primary surfaces first.
       supabase.from('therapist_locations').select('*').eq('therapist_id', therapist.id).eq('active', true).order('sort_order', { ascending: true }),
+      // Date-specific availability overrides (HK Jun 4 2026). Ordered by
+      // date so the list renders chronologically. Last in the array to
+      // match the destructure (svcs, avail, locs, ovr).
+      supabase.from('availability_overrides').select('*').eq('therapist_id', therapist.id).order('override_date', { ascending: true }),
     ]);
     let loadedSvcs = svcs || [];
     // HK May 19 2026: if therapist already has groups ON but services
@@ -395,6 +407,7 @@ function ServicesAndAvailability({ therapist }) {
     }
     setServices(loadedSvcs);
     setAvailability(avail || []);
+    setOverrides(ovr || []);
     setLocations(locs || []);
     setLoading(false);
   }
@@ -1023,6 +1036,84 @@ function ServicesAndAvailability({ therapist }) {
   async function updateHours(id, field, val) {
     await supabase.from('availability').update({ [field]: val }).eq('id', id);
     setAvailability(a => a.map(x => x.id === id ? { ...x, [field]: val } : x));
+  }
+
+  // Date-specific override handlers (HK Jun 4 2026). All write the same
+  // availability_overrides rows the Schedule hours sheet uses.
+  function todayStr() {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  }
+  function startOverrideAdd() {
+    setOvError('');
+    setOvDateInput('');
+    setOvDraft({ dates: [], mode: 'custom', start: '09:00', end: '17:00', editingId: null });
+  }
+  function startOverrideEdit(row) {
+    setOvError('');
+    setOvDateInput('');
+    setOvDraft({
+      dates: [row.override_date],
+      mode: row.is_closed ? 'off' : 'custom',
+      start: (row.start_time || '09:00').slice(0,5),
+      end: (row.end_time || '17:00').slice(0,5),
+      editingId: row.id,
+    });
+  }
+  function addOvDate() {
+    if (!ovDateInput) return;
+    setOvDraft(prev => {
+      if (!prev) return prev;
+      if (prev.dates.includes(ovDateInput)) return prev;
+      return { ...prev, dates: [...prev.dates, ovDateInput].sort() };
+    });
+    setOvDateInput('');
+  }
+  function removeOvDate(d) {
+    setOvDraft(prev => prev ? { ...prev, dates: prev.dates.filter(x => x !== d) } : prev);
+  }
+  async function refetchOverrides() {
+    const { data } = await supabase.from('availability_overrides').select('*').eq('therapist_id', therapist.id).order('override_date', { ascending: true });
+    setOverrides(data || []);
+  }
+  async function saveOverrides() {
+    if (!ovDraft) return;
+    setOvError('');
+    const dates = ovDraft.dates.filter(Boolean);
+    if (dates.length === 0) { setOvError('Add at least one date.'); return; }
+    if (ovDraft.mode === 'custom') {
+      if (!ovDraft.start || !ovDraft.end) { setOvError('Enter a start and an end time.'); return; }
+      if (ovDraft.end <= ovDraft.start) { setOvError('End time must be after the start time.'); return; }
+    }
+    setOvSaving(true);
+    try {
+      const rows = dates.map(d => ({
+        therapist_id: therapist.id,
+        override_date: d,
+        is_closed: ovDraft.mode === 'off',
+        start_time: ovDraft.mode === 'off' ? null : ovDraft.start,
+        end_time: ovDraft.mode === 'off' ? null : ovDraft.end,
+        time_blocks: null,
+        updated_at: new Date().toISOString(),
+      }));
+      const { error } = await supabase.from('availability_overrides').upsert(rows, { onConflict: 'therapist_id,override_date' });
+      if (error) throw error;
+      await refetchOverrides();
+      setOvDraft(null);
+    } catch (err) {
+      setOvError((err && err.message) || 'Could not save. Please try again.');
+    } finally {
+      setOvSaving(false);
+    }
+  }
+  async function deleteOverride(id) {
+    try {
+      const { error } = await supabase.from('availability_overrides').delete().eq('id', id);
+      if (error) throw error;
+      setOverrides(o => o.filter(x => x.id !== id));
+    } catch (err) {
+      setOvError((err && err.message) || 'Could not remove. Please try again.');
+    }
   }
 
   // Time blocks helpers
@@ -2610,6 +2701,9 @@ function ServicesAndAvailability({ therapist }) {
         </div>
       </DisclosureRow>
 
+      {/* HK Jun 4 2026: anchor target for the Schedule hours sheet's
+          "Edit my recurring weekly hours" link (/dashboard/settings#availability). */}
+      <div id="availability" />
       {/* Working Hours - Time Blocks. Disclosure row pattern. */}
       <DisclosureRow
         icon="🕐"
@@ -2736,6 +2830,103 @@ function ServicesAndAvailability({ therapist }) {
             );
           })}
         </div>
+      </DisclosureRow>
+
+      {/* Date-specific hours (overrides). HK Jun 4 2026. Writes the same
+          availability_overrides rows the Schedule hours sheet uses. One
+          date or several at once. A date override wins over weekly hours. */}
+      <DisclosureRow
+        icon="📅"
+        taxonomyId="2.1.8a"
+        title="Date-specific hours"
+        summary={(() => {
+          const upcoming = (overrides || []).filter(o => o.override_date >= todayStr());
+          return upcoming.length === 0 ? 'None set' : `${upcoming.length} upcoming`;
+        })()}
+        open={openSubRow === 'date-overrides'}
+        onToggle={() => setOpenSubRow(openSubRow === 'date-overrides' ? null : 'date-overrides')}
+      >
+        <div style={{ fontSize:11, color:C2.gray, marginBottom:10 }}>
+          A date override wins over your weekly hours for that day. Set custom hours or a day off for one date, or several at once.
+        </div>
+        {(() => {
+          const upcoming = (overrides || []).filter(o => o.override_date >= todayStr());
+          if (upcoming.length === 0) return null;
+          return (
+            <div style={{ display:'flex', flexDirection:'column', gap:6, marginBottom:12 }}>
+              {upcoming.map(o => (
+                <div key={o.id} style={{ display:'flex', alignItems:'center', gap:8, background:'#F9FAFB', borderRadius:8, padding:'8px 10px' }}>
+                  <div style={{ flex:1, minWidth:0 }}>
+                    <div style={{ fontSize:13, fontWeight:700, color:'#1F2937' }}>
+                      {new Date(o.override_date+'T12:00:00').toLocaleDateString('en-US',{ weekday:'short', month:'short', day:'numeric' })}
+                    </div>
+                    <div style={{ fontSize:12, color: o.is_closed ? '#B23B3B' : C2.gray }}>
+                      {o.is_closed ? 'Day off' : `${(o.start_time||'').slice(0,5)} to ${(o.end_time||'').slice(0,5)}`}
+                    </div>
+                  </div>
+                  <button onClick={() => startOverrideEdit(o)} style={{ background:'transparent', border:'none', color:C2.forest, fontSize:12, fontWeight:700, cursor:'pointer' }}>Edit</button>
+                  <button onClick={() => deleteOverride(o.id)} style={{ background:'transparent', border:'none', color:'#991B1B', fontSize:12, fontWeight:600, cursor:'pointer' }}>Remove</button>
+                </div>
+              ))}
+            </div>
+          );
+        })()}
+        {!ovDraft && (
+          <button onClick={startOverrideAdd} style={{ background:C2.forest, color:'#fff', border:'none', borderRadius:10, padding:'10px 14px', fontSize:13, fontWeight:700, cursor:'pointer' }}>
+            + Add date override
+          </button>
+        )}
+        {ovDraft && (
+          <div style={{ border:'1px solid #ECE9E1', borderRadius:12, padding:12, background:'#FBFAF4' }}>
+            {!ovDraft.editingId && (
+              <>
+                <label style={{ fontSize:11, fontWeight:700, color:'#6B7280', textTransform:'uppercase', letterSpacing:'0.06em', display:'block', marginBottom:6 }}>Date(s)</label>
+                <div style={{ display:'flex', gap:8, marginBottom:8 }}>
+                  <input type="date" value={ovDateInput} min={todayStr()} onChange={e => setOvDateInput(e.target.value)} style={{ flex:1, padding:'9px 10px', border:'1.5px solid #E8E4DC', borderRadius:9, fontSize:14, background:'#fff' }} />
+                  <button onClick={addOvDate} style={{ background:'#E7F4EC', color:C2.forest, border:'1px solid #BBE3C9', borderRadius:9, padding:'0 14px', fontSize:13, fontWeight:700, cursor:'pointer' }}>Add</button>
+                </div>
+                {ovDraft.dates.length > 0 && (
+                  <div style={{ display:'flex', flexWrap:'wrap', gap:6, marginBottom:10 }}>
+                    {ovDraft.dates.map(d => (
+                      <span key={d} style={{ display:'inline-flex', alignItems:'center', gap:6, background:'#fff', border:'1px solid #E5E7EB', borderRadius:999, padding:'4px 10px', fontSize:12, fontWeight:600 }}>
+                        {new Date(d+'T12:00:00').toLocaleDateString('en-US',{ month:'short', day:'numeric' })}
+                        <button onClick={() => removeOvDate(d)} style={{ background:'transparent', border:'none', color:'#9CA3AF', cursor:'pointer', fontSize:14, lineHeight:1, padding:0 }}>×</button>
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </>
+            )}
+            {ovDraft.editingId && (
+              <div style={{ fontSize:13, fontWeight:700, color:'#1F2937', marginBottom:10 }}>
+                {new Date(ovDraft.dates[0]+'T12:00:00').toLocaleDateString('en-US',{ weekday:'long', month:'short', day:'numeric' })}
+              </div>
+            )}
+            <div style={{ display:'flex', background:'#F5F3EE', border:'1px solid #ECE9E1', borderRadius:10, padding:3, marginBottom:10 }}>
+              {['custom','off'].map(m => (
+                <button key={m} onClick={() => setOvDraft(prev => prev ? { ...prev, mode:m } : prev)} style={{ flex:1, textAlign:'center', padding:'7px', borderRadius:7, border:'none', cursor:'pointer', fontSize:12.5, fontWeight:700, background: ovDraft.mode===m ? C2.forest : 'transparent', color: ovDraft.mode===m ? '#fff' : '#8A8A8A' }}>
+                  {m==='custom' ? 'Custom hours' : 'Day off'}
+                </button>
+              ))}
+            </div>
+            {ovDraft.mode==='custom' && (
+              <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:10 }}>
+                <input type="time" value={ovDraft.start} onChange={e => setOvDraft(prev => prev ? { ...prev, start:e.target.value } : prev)} style={{ flex:1, padding:'9px 10px', border:'1.5px solid #E8E4DC', borderRadius:9, fontSize:14, background:'#fff' }} />
+                <span style={{ color:'#6B7280', fontSize:13 }}>to</span>
+                <input type="time" value={ovDraft.end} onChange={e => setOvDraft(prev => prev ? { ...prev, end:e.target.value } : prev)} style={{ flex:1, padding:'9px 10px', border:'1.5px solid #E8E4DC', borderRadius:9, fontSize:14, background:'#fff' }} />
+              </div>
+            )}
+            {ovError && (
+              <div style={{ background:'#FEF2F2', border:'1px solid #FCA5A5', color:'#991B1B', borderRadius:8, padding:'7px 10px', fontSize:12, marginBottom:10 }}>{ovError}</div>
+            )}
+            <div style={{ display:'flex', gap:8 }}>
+              <button onClick={() => { setOvDraft(null); setOvError(''); }} disabled={ovSaving} style={{ flex:1, background:'#F3F4F6', color:'#4B5563', border:'none', padding:'10px', borderRadius:9, fontSize:13, fontWeight:700, cursor: ovSaving ? 'not-allowed' : 'pointer' }}>Cancel</button>
+              <button onClick={saveOverrides} disabled={ovSaving} style={{ flex:1, background:C2.forest, color:'#fff', border:'none', padding:'10px', borderRadius:9, fontSize:13, fontWeight:700, cursor: ovSaving ? 'not-allowed' : 'pointer' }}>
+                {ovSaving ? 'Saving...' : (ovDraft.editingId ? 'Save' : `Apply to ${ovDraft.dates.length || 0} date${ovDraft.dates.length===1?'':'s'}`)}
+              </button>
+            </div>
+          </div>
+        )}
       </DisclosureRow>
 
       {/* Cycle-aligned scheduling. Disclosure row pattern. */}
