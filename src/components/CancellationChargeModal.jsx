@@ -25,6 +25,7 @@ import { createPortal } from 'react-dom';
 import { supabase } from '../lib/supabase';
 import { getStripePublishableKey } from '../lib/paymentMode';
 import AutoGrowingTextarea from './AutoGrowingTextarea';
+import ResultScreen from './ResultScreen';
 
 const C = {
   forest: '#2A5741',
@@ -948,31 +949,13 @@ export default function CancellationChargeModal({
         )}
 
         {step === 'done' && chargeResult && (
-          <div style={{ padding: '32px 24px', textAlign: 'center' }}>
-            <div style={{
-              width: 56, height: 56, borderRadius: '50%',
-              background: '#DCFCE7', display: 'flex',
-              alignItems: 'center', justifyContent: 'center',
-              margin: '0 auto 14px', fontSize: 28, color: '#16A34A',
-            }}>✓</div>
-            <div style={{ fontSize: 16, fontWeight: 700, color: C.forest, fontFamily: 'Georgia, serif', marginBottom: 6 }}>
-              Charged {formatPrice(chargeResult.amount_cents)}
-            </div>
-            <div style={{ fontSize: 12, color: C.muted, marginBottom: 18, lineHeight: 1.5 }}>
-              {isNoShow ? 'No-show recorded.' : 'Booking cancelled.'}
-              {chargeResult.last4
-                ? ` The client will see the charge on their ${(chargeResult.brand || 'card').toUpperCase()} ending in ${chargeResult.last4}.`
-                : ' Charge captured.'}
-            </div>
-            <button onClick={handleDone}
-              style={{
-                background: C.forest, color: '#fff', border: 'none',
-                borderRadius: 10, padding: '10px 24px', fontSize: 13, fontWeight: 700,
-                cursor: 'pointer',
-              }}>
-              Done
-            </button>
-          </div>
+          <ResultScreen
+            variant="money"
+            amount={formatPrice(chargeResult.amount_cents)}
+            headline={isNoShow ? 'No-show fee captured' : 'Late-cancellation fee captured'}
+            subline={`${isNoShow ? 'No-show recorded.' : 'Booking cancelled.'}${chargeResult.last4 ? ` The client will see the charge on their ${(chargeResult.brand || 'card').toUpperCase()} ending in ${chargeResult.last4}.` : ' Charge captured.'}`}
+            primary={{ label: 'Done', onClick: handleDone }}
+          />
         )}
         </div>
       </div>
