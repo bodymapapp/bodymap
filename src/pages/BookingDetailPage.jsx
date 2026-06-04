@@ -301,6 +301,17 @@ export default function BookingDetailPage({ therapist }) {
     ['Client since', fmtLongDate(clientRow.customer_since)],
   ] : [];
 
+  const _sqCard = !!(clientRow && clientRow.square_customer_id && clientRow.square_card_id);
+  const _stCard = !!(clientRow && clientRow.stripe_customer_id && clientRow.payment_method_id && clientRow.card_last4);
+  const hasCardOnFile = _sqCard || _stCard;
+  const cardChipText = hasCardOnFile
+    ? (() => {
+        const b = String(clientRow.card_brand || '').toLowerCase();
+        const brand = b.includes('amer') || b === 'amex' ? 'Amex' : b.includes('visa') ? 'Visa' : b.includes('master') ? 'Mastercard' : b.includes('disc') ? 'Discover' : (clientRow.card_brand ? clientRow.card_brand.charAt(0).toUpperCase() + clientRow.card_brand.slice(1).toLowerCase() : 'Card');
+        return `💳 ${brand}${clientRow.card_last4 ? ' ••' + clientRow.card_last4 : ''}`;
+      })()
+    : null;
+
   return (
     <div style={isDesktop
       ? { padding: '20px 32px 48px', maxWidth: 1320, margin: '0 auto' }
@@ -349,8 +360,9 @@ export default function BookingDetailPage({ therapist }) {
                   {appt.clientId && <a href={`/dashboard/clients/${appt.clientId}`} style={{ display: 'inline-block', marginTop: 2, fontSize: 12, fontWeight: 600, color: C.forest, textDecoration: 'none' }}>View profile ›</a>}
                 </div>
               </div>
-              {(appt.status === 'pending-intake' || appt.status === 'intake-done' || appt.status === 'complete' || (appt.deposit_required && appt.deposit_paid) || appt.reminder_sent || appt.paid_cents > 0 || appt.refundedCents > 0) && (
+              {(appt.status === 'pending-intake' || appt.status === 'intake-done' || appt.status === 'complete' || (appt.deposit_required && appt.deposit_paid) || appt.reminder_sent || appt.paid_cents > 0 || appt.refundedCents > 0 || hasCardOnFile) && (
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 14 }}>
+                  {hasCardOnFile && <span style={{ background: '#EAF6EE', color: '#15803D', border: '1px solid #BBE7C9', borderRadius: 999, padding: '4px 10px', fontSize: 12, fontWeight: 700 }}>{cardChipText}</span>}
                   {appt.status === 'pending-intake' && <span style={{ background: '#FEF3C7', color: '#B45309', border: '1px solid #FDE68A', borderRadius: 999, padding: '4px 10px', fontSize: 12, fontWeight: 700 }}>No Intake</span>}
                   {(appt.status === 'intake-done' || appt.status === 'complete') && <span style={{ background: '#EAF6EE', color: '#15803D', border: '1px solid #BBE7C9', borderRadius: 999, padding: '4px 10px', fontSize: 12, fontWeight: 700 }}>✓ Intake received</span>}
                   {appt.deposit_required && appt.deposit_paid && <span style={{ background: '#EAF6EE', color: '#15803D', border: '1px solid #BBE7C9', borderRadius: 999, padding: '4px 10px', fontSize: 12, fontWeight: 700 }}>✓ Deposit paid</span>}

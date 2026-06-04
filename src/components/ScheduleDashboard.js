@@ -3192,7 +3192,15 @@ export function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelle
                   </div>
                 )}
               </div>
-              <div style={{flexShrink:0}}>
+              <div style={{flexShrink:0,display:'flex',alignItems:'center',gap:6}}>
+                {(() => {
+                  const sq = clientRow && clientRow.square_customer_id && clientRow.square_card_id;
+                  const stc = clientRow && clientRow.stripe_customer_id && clientRow.payment_method_id && clientRow.card_last4;
+                  if (railPresent || !(sq || stc)) return null;
+                  const b = String(clientRow.card_brand || '').toLowerCase();
+                  const brand = b.includes('amer') || b === 'amex' ? 'Amex' : b.includes('visa') ? 'Visa' : b.includes('master') ? 'Mastercard' : b.includes('disc') ? 'Discover' : (clientRow.card_brand ? clientRow.card_brand.charAt(0).toUpperCase() + clientRow.card_brand.slice(1).toLowerCase() : 'Card');
+                  return <span style={{background:'#EAF6EE',color:'#15803D',border:'1px solid #BBE7C9',borderRadius:20,padding:'5px 10px',fontSize:11.5,fontWeight:700,whiteSpace:'nowrap'}}>{`💳 ${brand}${clientRow.card_last4 ? ' ••' + clientRow.card_last4 : ''}`}</span>;
+                })()}
                 {!railPresent && <div style={{background:st.bg,color:st.color,borderRadius:20,padding:'5px 11px',fontSize:11.5,fontWeight:700,whiteSpace:'nowrap'}}>{st.icon} {st.label}</div>}
               </div>
             </div>
