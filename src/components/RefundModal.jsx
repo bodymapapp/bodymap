@@ -15,6 +15,7 @@
 // can refresh.
 
 import React, { useState } from 'react';
+import ResultScreen from './ResultScreen';
 
 const C = {
   forest: '#2A5741',
@@ -61,6 +62,10 @@ export default function RefundModal({
   })();
 
   const [step, setStep] = useState('confirm'); // 'confirm' | 'custom' | 'processing' | 'done' | 'error'
+  // HK Jun 3 2026: display-only. Records the amount actually refunded so the
+  // done screen shows the correct figure on partial refunds. Does not affect
+  // the refund itself.
+  const [refundedCents, setRefundedCents] = useState(fullAmountCents);
   const [customAmount, setCustomAmount] = useState(fullAmountDollars);
   const [errorMsg, setErrorMsg] = useState(null);
   const [errorCode, setErrorCode] = useState('');
@@ -96,6 +101,7 @@ export default function RefundModal({
         setErrorCode(code);
         throw new Error(data.detail || code || 'Refund failed');
       }
+      setRefundedCents(amountCents || fullAmountCents);
       setStep('done');
       onRefunded?.(data);
     } catch (e) {
@@ -128,6 +134,7 @@ export default function RefundModal({
       });
       const data = await res.json();
       if (!res.ok || data.error) throw new Error(data.detail || data.error || 'Could not mark refunded');
+      setRefundedCents(amountCents || fullAmountCents);
       setStep('done');
       onRefunded?.(data);
     } catch (e) {
@@ -280,30 +287,16 @@ export default function RefundModal({
         )}
 
         {step === 'done' && (
-          <div style={{ padding: '32px 24px', textAlign: 'center' }}>
-            <div style={{
-              width: 56, height: 56, borderRadius: '50%',
-              background: '#DCFCE7', display: 'flex',
-              alignItems: 'center', justifyContent: 'center',
-              margin: '0 auto 14px', fontSize: 28, color: '#16A34A',
-            }}>✓</div>
-            <div style={{ fontSize: 16, fontWeight: 700, color: C.forest, fontFamily: 'Georgia, serif', marginBottom: 6 }}>
-              {isOnlineCard ? 'Refund issued' : 'Marked as refunded'}
-            </div>
-            <div style={{ fontSize: 12, color: C.muted, marginBottom: 18, lineHeight: 1.5 }}>
-              {isOnlineCard
-                ? `The refund will appear on the client's card in 5 to 10 business days.`
-                : `Remember to return the ${methodLabel.toLowerCase()} to ${clientName}.`}
-            </div>
-            <button onClick={onClose}
-              style={{
-                background: C.forest, color: '#fff', border: 'none',
-                borderRadius: 10, padding: '10px 24px', fontSize: 13, fontWeight: 700,
-                cursor: 'pointer',
-              }}>
-              Done
-            </button>
-          </div>
+          <ResultScreen
+            variant="refund"
+            amount={`$${(refundedCents / 100).toFixed(2)}`}
+            amountColor="#6D28D9"
+            headline={isOnlineCard ? 'Refund issued' : 'Marked as refunded'}
+            subline={isOnlineCard
+              ? `The refund will appear on the client's card in 5 to 10 business days.`
+              : `Remember to return the ${methodLabel.toLowerCase()} to ${clientName}.`}
+            primary={{ label: 'Done', onClick: onClose }}
+          />
         )}
 
         {step === 'error' && (() => {
