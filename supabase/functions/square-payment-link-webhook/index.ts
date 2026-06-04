@@ -101,8 +101,15 @@ serve(async (req) => {
       .maybeSingle();
 
     if (paymentRow) {
-      if (paymentRow.status === 'succeeded') {
-        return jsonOk({ received: true, already_processed: true, kind: 'session_payment', id: paymentRow.id });
+      // HK Jun 3 2026: only a PENDING payment-link row should be promoted
+      // to succeeded by this webhook. Previously this skipped only when the
+      // row was already 'succeeded', so a post-refund payment.updated event
+      // (the payment stays COMPLETED with refunded money) overwrote a
+      // 'refunded' row back to 'succeeded', wiping the refund and blocking
+      // the refund notification. Treat succeeded, refunded, voided and
+      // failed as terminal and leave them untouched.
+      if (paymentRow.status !== 'pending') {
+        return jsonOk({ received: true, already_processed: true, kind: 'session_payment', id: paymentRow.id, status: paymentRow.status });
       }
 
       const cardDetail = formatCardDetail(payment);
