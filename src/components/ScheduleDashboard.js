@@ -5132,7 +5132,7 @@ function TimelineView({ therapist, allAppts, dayOffset, setDayOffset, today, onR
   // within each cluster of mutually overlapping bookings, each takes the
   // first free column; the cluster's column count sets every card's width.
   const apptLayout = (() => {
-    const items = sorted.map(a => ({ id: a.id, start: t2m(a.time), end: t2m(a.time) + Math.max(a.duration, 1) }));
+    const items = sorted.map(a => ({ id: a.id, start: t2m(a.time), end: t2m(a.time) + Math.max(a.duration, 20) }));
     const layout = {};
     let cluster = [];
     let clusterEnd = -Infinity;
@@ -5167,7 +5167,7 @@ function TimelineView({ therapist, allAppts, dayOffset, setDayOffset, today, onR
   const DEFAULT_END   = 19 * 60;  // 7:00 PM
   const TL_START = starts.length ? Math.min(DEFAULT_START, Math.min(...starts) - 30) : DEFAULT_START;
   const TL_END   = ends.length   ? Math.max(DEFAULT_END,   Math.max(...ends) + 45)   : DEFAULT_END;
-  const PX = 0.85;
+  const PX = 1.3;
   const H = (TL_END-TL_START)*PX;
   const GUTTER = 48;
 
@@ -5592,7 +5592,7 @@ function TimelineView({ therapist, allAppts, dayOffset, setDayOffset, today, onR
             )}
             {sorted.map(appt=>{
               const y=(t2m(appt.time)-TL_START)*PX;
-              const bh=Math.max(appt.duration*PX,36);
+              const bh=Math.max(appt.duration*PX,52);
               const st=STATUS[appt.status]||STATUS['pending-intake'];
               const isSel=selected?.id===appt.id;
               const isPast=dayOffset===0&&t2m(appt.time)+appt.duration<nowMin;
@@ -5627,12 +5627,12 @@ function TimelineView({ therapist, allAppts, dayOffset, setDayOffset, today, onR
                         {!appt.preview&&appt.reminder_sent&&<div style={{fontSize:9,color:'#16A34A',fontWeight:700,marginTop:1}}>📧 Sent</div>}
                       </div>
                     </div>
-                    {bh>52&&<div style={{fontSize:11,color:appt.preview?'#C4C4C4':st.color,marginLeft:30}}>
+                    {bh>=50&&<div style={{fontSize:11,color:appt.preview?'#C4C4C4':st.color,marginLeft:30}}>
                       {appt.service}
                       {appt.locationName && <span style={{ color: '#9CA3AF', fontWeight: 500 }}> · 📍 {appt.locationName}</span>}
                     </div>}
                     {/* HK May 29 2026: trace annotation under the card (cancelled/no-show/refund/reschedule). Only renders when applicable. */}
-                    {bh>52 && ann && <div style={{fontSize:10,color:st.color,marginLeft:30,fontWeight:600,marginTop:1}}>{ann}</div>}
+                    {bh>=50 && ann && <div style={{fontSize:10,color:st.color,marginLeft:30,fontWeight:600,marginTop:1}}>{ann}</div>}
                     {bh>72&&(
                       <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
                         <div style={{background:appt.preview?'transparent':st.dot+'22',color:appt.preview?'#C4C4C4':st.color,borderRadius:20,padding:'2px 8px',fontSize:10,fontWeight:700}}>{st.icon} {appt.preview?'Preview':st.label}</div>
