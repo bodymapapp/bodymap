@@ -5114,6 +5114,31 @@ function TimelineView({ therapist, allAppts, dayOffset, setDayOffset, today, onR
   const [pendingBlock, setPendingBlock] = useState(null);  // {date, startTime, endTime, note}
   const [blockSheetSaving, setBlockSheetSaving] = useState(false);
   const [blockSheetError, setBlockSheetError] = useState('');
+  // Date-specific availability (HK Jun 4 2026). Recurring weekly hours
+  // are loaded read-only so the bar can show the day's effective hours;
+  // a date override wins. The sheet edits the override for one date.
+  const [recurringAvail, setRecurringAvail] = useState([]);
+  const [overridesByDate, setOverridesByDate] = useState({});
+  const [hoursSheet, setHoursSheet] = useState(null); // {date,mode,startTime,endTime,hasOverride}
+  const [hoursSheetSaving, setHoursSheetSaving] = useState(false);
+  const [hoursSheetError, setHoursSheetError] = useState('');
+  useEffect(() => {
+    const tid = therapist?.id;
+    if (!tid) return;
+    let cancelled = false;
+    (async () => {
+      const [{ data: av }, { data: ov }] = await Promise.all([
+        supabase.from('availability').select('day_of_week,start_time,end_time,time_blocks').eq('therapist_id', tid).eq('active', true).is('service_id', null),
+        supabase.from('availability_overrides').select('*').eq('therapist_id', tid),
+      ]);
+      if (cancelled) return;
+      setRecurringAvail(av || []);
+      const m = {};
+      for (const o of (ov || [])) { if (o && o.override_date) m[o.override_date] = o; }
+      setOverridesByDate(m);
+    })();
+    return () => { cancelled = true; };
+  }, [therapist?.id, paymentsRefreshTick]);
   const scrollRef = useRef(null);
   const isMobile = window.innerWidth < 900;
   const now = new Date();
@@ -5230,6 +5255,90 @@ function TimelineView({ therapist, allAppts, dayOffset, setDayOffset, today, onR
     const d = addDays(today, dayOffset);
     return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
   })();
+
+  // Effective working hours for the viewed date (HK Jun 4 2026). A date
+  // override wins over the recurring master row; otherwise the weekly
+  // row for this day-of-week; otherwise closed. Master-level (the bar
+  // reflects the therapist's overall hours, not per-service schedules).
+  const viewDow = addDays(today, dayOffset).getDay();
+  const todayOverride = overridesByDate[viewDateStr] || null;
+  const recurringRow = recurringAvail.find(a => a.day_of_week === viewDow) || null;
+  const effHours = (() => {
+    if (todayOverride) {
+      if (todayOverride.is_closed) return { closed: true, source: 'override' };
+      return { closed: false, source: 'override', start: todayOverride.start_time, end: todayOverride.end_time, blocks: todayOverride.time_blocks };
+    }
+    if (recurringRow) return { closed: false, source: 'weekly', start: recurringRow.start_time, end: recurringRow.end_time, blocks: recurringRow.time_blocks };
+    return { closed: true, source: 'weekly' };
+  })();
+  const fmtHoursLabel = (() => {
+    if (effHours.closed) return 'Closed';
+    const blocks = (Array.isArray(effHours.blocks) && effHours.blocks.length > 0)
+      ? effHours.blocks
+      : [{ start: (effHours.start || '').slice(0,5), end: (effHours.end || '').slice(0,5) }];
+    return blocks.map(b => `${fmtTime12((b.start||'').slice(0,5))} - ${fmtTime12((b.end||'').slice(0,5))}`).join(', ');
+  })();
+
+  const openHoursSheet = () => {
+    setHoursSheetError('');
+    setHoursSheet({
+      date: viewDateStr,
+      mode: todayOverride && todayOverride.is_closed ? 'off' : 'custom',
+      startTime: (((todayOverride && todayOverride.start_time) || effHours.start || '09:00')).slice(0,5),
+      endTime: (((todayOverride && todayOverride.end_time) || effHours.end || '17:00')).slice(0,5),
+      hasOverride: !!todayOverride,
+    });
+  };
+  const refetchOverrides = async () => {
+    const tid = therapist?.id; if (!tid) return;
+    const { data: ov } = await supabase.from('availability_overrides').select('*').eq('therapist_id', tid);
+    const m = {}; for (const o of (ov || [])) { if (o && o.override_date) m[o.override_date] = o; } setOverridesByDate(m);
+  };
+  const saveHoursSheet = async () => {
+    if (!hoursSheet) return;
+    setHoursSheetError('');
+    if (hoursSheet.mode === 'custom') {
+      const s = hoursSheet.startTime, e = hoursSheet.endTime;
+      if (!s || !e) { setHoursSheetError('Please enter a start and an end time.'); return; }
+      if (e <= s) { setHoursSheetError('End time must be after the start time.'); return; }
+    }
+    setHoursSheetSaving(true);
+    try {
+      const payload = {
+        therapist_id: therapist.id,
+        override_date: hoursSheet.date,
+        is_closed: hoursSheet.mode === 'off',
+        start_time: hoursSheet.mode === 'off' ? null : hoursSheet.startTime,
+        end_time: hoursSheet.mode === 'off' ? null : hoursSheet.endTime,
+        time_blocks: null,
+        updated_at: new Date().toISOString(),
+      };
+      const { error } = await supabase.from('availability_overrides').upsert(payload, { onConflict: 'therapist_id,override_date' });
+      if (error) throw error;
+      await refetchOverrides();
+      setHoursSheet(null);
+      if (typeof onRefresh === 'function') onRefresh();
+    } catch (err) {
+      setHoursSheetError((err && err.message) || 'Could not save. Please try again.');
+    } finally {
+      setHoursSheetSaving(false);
+    }
+  };
+  const removeHoursOverride = async () => {
+    if (!hoursSheet || !hoursSheet.hasOverride) { setHoursSheet(null); return; }
+    setHoursSheetSaving(true); setHoursSheetError('');
+    try {
+      const { error } = await supabase.from('availability_overrides').delete().eq('therapist_id', therapist.id).eq('override_date', hoursSheet.date);
+      if (error) throw error;
+      await refetchOverrides();
+      setHoursSheet(null);
+      if (typeof onRefresh === 'function') onRefresh();
+    } catch (err) {
+      setHoursSheetError((err && err.message) || 'Could not remove. Please try again.');
+    } finally {
+      setHoursSheetSaving(false);
+    }
+  };
 
   // Partial blocks for THIS day, drawn onto the canvas as amber
   // stripes so the therapist sees their own blocks in context with
@@ -5405,6 +5514,23 @@ function TimelineView({ therapist, allAppts, dayOffset, setDayOffset, today, onR
       {/* HK May 31 2026: legend extracted to LegendPill, used identically
           across Timeline/Weekly/Monthly. See LegendPill definition. */}
       <LegendPill />
+
+      {/* Hours bar (HK Jun 4 2026): the day's effective working hours,
+          tappable to set custom hours or a day off for THIS date only.
+          A date override wins over the recurring weekly hours. */}
+      <div
+        onClick={openHoursSheet}
+        style={{display:'flex',alignItems:'center',justifyContent:'space-between',background:'#FBF8F1',border:'1px solid #EEF2F7',borderRadius:12,padding:'9px 13px',marginBottom:12,cursor:'pointer'}}
+      >
+        <div style={{display:'flex',alignItems:'center',gap:8,fontSize:12.5,fontWeight:600,color: effHours.closed ? '#92400E' : '#1F2937',minWidth:0}}>
+          <span style={{fontSize:14}}>🕐</span>
+          <span style={{whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{effHours.closed ? 'Closed this day' : `Hours · ${fmtHoursLabel}`}</span>
+          {effHours.source === 'override' && (
+            <span style={{flexShrink:0,fontSize:10,fontWeight:700,color:'#B26B17',background:'#FBF4DA',border:'1px solid #F0DCA6',borderRadius:999,padding:'2px 7px'}}>adjusted</span>
+          )}
+        </div>
+        <div style={{flexShrink:0,fontSize:11.5,fontWeight:700,color:'#2A5741',marginLeft:10}}>Edit</div>
+      </div>
 
       <div style={{background:'#FBF8F1',borderRadius:16,padding:'16px 14px 20px',border:'1px solid #EEF2F7'}}>
         <div
@@ -5652,6 +5778,80 @@ function TimelineView({ therapist, allAppts, dayOffset, setDayOffset, today, onR
           proposed time, an editable end time, an optional reason, and
           a Block button. Pre-filled with a 60-min window snapped to
           the nearest 15-min boundary from where the user pressed. */}
+      {hoursSheet && (
+        <>
+          <div
+            onClick={()=>!hoursSheetSaving && setHoursSheet(null)}
+            style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.4)',zIndex:300,backdropFilter:'blur(2px)'}}
+          />
+          <div style={{position:'fixed',top:'50%',left:'50%',transform:'translate(-50%, -50%)',background:'#fff',borderRadius:14,padding:'24px 26px',boxShadow:'0 20px 60px rgba(0,0,0,0.25)',zIndex:301,width:'min(420px, calc(100vw - 32px))',maxWidth:420}}>
+            <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:6}}>
+              <div style={{fontSize:24}}>🕐</div>
+              <div style={{flex:1}}>
+                <div style={{fontSize:18,fontWeight:700,color:'#1F2937',fontFamily:'Georgia,serif'}}>Hours</div>
+                <div style={{fontSize:12,color:'#6B7280',marginTop:2}}>
+                  {new Date(hoursSheet.date+'T12:00:00').toLocaleDateString('en-US',{weekday:'long',month:'short',day:'numeric'})}
+                </div>
+              </div>
+            </div>
+            <div style={{fontSize:12,color:'#6B7280',marginBottom:14}}>Overrides your usual hours for this date only.</div>
+
+            <div style={{display:'flex',background:'#F5F3EE',border:'1px solid #ECE9E1',borderRadius:11,padding:3,marginBottom:14}}>
+              {['custom','off'].map(m => (
+                <button key={m} onClick={()=>setHoursSheet(prev=>prev?{...prev,mode:m}:prev)} disabled={hoursSheetSaving}
+                  style={{flex:1,textAlign:'center',padding:'8px',borderRadius:8,border:'none',cursor:hoursSheetSaving?'not-allowed':'pointer',fontSize:12.5,fontWeight:700,background:hoursSheet.mode===m?'#2A5741':'transparent',color:hoursSheet.mode===m?'#fff':'#8A8A8A'}}>
+                  {m==='custom'?'Custom hours':'Day off'}
+                </button>
+              ))}
+            </div>
+
+            {hoursSheet.mode==='custom' && (
+              <div style={{display:'flex',alignItems:'flex-end',gap:12,marginBottom:14,flexWrap:'wrap'}}>
+                <div style={{flex:'1 1 130px',minWidth:120}}>
+                  <label style={{fontSize:11,fontWeight:700,color:'#6B7280',textTransform:'uppercase',letterSpacing:'0.06em',display:'block',marginBottom:6}}>Start</label>
+                  <InlineTimeInput value={hoursSheet.startTime} onChange={(t)=>setHoursSheet(prev=>prev?{...prev,startTime:t}:prev)} placeholder="9:00 AM" ariaLabel="Start of working hours" width="100%" disabled={hoursSheetSaving} />
+                </div>
+                <div style={{paddingBottom:10,fontFamily:'Georgia,serif',fontStyle:'italic',fontSize:14,color:'#6B7280'}}>to</div>
+                <div style={{flex:'1 1 130px',minWidth:120}}>
+                  <label style={{fontSize:11,fontWeight:700,color:'#6B7280',textTransform:'uppercase',letterSpacing:'0.06em',display:'block',marginBottom:6}}>End</label>
+                  <InlineTimeInput value={hoursSheet.endTime} onChange={(t)=>setHoursSheet(prev=>prev?{...prev,endTime:t}:prev)} placeholder="5:00 PM" ariaLabel="End of working hours" width="100%" disabled={hoursSheetSaving} />
+                </div>
+              </div>
+            )}
+
+            {hoursSheet.mode==='off' && (
+              <div style={{background:'#FEF9E7',border:'1px solid #F2E2A8',color:'#92400E',borderRadius:10,padding:'10px 12px',fontSize:12.5,marginBottom:14}}>
+                Clients will not be able to book on this date.
+              </div>
+            )}
+
+            <div style={{display:'inline-block',background:'#FBF4DA',border:'1px solid #F0DCA6',color:'#B26B17',borderRadius:999,padding:'3px 9px',fontSize:10.5,fontWeight:700,marginBottom:14}}>
+              Applies to this date only
+            </div>
+
+            <div style={{marginBottom:16}}>
+              <a href="/dashboard/settings#availability" style={{fontSize:12,color:'#6B8F7B',fontWeight:600,textDecoration:'underline'}}>Edit my recurring weekly hours</a>
+            </div>
+
+            {hoursSheetError && (
+              <div style={{background:'#FEF2F2',border:'1px solid #FCA5A5',color:'#991B1B',borderRadius:8,padding:'8px 12px',fontSize:12,marginBottom:12}}>{hoursSheetError}</div>
+            )}
+
+            <div style={{display:'flex',gap:10}}>
+              <button onClick={()=>setHoursSheet(null)} disabled={hoursSheetSaving}
+                style={{flex:1,background:'#F3F4F6',color:'#4B5563',border:'none',padding:'12px',borderRadius:10,fontSize:14,fontWeight:700,cursor:hoursSheetSaving?'not-allowed':'pointer'}}>Cancel</button>
+              <button onClick={saveHoursSheet} disabled={hoursSheetSaving}
+                style={{flex:1,background:'#2A5741',color:'#fff',border:'none',padding:'12px',borderRadius:10,fontSize:14,fontWeight:700,cursor:hoursSheetSaving?'not-allowed':'pointer'}}>{hoursSheetSaving?'Saving...':'Save'}</button>
+            </div>
+
+            {hoursSheet.hasOverride && (
+              <button onClick={removeHoursOverride} disabled={hoursSheetSaving}
+                style={{width:'100%',marginTop:10,background:'transparent',color:'#991B1B',border:'none',padding:'8px',fontSize:12.5,fontWeight:600,cursor:hoursSheetSaving?'not-allowed':'pointer',textDecoration:'underline'}}>Remove this adjustment (use weekly hours)</button>
+            )}
+          </div>
+        </>
+      )}
+
       {pendingBlock && (
         <>
           <div
