@@ -102,7 +102,7 @@ export default function BookingDetailPage({ therapist }) {
     if (resolvedClientId) {
       const { data: cr } = await supabase
         .from('clients')
-        .select('id, name, email, phone, alt_phone, birthday, gender, referral_source, customer_since, notes')
+        .select('id, name, email, phone, alt_phone, birthday, gender, referral_source, customer_since, notes, square_customer_id, square_card_id, stripe_customer_id, payment_method_id, card_last4, card_brand')
         .eq('id', resolvedClientId)
         .eq('therapist_id', therapist.id)
         .maybeSingle();
@@ -541,7 +541,7 @@ export default function BookingDetailPage({ therapist }) {
       {cancelContext && bookingRow && (
         <CancellationChargeModal
           booking={bookingRow}
-          client={{ id: appt.clientId, name: appt.client, email: appt.email, phone: bookingRow.client_phone || null }}
+          client={clientRow || { id: appt.clientId, name: appt.client, email: appt.email, phone: bookingRow.client_phone || null }}
           therapist={therapist}
           sessionPriceCents={appt.service_price_cents || Math.round((appt.price || 0) * 100)}
           isNoShow={!!cancelContext.isNoShow}
