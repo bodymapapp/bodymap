@@ -2391,10 +2391,9 @@ function SuccessView({ detail, onClose, linkUrl, linkDelivery, clientPhone, clie
       : `${detail?.method}${detail?.detail ? ` · ${detail?.detail}` : ''}. No money exchanged.`;
   }
 
-  // Group A (approved Jun 3 2026): the session charge / no-money result and
-  // the payment-link result now use the standardized ResultScreen. Group B
-  // (package redemption, package active, membership) still falls through to
-  // the legacy block below until its before/after is approved.
+  // The full checkout success now uses the standardized ResultScreen.
+  // Group A (session charge / no-money and the payment link) returns here;
+  // Group B (package redemption, package active, membership) returns below.
   const isSessionResult = !isLink && !isPackageRedemption && !isPackage && !isSubscription;
   if (isSessionResult) {
     const isMoney = parseFloat(detail?.total) > 0;
@@ -2440,64 +2439,20 @@ function SuccessView({ detail, onClose, linkUrl, linkDelivery, clientPhone, clie
     );
   }
 
+  // Group B (approved Jun 3 2026): package redemption, package active, and
+  // membership now use the standardized ResultScreen too, unifying the whole
+  // checkout success. Reuses the headline/subline computed above. The only
+  // override is the membership money case, where the amount becomes the hero
+  // and the headline reads "Payment received" instead of "Charged $X".
+  const bMoney = parseFloat(detail?.total) > 0 && !isPackageRedemption;
   return (
-    <div style={{ textAlign: 'center', padding: '12px 8px 8px' }}>
-      <div style={{ fontSize: 56, marginBottom: 12 }}>{isLink ? '📲' : '✓'}</div>
-      <div style={{ fontFamily: 'Georgia, serif', fontSize: 22, fontWeight: 400, color: C.forestDeep, marginBottom: 8 }}>
-        {headline}
-      </div>
-      <div style={{ fontSize: 14, color: C.inkSoft, marginBottom: 20 }}>
-        {subline}
-      </div>
-      {isLink && (
-        <div style={{ marginBottom: 18 }}>
-          <div style={{ background: C.cream, border: `1px solid ${C.border}`, borderRadius: 10, padding: '10px 14px', marginBottom: 14, fontSize: 11, fontFamily: 'monospace', color: C.inkSoft, wordBreak: 'break-all', textAlign: 'left' }}>
-            {linkUrl}
-          </div>
-          {detail?.emailed && (
-            <div style={{ background: '#EAF6EE', border: '1px solid #BBE7C9', color: '#15803D', borderRadius: 10, padding: '10px 14px', marginBottom: 14, fontSize: 13, fontWeight: 700, textAlign: 'center' }}>
-              ✓ Payment link emailed to {detail.emailedTo || clientEmail}
-            </div>
-          )}
-          <div style={{ display: 'flex', gap: 10 }}>
-            {clientPhone && (
-              <a href={`sms:${clientPhone}?body=${encodeURIComponent(smsBody)}`} style={{ flex: 1, display: 'block', background: linkDelivery === 'sms' ? `linear-gradient(135deg, ${C.forestDeep}, ${C.forest})` : '#fff', color: linkDelivery === 'sms' ? '#fff' : C.forestDeep, border: linkDelivery === 'sms' ? 'none' : `1.5px solid ${C.border}`, borderRadius: 12, padding: '12px 14px', fontSize: 14, fontWeight: 700, textDecoration: 'none', textAlign: 'center', boxShadow: linkDelivery === 'sms' ? '0 2px 10px rgba(42,87,65,0.2)' : 'none' }}>
-                💬 Open SMS
-              </a>
-            )}
-            {clientEmail && !detail?.emailed && (
-              <a href={`mailto:${clientEmail}?subject=${encodeURIComponent(emailSubject)}&body=${emailBody}`} style={{ flex: 1, display: 'block', background: linkDelivery === 'email' ? `linear-gradient(135deg, ${C.forestDeep}, ${C.forest})` : '#fff', color: linkDelivery === 'email' ? '#fff' : C.forestDeep, border: linkDelivery === 'email' ? 'none' : `1.5px solid ${C.border}`, borderRadius: 12, padding: '12px 14px', fontSize: 14, fontWeight: 700, textDecoration: 'none', textAlign: 'center', boxShadow: linkDelivery === 'email' ? '0 2px 10px rgba(42,87,65,0.2)' : 'none' }}>
-                📧 Open Email
-              </a>
-            )}
-          </div>
-          <button
-            type="button"
-            onClick={() => { navigator.clipboard.writeText(linkUrl); }}
-            style={{ marginTop: 10, background: 'transparent', border: 'none', color: C.sage, fontSize: 12, fontWeight: 600, cursor: 'pointer', fontStyle: 'italic', fontFamily: 'Georgia, serif', textDecoration: 'underline' }}>
-            Copy link instead
-          </button>
-        </div>
-      )}
-      <button
-        type="button"
-        onClick={onClose}
-        style={{
-          width: '100%',
-          background: `linear-gradient(135deg, ${C.forestDeep}, ${C.forest})`,
-          color: '#fff',
-          border: 'none',
-          borderRadius: 12,
-          padding: '14px 18px',
-          fontSize: 16,
-          fontWeight: 700,
-          cursor: 'pointer',
-          boxShadow: '0 2px 10px rgba(42,87,65,0.2)',
-          fontFamily: 'inherit',
-        }}>
-        Done
-      </button>
-    </div>
+    <ResultScreen
+      variant={bMoney ? 'money' : 'success'}
+      amount={bMoney ? `$${detail?.total}` : undefined}
+      headline={(isSubscription && bMoney) ? 'Payment received' : headline}
+      subline={subline}
+      primary={{ label: 'Done', onClick: onClose }}
+    />
   );
 }
 
