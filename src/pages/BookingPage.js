@@ -5,6 +5,7 @@ import { applyCycleFilter, phaseFromDate } from '../lib/cycleScheduling';
 import { isTestMode, getStripePublishableKey } from '../lib/paymentMode';
 import { findOrCreateClient } from '../lib/findOrCreateClient';
 import CloseButton from '../components/CloseButton';
+import ResultScreen from '../components/ResultScreen';
 import { PolicyDisplay } from '../components/BookingPolicies';
 import PublicCheckout from '../components/PublicCheckout';
 import BulkSessionScheduler from '../components/BulkSessionScheduler';
@@ -2455,58 +2456,68 @@ export default function BookingPage() {
 
   if(confirmed && pendingApproval) return (
     <div style={{minHeight:'100vh',background:C.beige,display:'flex',alignItems:'center',justifyContent:'center',padding:24,fontFamily:'system-ui'}}>
-      <div style={{background:C.white,borderRadius:24,padding:'40px 32px',maxWidth:440,width:'100%',boxShadow:'0 8px 48px rgba(0,0,0,0.1)'}}>
-        <div style={{width:72,height:72,borderRadius:'50%',background:'#FFFBEB',display:'flex',alignItems:'center',justifyContent:'center',margin:'0 auto 20px',fontSize:36}}>🌿</div>
-        <h2 style={{fontFamily:'Georgia,serif',fontSize:26,fontWeight:700,color:C.dark,margin:'0 0 8px',textAlign:'center'}}>Request submitted</h2>
-        <p style={{color:C.gray,fontSize:14,lineHeight:1.7,textAlign:'center',margin:'0 0 20px'}}>
-          Your request for <strong>{svc.name}</strong> on <strong>{fmtShort(date)}</strong> at <strong>{slot.display}</strong> has been sent to {therapist.business_name||therapist.full_name}.
-        </p>
-        <div style={{background:'linear-gradient(135deg,#FFFBEB,#FEF3C7)',border:'1.5px solid #FDE68A',borderRadius:14,padding:'18px 20px',marginBottom:16}}>
-          <div style={{fontSize:13,fontWeight:700,color:'#92400E',marginBottom:6}}>What happens next</div>
-          <div style={{fontSize:13,color:'#78350F',lineHeight:1.6}}>
-            {therapist.full_name?.split(' ')[0]||'Your therapist'} will review your request and reply by email. Most replies come within 24 hours.
+      <div style={{background:C.white,borderRadius:24,maxWidth:440,width:'100%',boxShadow:'0 8px 48px rgba(0,0,0,0.1)'}}>
+        <ResultScreen
+          variant="pending"
+          headline="Request submitted"
+          rows={[
+            {label:'Service', value: svc.name},
+            {label:'When', value: `${fmtShort(date)} · ${slot.display}`},
+            {label:'Sent to', value: therapist.business_name||therapist.full_name},
+          ]}
+          footer={`Confirmation will be sent to ${form.email}`}
+        >
+          <div style={{background:'linear-gradient(135deg,#FFFBEB,#FEF3C7)',border:'1.5px solid #FDE68A',borderRadius:14,padding:'16px 18px',marginBottom:14,textAlign:'left'}}>
+            <div style={{fontSize:13,fontWeight:700,color:'#92400E',marginBottom:6}}>What happens next</div>
+            <div style={{fontSize:13,color:'#78350F',lineHeight:1.6}}>
+              {therapist.full_name?.split(' ')[0]||'Your therapist'} will review your request and reply by email. Most replies come within 24 hours.
+            </div>
           </div>
-        </div>
-        <div style={{background:'linear-gradient(135deg,#F0FDF4,#DCFCE7)',border:'1.5px solid #86EFAC',borderRadius:14,padding:'20px',marginBottom:16}}>
-          <div style={{fontSize:13,fontWeight:700,color:'#2A5741',marginBottom:6}}>📋 Save time, fill your intake now</div>
-          <div style={{fontSize:13,color:'#374151',marginBottom:14,lineHeight:1.5}}>
-            Filling your body map now means you are ready to go the moment your request is approved.
+          <div style={{background:'linear-gradient(135deg,#F0FDF4,#DCFCE7)',border:'1.5px solid #86EFAC',borderRadius:14,padding:'18px',textAlign:'left'}}>
+            <div style={{fontSize:13,fontWeight:700,color:'#2A5741',marginBottom:6}}>📋 Save time, fill your intake now</div>
+            <div style={{fontSize:13,color:'#374151',marginBottom:14,lineHeight:1.5}}>
+              Filling your body map now means you are ready to go the moment your request is approved.
+            </div>
+            <a href={`/${therapist.custom_url}?name=${encodeURIComponent(form.name)}&email=${encodeURIComponent(form.email)}&phone=${encodeURIComponent(form.phone)}${bookingId?'&booking_id='+bookingId:''}`}
+              style={{display:'block',background:C.forest,color:'#fff',borderRadius:10,padding:'13px 20px',fontSize:14,fontWeight:700,textDecoration:'none',textAlign:'center'}}>
+              Fill My Intake Form →
+            </a>
           </div>
-          <a href={`/${therapist.custom_url}?name=${encodeURIComponent(form.name)}&email=${encodeURIComponent(form.email)}&phone=${encodeURIComponent(form.phone)}${bookingId?'&booking_id='+bookingId:''}`}
-            style={{display:'block',background:C.forest,color:'#fff',borderRadius:10,padding:'13px 20px',fontSize:14,fontWeight:700,textDecoration:'none',textAlign:'center'}}>
-            Fill My Intake Form →
-          </a>
-        </div>
-        <p style={{fontSize:11,color:C.gray,textAlign:'center',margin:0}}>Confirmation will be sent to {form.email}</p>
+        </ResultScreen>
       </div>
     </div>
   );
 
   if(confirmed) return (
     <div style={{minHeight:'100vh',background:C.beige,display:'flex',alignItems:'center',justifyContent:'center',padding:24,fontFamily:'system-ui'}}>
-      <div style={{background:C.white,borderRadius:24,padding:'40px 32px',maxWidth:440,width:'100%',boxShadow:'0 8px 48px rgba(0,0,0,0.1)'}}>
-        <div style={{width:72,height:72,borderRadius:'50%',background:'#DCFCE7',display:'flex',alignItems:'center',justifyContent:'center',margin:'0 auto 20px',fontSize:36}}>✅</div>
-        <h2 style={{fontFamily:'Georgia,serif',fontSize:26,fontWeight:700,color:C.dark,margin:'0 0 8px',textAlign:'center'}}>You're booked!</h2>
-        <p style={{color:C.gray,fontSize:14,lineHeight:1.7,textAlign:'center',margin:'0 0 24px'}}>
-          <strong>{svc.name}</strong> on <strong>{fmtShort(date)}</strong> at <strong>{slot.display}</strong> with {therapist.business_name||therapist.full_name}.
-        </p>
-        {giftCert && (
-          <div style={{background:'#F0FDF4',border:'1.5px solid #86EFAC',borderRadius:12,padding:'12px 16px',marginBottom:16,textAlign:'center'}}>
-            <div style={{fontSize:13,fontWeight:700,color:'#16A34A'}}>🎁 Gift certificate confirmed</div>
-            <div style={{fontSize:12,color:'#374151',marginTop:2}}>Your ${giftCert.remaining?.toFixed(0)} credit has been reserved. Mention code {giftCert.code} to your therapist at the session.</div>
+      <div style={{background:C.white,borderRadius:24,maxWidth:440,width:'100%',boxShadow:'0 8px 48px rgba(0,0,0,0.1)'}}>
+        <ResultScreen
+          variant="celebrate"
+          headline="You're booked!"
+          rows={[
+            {label:'Service', value: svc.name},
+            {label:'When', value: `${fmtShort(date)} · ${slot.display}`},
+            {label:'With', value: therapist.business_name||therapist.full_name},
+          ]}
+          footer={`Confirmation sent to ${form.email}`}
+        >
+          {giftCert && (
+            <div style={{background:'#F0FDF4',border:'1.5px solid #86EFAC',borderRadius:12,padding:'12px 16px',marginBottom:14,textAlign:'center'}}>
+              <div style={{fontSize:13,fontWeight:700,color:'#16A34A'}}>🎁 Gift certificate confirmed</div>
+              <div style={{fontSize:12,color:'#374151',marginTop:2}}>Your ${giftCert.remaining?.toFixed(0)} credit has been reserved. Mention code {giftCert.code} to your therapist at the session.</div>
+            </div>
+          )}
+          <div style={{background:'linear-gradient(135deg,#F0FDF4,#DCFCE7)',border:'1.5px solid #86EFAC',borderRadius:14,padding:'18px',textAlign:'left'}}>
+            <div style={{fontSize:13,fontWeight:700,color:'#2A5741',marginBottom:6}}>📋 One more thing, takes 60 seconds</div>
+            <div style={{fontSize:13,color:'#374151',marginBottom:14,lineHeight:1.5}}>
+              Fill your body map so {therapist.full_name?.split(' ')[0]||'your therapist'} knows exactly where to focus before you arrive.
+            </div>
+            <a href={`/${therapist.custom_url}?name=${encodeURIComponent(form.name)}&email=${encodeURIComponent(form.email)}&phone=${encodeURIComponent(form.phone)}${bookingId?'&booking_id='+bookingId:''}`}
+              style={{display:'block',background:C.forest,color:'#fff',borderRadius:10,padding:'13px 20px',fontSize:14,fontWeight:700,textDecoration:'none',textAlign:'center'}}>
+              Fill My Intake Form →
+            </a>
           </div>
-        )}
-        <div style={{background:'linear-gradient(135deg,#F0FDF4,#DCFCE7)',border:'1.5px solid #86EFAC',borderRadius:14,padding:'20px',marginBottom:16}}>
-          <div style={{fontSize:13,fontWeight:700,color:'#2A5741',marginBottom:6}}>📋 One more thing, takes 60 seconds</div>
-          <div style={{fontSize:13,color:'#374151',marginBottom:14,lineHeight:1.5}}>
-            Fill your body map so {therapist.full_name?.split(' ')[0]||'your therapist'} knows exactly where to focus before you arrive.
-          </div>
-          <a href={`/${therapist.custom_url}?name=${encodeURIComponent(form.name)}&email=${encodeURIComponent(form.email)}&phone=${encodeURIComponent(form.phone)}${bookingId?'&booking_id='+bookingId:''}`}
-            style={{display:'block',background:C.forest,color:'#fff',borderRadius:10,padding:'13px 20px',fontSize:14,fontWeight:700,textDecoration:'none',textAlign:'center'}}>
-            Fill My Intake Form →
-          </a>
-        </div>
-        <p style={{fontSize:11,color:C.gray,textAlign:'center',margin:0}}>Confirmation sent to {form.email}</p>
+        </ResultScreen>
       </div>
     </div>
   );

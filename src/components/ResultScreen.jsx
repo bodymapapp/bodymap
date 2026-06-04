@@ -41,6 +41,7 @@ const VARIANTS = {
   money:     { bg: RS.checkBg, ring: RS.checkRing, stroke: RS.check, leaf: false },
   share:     { bg: RS.goldBg,  ring: RS.goldRing,  stroke: RS.goldText, leaf: false },
   refund:    { bg: RS.refundBg, ring: RS.refundRing, stroke: RS.refund, leaf: false },
+  pending:   { bg: '#FFFBEB', ring: '#FDE68A', emoji: '🌿' },
 };
 
 const KEYFRAMES = `
@@ -58,7 +59,7 @@ const KEYFRAMES = `
 
 export default function ResultScreen({
   variant = 'success', amount, amountColor, headline, subline,
-  rows, banner, linkUrl, primary, secondary, onClose, children,
+  rows, banner, linkUrl, primary, secondary, onClose, children, footer,
 }) {
   const v = VARIANTS[variant] || VARIANTS.success;
   return (
@@ -78,11 +79,15 @@ export default function ResultScreen({
         border: `1px solid ${v.ring}`, margin: '8px auto 16px',
         display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative',
       }}>
-        <svg viewBox="0 0 52 52" width="46" height="46">
-          <path className="rs-chk" d="M14 27 l8 8 l16 -18"
-            style={{ stroke: v.stroke, strokeWidth: 5, fill: 'none', strokeLinecap: 'round', strokeLinejoin: 'round' }} />
-        </svg>
-        {v.leaf && <span className="rs-leaf" style={{ position: 'absolute', bottom: -3, right: -3, fontSize: 18 }}>🌿</span>}
+        {v.emoji ? (
+          <span style={{ fontSize: 38 }}>{v.emoji}</span>
+        ) : (
+          <svg viewBox="0 0 52 52" width="46" height="46">
+            <path className="rs-chk" d="M14 27 l8 8 l16 -18"
+              style={{ stroke: v.stroke, strokeWidth: 5, fill: 'none', strokeLinecap: 'round', strokeLinejoin: 'round' }} />
+          </svg>
+        )}
+        {v.leaf && !v.emoji && <span className="rs-leaf" style={{ position: 'absolute', bottom: -3, right: -3, fontSize: 18 }}>🌿</span>}
       </div>
 
       {amount && (
@@ -141,21 +146,27 @@ export default function ResultScreen({
         </div>
       )}
 
-      <div className="rs-rise rs-d4" style={{ display: 'flex', gap: 10, flexDirection: secondary ? 'row' : 'column' }}>
-        {secondary && (
-          <button onClick={secondary.onClick} style={{
-            flex: 1, background: 'transparent', color: RS.forest, border: `1.5px solid ${RS.line}`,
-            borderRadius: 14, padding: '13px', fontSize: 14, fontWeight: 700, cursor: 'pointer',
-          }}>{secondary.label}</button>
-        )}
-        {primary && (
-          <button onClick={primary.onClick} style={{
-            flex: 1, background: RS.forest, color: '#fff', border: 'none',
-            borderRadius: 14, padding: '15px', fontSize: 15, fontWeight: 700, cursor: 'pointer',
-            boxShadow: '0 4px 16px rgba(42,87,65,.22)',
-          }}>{primary.label}</button>
-        )}
-      </div>
+      {(primary || secondary) && (
+        <div className="rs-rise rs-d4" style={{ display: 'flex', gap: 10, flexDirection: secondary ? 'row' : 'column' }}>
+          {secondary && (
+            <button onClick={secondary.onClick} style={{
+              flex: 1, background: 'transparent', color: RS.forest, border: `1.5px solid ${RS.line}`,
+              borderRadius: 14, padding: '13px', fontSize: 14, fontWeight: 700, cursor: 'pointer',
+            }}>{secondary.label}</button>
+          )}
+          {primary && (
+            <button onClick={primary.onClick} style={{
+              flex: 1, background: RS.forest, color: '#fff', border: 'none',
+              borderRadius: 14, padding: '15px', fontSize: 15, fontWeight: 700, cursor: 'pointer',
+              boxShadow: '0 4px 16px rgba(42,87,65,.22)',
+            }}>{primary.label}</button>
+          )}
+        </div>
+      )}
+
+      {footer && (
+        <div className="rs-rise rs-d4" style={{ fontSize: 11, color: RS.inkMute, marginTop: 14 }}>{footer}</div>
+      )}
     </div>
   );
 }
