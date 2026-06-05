@@ -29,6 +29,8 @@ Last refreshed: 2026-05-02 — after Tier A0 smart defaults shipped + Comparison
 
 **DEFERRED (Jun 3 2026): decline-reason field label.** When a therapist declines a pending booking request, the reason they type is emailed to the client verbatim as a note from the therapist. Therapists do not always realize this. We shipped a therapist copy email (commit e5c41637), so they now see what went out under their name after the fact. Still deferred: a label above the decline-reason box stating the note will be emailed to the client, so they know before sending, and possibly splitting it into a private reason plus an optional client message. Small, low risk. Do this next time we are in the approval or decline UI.
 
+**DEFERRED (Jun 4 2026): surface "Date-specific hours / availability overrides" on the marketing pages.** The feature shipped to the dashboard (Schedule hours bar + day sheet, Settings date-specific editor, booking page respects overrides). Per HK, surfacing it to prospects is intentionally deferred to a later session: add it to the Features list, the Features page (right category, matching visual style), and the Home page (new ribbon or sub-item under Scheduling). This is a deliberate, HK-approved exception to Operating Rhythm rule 9 (every feature lands on Home + Features same ship). When picked up: confirm the Features category and Home ribbon with HK first, then ship both surfaces in one commit. Also review the Help center articles tagged to scheduling.
+
 **TONIGHT (Jun 3 2026): founder transactions view, Square + Stripe.** Build a founder-page "Transactions" section (pick a therapist, see their customer charges), parallel to Stripe Debug. Stripe: the platform already sees all connected accounts in one Stripe dashboard, so the in-app version is a convenience mirror. Square: there is NO native unified view (each therapist is an independent Square merchant via OAuth), so aggregating per therapist via square-list-transactions is the only way HK can see therapist Square charges at all. Square is the piece that unlocks new visibility (HK currently cannot see Jacquie's Square charges from his side). square-list-transactions already exists; it just needs a founder UI and a per-therapist picker.
 
 1. **Twilio setup in progress** — HK has authorized investing. Step-by-step in the Twilio dashboard tonight. After purchase + creds, he will plug in to MyBodyMap and broadcast to 23 textable users.
@@ -479,6 +481,19 @@ Example output: "I help women in their 40s and 50s navigate perimenopause throug
 **Why:** Discussed earlier — book editorial pipeline + investment morning brief. High token consumption led to a high-tier plan recommendation.
 **Status:** Defer; not on critical path for MyBodyMap product
 
+### Op-7. Migration CI is chronically red (found Jun 4 2026)
+**Issue:** The "Deploy Supabase Migrations" GitHub Action reports failure on every push, yet migrations still apply (the loop continues past a failing file). Confirmed: both Jun 4 tables (`availability_overrides`, `founder_test_plan`) landed despite the red run.
+**Root cause:** A few older migration files are not idempotent, so they error on every re-run (the workflow runs ALL `.sql` files each push). Likely culprits: `agreement_send_requests.sql` (4 `CREATE POLICY`, 0 `DROP POLICY`), `rls_audit.sql` (11 create / 9 drop), and the `CREATE TRIGGER` files (`booking_confirmation_trigger.sql`, `finance_line_items.sql`, `2026-05-14-session-intelligence.sql`, `2026-05-12-ai-drafts.sql`, `2026-05-24-audit-log.sql`).
+**Risk:** A genuine future migration failure is invisible, hidden in the permanent red.
+**Fix:** Add `DROP POLICY IF EXISTS` before each `CREATE POLICY`, and `DROP TRIGGER IF EXISTS` before each `CREATE TRIGGER`, in the culprit files. Re-run the workflow and confirm green. Low risk, mechanical.
+**Status:** Queued (Claude can do this cleanup in one pass)
+
+### Op-8. Security advisor pre-existing debt (found Jun 4 2026)
+**Issue:** Supabase security advisor is clean for the new tables, but flags pre-existing items. ERROR level: leftover scratch tables exposed via API without RLS (`_session_client_repair_20260603`, `_archive_jacquie_*` set), some carrying a `session_id` column. Also `rls_enabled_no_policy` on `drip_sends`, `loyalty_rewards`, `reviews`, `signup_attempts`; a `SECURITY DEFINER` view (`ai_cost_rollup`); several `function_search_path_mutable` warnings; and Auth leaked-password protection disabled.
+**Risk:** The archive/repair tables are the real concern (PII-ish data, API-exposed, no RLS).
+**Fix:** Drop the `_archive_jacquie_*` and `_session_client_repair_*` scratch tables (or enable RLS on them); decide on policies for the empty-policy tables; set `search_path` on the flagged functions; enable leaked-password protection in Auth settings.
+**Status:** Queued (separate from any feature; Claude can do the table cleanup, HK toggles the Auth setting)
+
 ## RUNNING NOTES / CONSTRAINTS
 
 - React hooks imported individually (no `React.useMemo`)
@@ -502,6 +517,7 @@ cd ~/Documents/bodymap && npm run build && git add . && git commit -m "msg" && g
 - custom_url: hk5
 
 ## RECENT SHIPS (newest first)
+- Availability date overrides: table + booking respects them, Schedule hours bar + day sheet, Settings date-specific editor with multi-date add → `c83fed2d` `32f097c9` `dc2fd4b8`. Founder page Test Plan card (durable) → `e4fec168`. Copy-week (Method 2) deferred. Marketing surfaces deferred (see Active fires).
 - Comparison page at /comparison (gated from nav until HK approves) + 60-row community sheet starter data → THIS COMMIT
 - Campaigns demo video live: 30s walkthrough with music → `e2b01825`
 - Service + add-on descriptions: tap-to-edit in Settings, surface on booking page (Leela request) → `65357cfa`

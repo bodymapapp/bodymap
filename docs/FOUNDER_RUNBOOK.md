@@ -255,9 +255,12 @@ Full schema lives in Supabase. Key tables:
 - **package_purchases** — one row per package a client bought.
 - **cancellation_charges** — one row per cancellation fee charge attempt. Includes processor, idempotency_key.
 - **payment_routing** (jsonb on therapists table) — per-feature processor preference when therapist has both Stripe and Square connected.
+- **availability** — recurring weekly hours. One row per `day_of_week` (0-6), optional per-service rows (`service_id` null = master schedule), single block via `start_time`/`end_time` or split shifts via `time_blocks` jsonb. Anon-readable for the booking page.
+- **availability_overrides** (added Jun 4 2026) — date-specific hours. One row per therapist per `override_date` (UNIQUE). Wins over the weekly row for that exact date: `is_closed` = a day off (no slots), else `start_time`/`end_time` (or `time_blocks`) replace the day's hours. Can also OPEN a normally-closed weekday. Master-level (applies to every service). Anon-readable for the booking page.
+- **founder_test_plan** (added Jun 4 2026) — founder-only QA checklist done-state. `(user_id, item_key)` primary key, `done` boolean. The item list itself lives in code (`TEST_PLAN_ITEMS` in `FounderDashboard.js`); this table only stores what HK has checked off, scoped to his own auth id. No anon access.
 
 ### Migration history
-All schema changes applied via Supabase SQL editor manually by HK. Most recent block (run May 7, 2026) added Square columns to all payment-related tables for parity. See git log for the SQL blocks.
+Schema changes ship as `.sql` files in `supabase/migrations/`. The GitHub Action `.github/workflows/deploy-migrations.yml` auto-applies every migration on push (idempotent, files use `IF NOT EXISTS`). Claude pushes the file, the workflow applies it. (Earlier blocks, like the May 7 2026 Square parity columns, were hand-run in the SQL editor; that is no longer the path.) Caveat: the migrations workflow currently reports red on every run because a few old files are not idempotent, even though migrations still apply. See Block Plan Op-7 for the fix. Verify any new table actually landed via the Supabase MCP read tools.
 
 ### Critical RLS policies
 Every table has Row Level Security enabled. Therapist can only access their own rows. Client portal (booking page) uses anon role with carefully-scoped read/write policies. NEVER disable RLS to debug, find the policy that's blocking and fix it.
@@ -270,6 +273,9 @@ Every table has Row Level Security enabled. Therapist can only access their own 
 - `memberships` (visibility != 'private', active only)
 - `packages` (visibility != 'private', active only)
 - `blocked_days` (added May 21, 2026 from Candice incident, see below)
+- `availability` and `availability_overrides` (recurring weekly hours + date overrides; both anon-readable so the booking page can compute correct slots)
+
+**Availability resolution logic (Jun 4 2026).** For a given date the booking page resolves the day's hours in this order: (1) a row in `availability_overrides` for that exact date wins. If `is_closed`, no slots. Otherwise its `start_time`/`end_time` (or `time_blocks`) are the hours, even if the weekday is normally closed. (2) Otherwise the recurring `availability` row for that day-of-week (per-service row if the service has its own schedule, else the master row). (3) Otherwise the day is closed. Overrides are master-level: they apply across all services. Therapists set overrides two ways, both writing the same rows: the Schedule view "Hours" bar + day sheet (one date), or Settings > Date-specific hours (one date or several at once). Deferred: copy-week-forward (Method 2) and split-shift editing in the override sheet.
 
 **Critical lesson, May 21 2026 (Candice blocked-day incident):** Any table the booking page queries needs an explicit public-read RLS policy. Default `FOR ALL USING (therapist_id = auth.uid())` returns empty silently when called by the anon role (since `auth.uid()` is null), which the JS client treats as "no rows" rather than an error. Symptom: customer reports a feature appearing broken on the booking page even though data is correct in the dashboard. Root cause: missing public-read policy. Fix in commit `613de194`, migration `2026-05-20-blocked-days-public-read.sql`. When adding any new table the booking page reads, add a public-read policy in the same migration.
 
