@@ -1,153 +1,105 @@
 // src/components/demos/DateOverrideDemo.jsx
 //
-// Animated demo for the Find & Book ribbon on the Home page.
-// Tells the date-specific-hours story the way a 70-year-old LMT reads it:
-//   YOU set custom hours (or a day off) for ONE date,
-//   and your booking page shows clients the right times on its own.
+// Home demo for the Find & Book ribbon. Shows date-specific hours the way
+// HK asked for after two unclear tries: two labeled weeks shown together,
+// using the same day-bar graphic as the Working hours editor, so it is
+// obvious that an ENTIRE week can be set differently from another week.
 //
-// Two looping states (~3.2s each):
-//   A - Custom hours 10 to 2  -> client page shows only those slots
-//   B - Day off               -> client page shows "no openings this day"
+//   Week of Jun 9  = your usual week (Mon-Fri 9 to 5)
+//   Week of Jun 16 = a different week (short days, a couple off)
 //
-// HK Jun 4 2026 redo: the first version (a row of tiny "9-5" cells) was
-// too abstract. This one shows cause and effect in plain language so the
-// persona understands it at a glance. Reduced motion: settle on state A.
+// Both weeks are always visible (clarity over motion); the "different"
+// week gets a gentle looping highlight so the card still feels alive.
+// (HK Jun 5 2026)
 
 import React, { useEffect, useRef, useState } from "react";
 
 const C = {
-  forest:      "#2A5741",
-  forestDeep:  "#1E3F2E",
-  cream:       "#FCF8EE",
-  border:      "#E5D5C8",
-  line:        "#E5E7EB",
-  ink:         "#3D4A42",
-  gray:        "#7A8478",
-  sageBg:      "#E8F3E1",
-  sageStroke:  "#A9C99A",
-  sageText:    "#3A5C30",
-  amberBg:     "#FEF3C7",
-  amberStroke: "#F0DCA6",
-  amberText:   "#92400E",
+  forest:"#2A5741", cream:"#FCF8EE", border:"#E5D5C8", line:"#ECE9E1",
+  ink:"#3D4A42", gray:"#7A8478", sageStroke:"#A9C99A", sageText:"#3A5C30",
+  mutedText:"#C2BFB6",
 };
 
-function useFadeIn(threshold = 0.1) {
+const MIN = 360, MAX = 1260, SPAN = MAX - MIN; // 6:00 AM to 9:00 PM
+const pct = (m) => ((m - MIN) / SPAN) * 100;
+const DAYS = ["M", "T", "W", "T", "F", "S", "S"];
+
+// Each day: [startMin, endMin] or null for closed. Mon..Sun.
+const WEEK_USUAL = [[540,1020],[540,1020],[540,1020],[540,1020],[540,1020],null,null];
+const WEEK_DIFF  = [[600,840],null,[720,1080],[540,780],null,[540,720],null];
+
+function WeekGrid({ title, tag, days, glow }) {
+  return (
+    <div style={{ background:"#FAF8F2", border:"1px solid "+C.line, borderRadius:12, padding:"12px 12px 10px" }}>
+      <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:9 }}>
+        <div style={{ fontSize:12.5, fontWeight:800, color:C.ink }}>{title}</div>
+        <div style={{ fontSize:10, fontWeight:700, color: glow ? "#B26B17" : C.gray, background: glow ? "#FBF4DA" : "#EFEBE1", border:"1px solid "+(glow ? "#F0DCA6" : C.border), borderRadius:999, padding:"2px 8px" }}>{tag}</div>
+      </div>
+      {days.map(function(d, i){
+        const off = !d;
+        return (
+          <div key={i} style={{ display:"flex", alignItems:"center", gap:8, marginBottom:5 }}>
+            <div style={{ width:14, flexShrink:0, fontSize:10.5, fontWeight:700, color: off ? C.mutedText : C.ink, textAlign:"center" }}>{DAYS[i]}</div>
+            <div style={{ position:"relative", flex:1, height:18, background:"#fff", border:"1px solid "+C.line, borderRadius:6 }}>
+              {off ? (
+                <div style={{ position:"absolute", inset:0, display:"flex", alignItems:"center", justifyContent:"center", fontSize:9.5, fontWeight:700, color:C.mutedText, letterSpacing:"0.04em" }}>off</div>
+              ) : (
+                <div style={{ position:"absolute", top:2, bottom:2, left:pct(d[0])+"%", width:(pct(d[1])-pct(d[0]))+"%", background: glow ? "linear-gradient(135deg,#DCEFE2,#BFE0CB)" : "linear-gradient(135deg,#E4F1E8,#CFE7D7)", border:"1.5px solid "+C.sageStroke, borderRadius:5, transition:"all .5s ease", boxShadow: glow ? "0 0 0 2px rgba(169,201,154,0.30)" : "none" }} />
+              )}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function useFadeIn(){
   const ref = useRef(null);
-  const [visible, setVisible] = useState(false);
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    const obs = new IntersectionObserver(
-      (entries) => entries.forEach((e) => { if (e.isIntersecting) setVisible(true); }),
-      { threshold }
-    );
-    obs.observe(el);
-    return () => obs.disconnect();
-  }, [threshold]);
-  return [ref, visible];
+  const [v, setV] = useState(false);
+  useEffect(function(){
+    const el = ref.current; if (!el) return;
+    const o = new IntersectionObserver(function(es){ es.forEach(function(e){ if (e.isIntersecting) setV(true); }); }, { threshold:0.1 });
+    o.observe(el); return function(){ o.disconnect(); };
+  }, []);
+  return [ref, v];
 }
 
-function prefersReducedMotion() {
-  if (typeof window === "undefined" || !window.matchMedia) return false;
-  return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-}
-
-const SLOTS = ["10:00 AM", "11:00 AM", "12:00 PM", "1:00 PM"];
-
-export default function DateOverrideDemo() {
+export default function DateOverrideDemo(){
   const [ref, visible] = useFadeIn();
-  const reduced = prefersReducedMotion();
-  const [off, setOff] = useState(false); // false = custom hours, true = day off
-
-  useEffect(() => {
-    if (!visible || reduced) return;
-    const id = setInterval(() => setOff((v) => !v), 3200);
-    return () => clearInterval(id);
-  }, [visible, reduced]);
+  const [pulse, setPulse] = useState(false);
+  useEffect(function(){
+    if (!visible) return;
+    const id = setInterval(function(){ setPulse(function(p){ return !p; }); }, 2200);
+    return function(){ clearInterval(id); };
+  }, [visible]);
 
   return (
     <div ref={ref} style={{
-      background: "#fff", borderRadius: 20, padding: 22,
-      boxShadow: "0 12px 48px rgba(140, 74, 63, 0.14)",
-      maxWidth: 460, width: "100%", boxSizing: "border-box", margin: "0 auto",
-      border: "1.5px solid rgba(252, 232, 224, 0.6)",
-      fontFamily: "system-ui, -apple-system, sans-serif",
+      background:"#fff", borderRadius:20, padding:22,
+      boxShadow:"0 12px 48px rgba(140,74,63,0.14)",
+      maxWidth:460, width:"100%", boxSizing:"border-box", margin:"0 auto",
+      border:"1.5px solid rgba(252,232,224,0.6)", fontFamily:"system-ui,-apple-system,sans-serif",
     }}>
-      {/* Header */}
-      <div style={{ fontSize: 16, fontWeight: 700, color: C.ink, marginBottom: 4 }}>📅 Date-specific hours</div>
-      <div style={{ fontSize: 12.5, color: C.gray, marginBottom: 16, lineHeight: 1.5 }}>
-        For the weeks that do not look like the others.
+      <div style={{ fontSize:16, fontWeight:700, color:C.ink, marginBottom:4 }}>📅 Set any week differently</div>
+      <div style={{ fontSize:12.5, color:C.gray, marginBottom:14, lineHeight:1.5 }}>
+        Your usual week repeats on its own. When a week does not look like the others, set that whole week on its own.
       </div>
 
-      {/* YOU SET */}
-      <div style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: "0.08em", color: C.gray, marginBottom: 7 }}>YOU SET</div>
-      <div style={{ border: `1.5px solid ${C.border}`, borderRadius: 14, padding: 16, background: C.cream }}>
-        <div style={{ fontSize: 15, fontWeight: 700, color: C.ink, marginBottom: 12, fontFamily: "Georgia, serif" }}>Friday, June 13</div>
-        <div style={{ display: "flex", background: "#fff", border: `1px solid ${C.border}`, borderRadius: 11, padding: 3, marginBottom: 14 }}>
-          <div style={{ flex: 1, textAlign: "center", padding: "9px", borderRadius: 8, fontSize: 13, fontWeight: 700,
-            background: off ? "transparent" : C.forest, color: off ? C.gray : "#fff", transition: "all 0.4s" }}>
-            Custom hours
-          </div>
-          <div style={{ flex: 1, textAlign: "center", padding: "9px", borderRadius: 8, fontSize: 13, fontWeight: 700,
-            background: off ? C.amberText : "transparent", color: off ? "#fff" : C.gray, transition: "all 0.4s" }}>
-            Day off
-          </div>
-        </div>
-        {!off ? (
-          <div style={{ background: C.sageBg, border: `1px solid ${C.sageStroke}`, borderRadius: 10, padding: "14px 16px", textAlign: "center" }}>
-            <div style={{ fontSize: 21, fontWeight: 800, color: C.sageText }}>10:00 AM - 2:00 PM</div>
-            <div style={{ fontSize: 12, color: C.gray, marginTop: 4 }}>instead of your usual 9:00 to 5:00</div>
-          </div>
-        ) : (
-          <div style={{ background: C.amberBg, border: `1px solid ${C.amberStroke}`, borderRadius: 10, padding: "14px 16px", textAlign: "center" }}>
-            <div style={{ fontSize: 21, fontWeight: 800, color: C.amberText }}>🌿 Day off</div>
-            <div style={{ fontSize: 12, color: C.amberText, opacity: 0.85, marginTop: 4 }}>just this date · your weekly hours stay the same</div>
-          </div>
-        )}
+      {/* time scale */}
+      <div style={{ display:"flex", justifyContent:"space-between", fontSize:9, color:C.mutedText, fontWeight:700, padding:"0 2px 4px 22px" }}>
+        <span>6a</span><span>12p</span><span>9p</span>
       </div>
 
-      {/* Connector */}
-      <div style={{ textAlign: "center", margin: "10px 0 4px" }}>
-        <div style={{ fontSize: 18, color: C.sageStroke, lineHeight: 1 }}>↓</div>
-        <div style={{ fontSize: 11.5, color: C.gray, fontWeight: 600 }}>your booking page updates on its own</div>
-      </div>
-
-      {/* CLIENTS SEE - mini booking page */}
-      <div style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: "0.08em", color: C.gray, margin: "10px 0 7px" }}>CLIENTS SEE</div>
-      <div style={{ border: `1px solid ${C.line}`, borderRadius: 12, overflow: "hidden" }}>
-        <div style={{ background: "#F3F4F6", padding: "7px 12px", display: "flex", alignItems: "center", gap: 7, borderBottom: `1px solid ${C.line}` }}>
-          <span style={{ width: 7, height: 7, borderRadius: 4, background: "#FF5F57" }} />
-          <span style={{ width: 7, height: 7, borderRadius: 4, background: "#FEBC2E" }} />
-          <span style={{ width: 7, height: 7, borderRadius: 4, background: "#28C840" }} />
-          <span style={{ flex: 1, fontSize: 10.5, color: C.gray, marginLeft: 6 }}>mybodymap.app/sarah-mitchell</span>
-        </div>
-        <div style={{ background: `linear-gradient(135deg, ${C.forest}, ${C.forestDeep})`, padding: "12px 16px", color: "#fff", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <div style={{ fontFamily: "Georgia, serif", fontSize: 15, fontWeight: 600 }}>Sarah Mitchell, LMT</div>
-          <div style={{ fontSize: 11.5, opacity: 0.85 }}>Fri, Jun 13</div>
-        </div>
-        <div style={{ padding: 14, background: "#fff", minHeight: 100 }}>
-          {!off ? (
-            <>
-              <div style={{ fontSize: 11, fontWeight: 700, color: C.gray, textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 10 }}>Pick a time</div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-                {SLOTS.map((t) => (
-                  <div key={t} style={{ border: `1.5px solid ${C.sageStroke}`, background: C.sageBg, color: C.sageText, borderRadius: 9, padding: "10px 0", textAlign: "center", fontSize: 13, fontWeight: 700 }}>{t}</div>
-                ))}
-              </div>
-            </>
-          ) : (
-            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", minHeight: 96, textAlign: "center" }}>
-              <div style={{ fontSize: 22, marginBottom: 6 }}>🌿</div>
-              <div style={{ fontSize: 13.5, fontWeight: 700, color: C.ink }}>No openings this day</div>
-              <div style={{ fontSize: 11.5, color: C.gray, marginTop: 3 }}>clients are guided to another date</div>
-            </div>
-          )}
+      <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
+        <WeekGrid title="Week of Jun 9" tag="your usual" days={WEEK_USUAL} glow={false} />
+        <div style={{ opacity: visible && pulse ? 1 : 0.92, transition:"opacity .5s" }}>
+          <WeekGrid title="Week of Jun 16" tag="this week is different" days={WEEK_DIFF} glow={true} />
         </div>
       </div>
 
-      {/* Caption */}
-      <div style={{ marginTop: 14, padding: "10px 12px", background: C.cream, border: `1px solid ${C.border}`, borderRadius: 10, fontSize: 12, color: C.ink, lineHeight: 1.55, textAlign: "center" }}>
-        Change one date. Clients only ever see when you are truly open.
+      <div style={{ marginTop:14, padding:"10px 12px", background:C.cream, border:"1px solid "+C.border, borderRadius:10, fontSize:12, color:C.ink, lineHeight:1.55, textAlign:"center" }}>
+        Same days, different hours. Clients booking each week only ever see when you are truly open.
       </div>
     </div>
   );
