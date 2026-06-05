@@ -1106,6 +1106,8 @@ const TEST_PLAN_ITEMS = [
   { key: 'av_set_edit', area: 'Availability · Settings', label: 'Edit changes an override\u2019s hours; Remove deletes it.' },
   { key: 'av_link', area: 'Availability · Settings', label: 'Schedule sheet "Edit my recurring weekly hours" link lands on Settings at Working hours.' },
   { key: 'av_booking_fresh', area: 'Availability · Booking', label: 'Overrides take effect on a fresh booking-page load (signed out / incognito).' },
+  { key: 'av_home_demo', area: 'Availability · Marketing', label: 'Home page Find & Book: the "Date-specific hours" animation shows in the carousel and loops through usual / shortened / day-off.' },
+  { key: 'av_features_card', area: 'Availability · Marketing', label: 'Features page: the "Availability & hours" card now mentions date-specific hours and copy a week forward.' },
   { key: 'av_copy_week', area: 'Availability · Settings', label: 'Copy a week forward: set a week of overrides, copy it N weeks ahead, confirm the same weekdays get the same hours.' },
 ];
 

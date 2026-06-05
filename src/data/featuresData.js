@@ -64,10 +64,11 @@ export const RIBBONS = [
         id: "1.4",
         name: "Availability & hours",
         body: [
-          "Set when you work, when you take a break, when you absolutely will not be disturbed. Recurring weekly schedule plus one-off changes for vacations or sick days.",
-          "Booking respects your time automatically. No more 6am text requests.",
+          "Set your recurring weekly hours once: when you work, when you take a break, when you absolutely will not be disturbed. Booking respects your time automatically. No more 6am text requests.",
+          "When a week is different, use date-specific hours. Set custom hours or a full day off for any single date, and it takes precedence over your weekly schedule for that day only. Change several dates at once, or copy a week forward when the pattern repeats. Built for schedules that change week to week.",
+          "Your booking page always shows your real availability, so clients never ask for a time you are not open.",
         ],
-        meta: "Time-zone aware · Buffer time supported",
+        meta: "Recurring weekly hours · Date-specific overrides · Buffer time",
       },
       {
         id: "1.5",

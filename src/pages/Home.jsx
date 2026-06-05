@@ -35,6 +35,7 @@ import NotificationsStepper from "../components/NotificationsStepper";
 import CycleScheduleDemo from "../components/demos/CycleScheduleDemo";
 import SmartScheduleDemo from "../components/demos/SmartScheduleDemo";
 import ServiceDaysDemo from "../components/demos/ServiceDaysDemo";
+import DateOverrideDemo from "../components/demos/DateOverrideDemo";
 import PreferencesDemo from "../components/demos/PreferencesDemo";
 import IntakeEditorDemo from "../components/demos/IntakeEditorDemo";
 import PhoneDemo from "../components/demos/PhoneDemo";
@@ -68,6 +69,7 @@ const RIBBONS = [
       { kind: "component", component: CycleScheduleDemo, label: "Cycle-aligned scheduling" },
       { kind: "component", component: SmartScheduleDemo, label: "Smart Scheduling" },
       { kind: "component", component: ServiceDaysDemo, label: "Custom days per service" },
+      { kind: "component", component: DateOverrideDemo, label: "Date-specific hours" },
     ],
     layout: "demo-right",
     subFeatures: [
@@ -77,6 +79,7 @@ const RIBBONS = [
       "Cycle-aligned scheduling (only on MyBodyMap)",
       "Smart Scheduling that packs your day tight (only on MyBodyMap)",
       "Custom days per service, different services on different days (only on MyBodyMap)",
+      "Date-specific hours, set different hours or a day off for any date and copy a week forward",
       "Service grouping, auto-classified into Prenatal, Couples, Therapeutic, Relaxation, Energy, Add-ons (only on MyBodyMap)",
       "Cal.com sync, two-way",
       "Deposits at booking via Stripe / Square",
