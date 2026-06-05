@@ -11,6 +11,18 @@ export const AuthProvider = ({ children }) => {
   const [therapist, setTherapist] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  // Capture the therapist's local timezone once so notification emails can
+  // render times in their local zone instead of the server's UTC. Fire and
+  // forget; only writes when missing or changed, then stops. (HK Jun 5 2026)
+  useEffect(() => {
+    if (!therapist?.id) return;
+    let tz = '';
+    try { tz = Intl.DateTimeFormat().resolvedOptions().timeZone || ''; } catch (e) { tz = ''; }
+    if (!tz || therapist.timezone === tz) return;
+    supabase.from('therapists').update({ timezone: tz }).eq('id', therapist.id).then(() => {});
+    setTherapist(prev => (prev && prev.id === therapist.id) ? { ...prev, timezone: tz } : prev);
+  }, [therapist?.id, therapist?.timezone]);
+
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (session?.user) {

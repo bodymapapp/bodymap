@@ -89,7 +89,7 @@ serve(async (req) => {
 
     const { data: therapist } = await supabase
       .from('therapists')
-      .select('id, email, phone, full_name, business_name, custom_url, notification_prefs, twilio_account_sid, twilio_auth_token, twilio_phone_number')
+      .select('id, email, phone, full_name, business_name, custom_url, notification_prefs, twilio_account_sid, twilio_auth_token, twilio_phone_number, timezone')
       .eq('id', booking.therapist_id)
       .maybeSingle();
 
@@ -176,7 +176,16 @@ serve(async (req) => {
         ? `$${(feeCents / 100).toFixed(2)} ${isNoShow ? 'no-show' : 'cancellation'} fee requested (payment link sent, no card on file)`
         : 'No fee charged';
     const whoCancelled = initiated_by === 'client' ? clientName : 'You (the therapist)';
-    const nowStr = new Date().toLocaleString('en-US', { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZoneName: 'short' });
+    // Real instant (when the action happened). Render in the therapist's
+    // local timezone, not the edge runtime's UTC. Falls back to UTC if the
+    // timezone has not been captured yet. (HK Jun 5 2026)
+    const tzName = (therapist as any).timezone || 'UTC';
+    let nowStr;
+    try {
+      nowStr = new Date().toLocaleString('en-US', { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZoneName: 'short', timeZone: tzName });
+    } catch (_e) {
+      nowStr = new Date().toLocaleString('en-US', { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZoneName: 'short', timeZone: 'UTC' });
+    }
     const reasonClean = (reason && String(reason).trim()) ? String(reason).trim() : null;
 
     const actionLabel = isReschedule ? 'Rescheduled by' : isUpdate ? 'Updated by' : (isNoShow ? 'Recorded by' : 'Cancelled by');

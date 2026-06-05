@@ -78,7 +78,14 @@ serve(async (req) => {
     rows.push(['Client', who]);
     if (serviceName) rows.push(['Service', serviceName]);
     if (whenStr) rows.push(['Upcoming session', whenStr]);
-    rows.push(['Filled at', new Date().toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZoneName: 'short' })]);
+    const tzName = (therapist as any)?.timezone || 'UTC';
+    let filledAtStr;
+    try {
+      filledAtStr = new Date().toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZoneName: 'short', timeZone: tzName });
+    } catch (_e) {
+      filledAtStr = new Date().toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZoneName: 'short', timeZone: 'UTC' });
+    }
+    rows.push(['Filled at', filledAtStr]);
 
     const detail = `
       <table style="width:100%;border-collapse:collapse;margin:14px 0;background:#FAFAF7;border:1px solid #ECE7DC;border-radius:10px;overflow:hidden;">
