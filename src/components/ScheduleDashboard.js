@@ -5271,13 +5271,15 @@ function TimelineView({ therapist, allAppts, dayOffset, setDayOffset, today, onR
     if (recurringRow) return { closed: false, source: 'weekly', start: recurringRow.start_time, end: recurringRow.end_time, blocks: recurringRow.time_blocks };
     return { closed: true, source: 'weekly' };
   })();
-  const fmtHoursLabel = (() => {
+  // Lazy on purpose: fmtTime12 is declared further down in this component,
+  // so this must not run until render time (after fmtTime12 initializes).
+  const fmtHoursLabel = () => {
     if (effHours.closed) return 'Closed';
     const blocks = (Array.isArray(effHours.blocks) && effHours.blocks.length > 0)
       ? effHours.blocks
       : [{ start: (effHours.start || '').slice(0,5), end: (effHours.end || '').slice(0,5) }];
     return blocks.map(b => `${fmtTime12((b.start||'').slice(0,5))} - ${fmtTime12((b.end||'').slice(0,5))}`).join(', ');
-  })();
+  };
 
   const openHoursSheet = () => {
     setHoursSheetError('');
@@ -5524,7 +5526,7 @@ function TimelineView({ therapist, allAppts, dayOffset, setDayOffset, today, onR
       >
         <div style={{display:'flex',alignItems:'center',gap:8,fontSize:12.5,fontWeight:600,color: effHours.closed ? '#92400E' : '#1F2937',minWidth:0}}>
           <span style={{fontSize:14}}>🕐</span>
-          <span style={{whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{effHours.closed ? 'Closed this day' : `Hours · ${fmtHoursLabel}`}</span>
+          <span style={{whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{effHours.closed ? 'Closed this day' : `Hours · ${fmtHoursLabel()}`}</span>
           {effHours.source === 'override' && (
             <span style={{flexShrink:0,fontSize:10,fontWeight:700,color:'#B26B17',background:'#FBF4DA',border:'1px solid #F0DCA6',borderRadius:999,padding:'2px 7px'}}>adjusted</span>
           )}
