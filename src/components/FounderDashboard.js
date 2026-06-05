@@ -1109,6 +1109,10 @@ const TEST_PLAN_ITEMS = [
   { key: 'av_home_demo', area: 'Availability · Marketing', label: 'Home page Find & Book: the "Date-specific hours" animation shows in the carousel and loops through usual / shortened / day-off.' },
   { key: 'av_features_card', area: 'Availability · Marketing', label: 'Features page: the "Availability & hours" card now mentions date-specific hours and copy a week forward.' },
   { key: 'av_copy_week', area: 'Availability · Settings', label: 'Copy a week forward: set a week of overrides, copy it N weeks ahead, confirm the same weekdays get the same hours.' },
+  { key: 'wh_drag', area: 'Weekly hours', label: 'Settings Working hours: drag a day\u2019s green bar to set its hours, reopen, and confirm it saved.' },
+  { key: 'wh_presets', area: 'Weekly hours', label: 'Presets (Weekdays 9 to 5, etc.) and "Make Tue to Fri match Monday" set the right days; toggling a day off/on works.' },
+  { key: 'wh_split', area: 'Weekly hours', label: 'Tap + on a day to add a break (split shift) and confirm two green windows save.' },
+  { key: 'wh_booking', area: 'Weekly hours', label: 'Booking page reflects the new weekly hours (slots only inside the bars).' },
 ];
 
 function FounderTestPlan() {

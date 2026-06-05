@@ -26,6 +26,7 @@ import SettingsErrorBoundary from '../components/SettingsErrorBoundary';
 import PlatformTermsModal from '../components/PlatformTermsModal';
 import InlineSaveNumberInput from '../components/InlineSaveNumberInput';
 import DisclosureRow from '../components/DisclosureRow';
+import WeeklyHoursEditor from '../components/WeeklyHoursEditor';
 import CollapsibleSection from '../components/CollapsibleSection';
 import SettingsGroup from '../components/SettingsGroup';
 import StatsStrip from '../components/StatsStrip';
@@ -1181,35 +1182,40 @@ function ServicesAndAvailability({ therapist }) {
     return [{ start: avail.start_time?.slice(0,5) || '09:00', end: avail.end_time?.slice(0,5) || '17:00' }];
   }
 
-  async function saveBlocks(id, blocks) {
-    const sorted = [...blocks].sort((a,b) => a.start.localeCompare(b.start));
-    await supabase.from('availability').update({
-      time_blocks: sorted,
-      start_time: sorted[0]?.start || '09:00',
-      end_time: sorted[sorted.length-1]?.end || '17:00',
-    }).eq('id', id);
-    setAvailability(a => a.map(x => x.id === id ? { ...x, time_blocks: sorted, start_time: sorted[0]?.start || '09:00', end_time: sorted[sorted.length-1]?.end || '17:00' } : x));
-  }
-
-  function addBlock(avail) {
-    const blocks = getBlocks(avail);
-    const last = blocks[blocks.length - 1];
-    // Suggest 1hr after last block ends
-    const [h, m] = (last?.end || '17:00').split(':').map(Number);
-    const newStart = `${String(h+1).padStart(2,'0')}:${String(m).padStart(2,'0')}`;
-    const newEnd = `${String(h+2).padStart(2,'0')}:${String(m).padStart(2,'0')}`;
-    saveBlocks(avail.id, [...blocks, { start: newStart, end: newEnd }]);
-  }
-
-  function removeBlock(avail, idx) {
-    const blocks = getBlocks(avail).filter((_, i) => i !== idx);
-    if (blocks.length === 0) return; // keep at least one
-    saveBlocks(avail.id, blocks);
-  }
-
-  function updateBlock(avail, idx, field, val) {
-    const blocks = getBlocks(avail).map((b, i) => i === idx ? { ...b, [field]: val } : b);
-    saveBlocks(avail.id, blocks);
+  // Unified writer used by the graphic WeeklyHoursEditor (HK Jun 5 2026).
+  // Handles create / activate / set-blocks for a day's master availability
+  // row in one place, mirroring toggleDay + saveBlocks so the proven write
+  // path is unchanged. blocks are 'HH:MM' {start,end} objects.
+  async function setDayHours(dow, { active, blocks } = {}) {
+    const row = availability.find(a => a.day_of_week === dow);
+    if (!row) {
+      const useBlocks = (blocks && blocks.length > 0) ? blocks : [{ start: '09:00', end: '17:00' }];
+      const sorted = [...useBlocks].sort((a, b) => a.start.localeCompare(b.start));
+      const { data } = await supabase.from('availability').insert({
+        therapist_id: therapist.id,
+        day_of_week: dow,
+        start_time: sorted[0].start,
+        end_time: sorted[sorted.length - 1].end,
+        time_blocks: sorted,
+        active: active !== false,
+      }).select().single();
+      if (data) setAvailability(a => [...a, data]);
+      if (therapist?.id) {
+        try { const { trackActivation } = await import('../lib/activation'); trackActivation(therapist.id, 'set_availability'); } catch {}
+      }
+      return;
+    }
+    const updates = {};
+    if (typeof active === 'boolean') updates.active = active;
+    if (blocks && blocks.length > 0) {
+      const sorted = [...blocks].sort((a, b) => a.start.localeCompare(b.start));
+      updates.time_blocks = sorted;
+      updates.start_time = sorted[0].start;
+      updates.end_time = sorted[sorted.length - 1].end;
+    }
+    if (Object.keys(updates).length === 0) return;
+    await supabase.from('availability').update(updates).eq('id', row.id);
+    setAvailability(a => a.map(x => x.id === row.id ? { ...x, ...updates } : x));
   }
 
   if (loading) return null;
@@ -2782,112 +2788,13 @@ function ServicesAndAvailability({ therapist }) {
         open={openSubRow === 'working-hours'}
         onToggle={() => setOpenSubRow(openSubRow === 'working-hours' ? null : 'working-hours')}
       >
-        <div style={{ display:'flex', alignItems:'baseline', justifyContent:'space-between', marginBottom:8 }}>
-          <span style={{ fontSize:'11px', color:C2.gray }}>Tap a day to enable. + adds a break.</span>
-        </div>
-        <div style={{ display:'flex', flexDirection:'column', gap:2 }}>
-          {DAYS.map(({ id: dow, label }) => {
-            const avail = availability.find(a => a.day_of_week === dow);
-            const isOn = avail?.active;
-            const blocks = avail ? getBlocks(avail) : [];
-            return (
-              <div key={dow} style={{
-                background: isOn ? '#F9FAFB' : 'transparent',
-                borderRadius: 8,
-                padding: isOn ? '6px 10px' : '4px 10px',
-                transition: 'all 0.15s',
-              }}>
-                <div style={{ display:'flex', alignItems:'center', gap:8, flexWrap:'wrap' }}>
-                  {/* Day toggle pill — compact */}
-                  <button onClick={() => toggleDay(dow)}
-                    style={{
-                      width: 30, height: 18, borderRadius: 10,
-                      background: isOn ? C2.forest : '#D1D5DB',
-                      border: 'none', cursor: 'pointer',
-                      position: 'relative', flexShrink: 0,
-                      transition: 'background 0.2s',
-                    }}>
-                    <div style={{
-                      width: 12, height: 12, borderRadius: '50%',
-                      background: '#fff', position: 'absolute',
-                      top: 3, left: isOn ? 15 : 3,
-                      transition: 'left 0.2s',
-                    }}/>
-                  </button>
-                  <span style={{
-                    fontSize: 13, fontWeight: 700,
-                    color: isOn ? C2.darkGray : '#C4C4C4',
-                    width: 30, flexShrink: 0,
-                  }}>{label}</span>
-
-                  {!isOn && (
-                    <span style={{ fontSize: 12, color: '#D1D5DB' }}>Off</span>
-                  )}
-
-                  {/* Time blocks inline on the same row when day is on */}
-                  {isOn && avail && (
-                    <div style={{ display:'flex', alignItems:'center', gap:6, flexWrap:'wrap', flex:1 }}>
-                      {blocks.map((block, idx) => (
-                        <div key={idx} style={{ display:'flex', alignItems:'center', gap:4 }}>
-                          <input type="time" value={block.start}
-                            onChange={e => updateBlock(avail, idx, 'start', e.target.value)}
-                            style={{
-                              padding: '3px 6px',
-                              border: `1px solid ${C2.lightGray}`,
-                              borderRadius: 6,
-                              fontSize: 12,
-                              outline: 'none',
-                              background: '#fff',
-                              width: 96,
-                            }}/>
-                          <span style={{ fontSize: 11, color: C2.gray }}>to</span>
-                          <input type="time" value={block.end}
-                            onChange={e => updateBlock(avail, idx, 'end', e.target.value)}
-                            style={{
-                              padding: '3px 6px',
-                              border: `1px solid ${C2.lightGray}`,
-                              borderRadius: 6,
-                              fontSize: 12,
-                              outline: 'none',
-                              background: '#fff',
-                              width: 96,
-                            }}/>
-                          {blocks.length > 1 && (
-                            <button onClick={() => removeBlock(avail, idx)}
-                              aria-label="Remove this time block"
-                              style={{
-                                background: 'transparent', border: '1px solid transparent',
-                                color: '#EF4444', cursor: 'pointer',
-                                fontSize: 11, fontWeight: 700, padding: '4px 10px',
-                                borderRadius: 999, flexShrink: 0,
-                                transition: 'all 0.15s',
-                              }}
-                              onMouseEnter={(e)=>{e.currentTarget.style.background='#FEF2F2';e.currentTarget.style.borderColor='#FCA5A5';}}
-                              onMouseLeave={(e)=>{e.currentTarget.style.background='transparent';e.currentTarget.style.borderColor='transparent';}}>Remove</button>
-                          )}
-                        </div>
-                      ))}
-                      <button onClick={() => addBlock(avail)}
-                        title="Add a break"
-                        style={{
-                          background: 'transparent',
-                          border: `1px dashed ${C2.lightGray}`,
-                          borderRadius: 6,
-                          width: 22, height: 22,
-                          fontSize: 13, fontWeight: 700,
-                          color: C2.sage,
-                          cursor: 'pointer',
-                          padding: 0,
-                          display: 'flex', alignItems: 'center', justifyContent: 'center',
-                          flexShrink: 0,
-                        }}>+</button>
-                    </div>
-                  )}
-                </div>
-              </div>
-            );
-          })}
-        </div>
+        <SettingsErrorBoundary section="working-hours">
+          <WeeklyHoursEditor
+            availability={availability}
+            getBlocks={getBlocks}
+            setDayHours={setDayHours}
+          />
+        </SettingsErrorBoundary>
       </DisclosureRow>
 
       {/* Date-specific hours (overrides). HK Jun 4 2026. Writes the same
