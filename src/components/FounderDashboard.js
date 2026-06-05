@@ -1106,7 +1106,7 @@ const TEST_PLAN_ITEMS = [
   { key: 'av_set_edit', area: 'Availability · Settings', label: 'Edit changes an override\u2019s hours; Remove deletes it.' },
   { key: 'av_link', area: 'Availability · Settings', label: 'Schedule sheet "Edit my recurring weekly hours" link lands on Settings at Working hours.' },
   { key: 'av_booking_fresh', area: 'Availability · Booking', label: 'Overrides take effect on a fresh booking-page load (signed out / incognito).' },
-  { key: 'av_copy_week', area: 'Follow-up (not built yet)', label: 'Build the copy-week-forward accelerator (Method 2) once a clean definition is set.' },
+  { key: 'av_copy_week', area: 'Availability · Settings', label: 'Copy a week forward: set a week of overrides, copy it N weeks ahead, confirm the same weekdays get the same hours.' },
 ];
 
 function FounderTestPlan() {

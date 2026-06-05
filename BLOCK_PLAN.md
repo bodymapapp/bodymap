@@ -517,7 +517,7 @@ cd ~/Documents/bodymap && npm run build && git add . && git commit -m "msg" && g
 - custom_url: hk5
 
 ## RECENT SHIPS (newest first)
-- Availability date overrides: table + booking respects them, Schedule hours bar + day sheet, Settings date-specific editor with multi-date add → `c83fed2d` `32f097c9` `dc2fd4b8`. Founder page Test Plan card (durable) → `e4fec168`. Copy-week (Method 2) deferred. Marketing surfaces deferred (see Active fires).
+- Availability date overrides: table + booking respects them, Schedule hours bar + day sheet, Settings date-specific editor with multi-date add (Method 1) and copy-a-week-forward (Method 2) → `c83fed2d` `32f097c9` `dc2fd4b8` + Method 2 this push. Founder page Test Plan card (durable) → `e4fec168`. Split-shift editing in the override sheet deferred. Marketing surfaces (Home ribbon SVG + Features lifestyle card) pending HK confirmation (see Active fires).
 - Comparison page at /comparison (gated from nav until HK approves) + 60-row community sheet starter data → THIS COMMIT
 - Campaigns demo video live: 30s walkthrough with music → `e2b01825`
 - Service + add-on descriptions: tap-to-edit in Settings, surface on booking page (Leela request) → `65357cfa`

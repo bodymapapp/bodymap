@@ -264,6 +264,12 @@ function ServicesAndAvailability({ therapist }) {
   const [ovDateInput, setOvDateInput] = React.useState('');
   const [ovSaving, setOvSaving] = React.useState(false);
   const [ovError, setOvError] = React.useState('');
+  // Copy-week (Method 2, HK Jun 4 2026). Copies the override rows in a
+  // chosen 7-day span forward to the same weekday in the next N weeks.
+  const [copyWeek, setCopyWeek] = React.useState(null); // { start, weeks } or null
+  const [copySaving, setCopySaving] = React.useState(false);
+  const [copyError, setCopyError] = React.useState('');
+  const [copyDone, setCopyDone] = React.useState('');
   // Multi-location support (HK May 18 2026): list of therapist
   // locations. Empty array if therapist has none (the most common
   // case, including most current accounts). When length >= 2 the
@@ -1113,6 +1119,58 @@ function ServicesAndAvailability({ therapist }) {
       setOverrides(o => o.filter(x => x.id !== id));
     } catch (err) {
       setOvError((err && err.message) || 'Could not remove. Please try again.');
+    }
+  }
+
+  // Copy-week (Method 2). Takes the override rows in the 7 days starting
+  // at copyWeek.start and re-creates them on the same weekday (shifted by
+  // exactly 7 days) for each of the next copyWeek.weeks weeks. Only the
+  // week's actual customizations (override rows) are copied, so the list
+  // does not fill up with rows that just mirror the weekly defaults. Copy
+  // overwrites any existing override on a target date (explicit action).
+  function addDaysStr(dateStr, n) {
+    const [y, m, d] = dateStr.split('-').map(Number);
+    const dt = new Date(y, m - 1, d + n);
+    return `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}-${String(dt.getDate()).padStart(2,'0')}`;
+  }
+  function startCopyWeek() {
+    setCopyError(''); setCopyDone('');
+    setCopyWeek({ start: todayStr(), weeks: 4 });
+  }
+  async function saveCopyWeek() {
+    if (!copyWeek) return;
+    setCopyError(''); setCopyDone('');
+    const start = copyWeek.start;
+    const weeks = Math.max(1, Math.min(12, Number(copyWeek.weeks) || 0));
+    if (!start) { setCopyError('Pick a week to copy.'); return; }
+    const end = addDaysStr(start, 6);
+    const source = (overrides || []).filter(o => o.override_date >= start && o.override_date <= end);
+    if (source.length === 0) { setCopyError('That week has no custom hours to copy. Set some first, then copy them forward.'); return; }
+    setCopySaving(true);
+    try {
+      const rows = [];
+      for (let w = 1; w <= weeks; w++) {
+        for (const o of source) {
+          rows.push({
+            therapist_id: therapist.id,
+            override_date: addDaysStr(o.override_date, 7 * w),
+            is_closed: o.is_closed,
+            start_time: o.is_closed ? null : o.start_time,
+            end_time: o.is_closed ? null : o.end_time,
+            time_blocks: o.time_blocks || null,
+            updated_at: new Date().toISOString(),
+          });
+        }
+      }
+      const { error } = await supabase.from('availability_overrides').upsert(rows, { onConflict: 'therapist_id,override_date' });
+      if (error) throw error;
+      await refetchOverrides();
+      setCopyWeek(null);
+      setCopyDone(`Copied ${source.length} day${source.length === 1 ? '' : 's'} forward across ${weeks} week${weeks === 1 ? '' : 's'}.`);
+    } catch (err) {
+      setCopyError((err && err.message) || 'Could not copy. Please try again.');
+    } finally {
+      setCopySaving(false);
     }
   }
 
@@ -2871,10 +2929,39 @@ function ServicesAndAvailability({ therapist }) {
             </div>
           );
         })()}
-        {!ovDraft && (
-          <button onClick={startOverrideAdd} style={{ background:C2.forest, color:'#fff', border:'none', borderRadius:10, padding:'10px 14px', fontSize:13, fontWeight:700, cursor:'pointer' }}>
-            + Add date override
-          </button>
+        {!ovDraft && !copyWeek && (
+          <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
+            <button onClick={startOverrideAdd} style={{ background:C2.forest, color:'#fff', border:'none', borderRadius:10, padding:'10px 14px', fontSize:13, fontWeight:700, cursor:'pointer' }}>
+              + Add date override
+            </button>
+            <button onClick={startCopyWeek} style={{ background:'#fff', color:C2.forest, border:'1.5px solid #BBE3C9', borderRadius:10, padding:'10px 14px', fontSize:13, fontWeight:700, cursor:'pointer' }}>
+              Copy a week forward
+            </button>
+          </div>
+        )}
+        {copyDone && !copyWeek && (
+          <div style={{ marginTop:10, background:'#F2F7F4', border:'1px solid #BBE3C9', color:'#2A5741', borderRadius:8, padding:'8px 11px', fontSize:12.5 }}>{copyDone}</div>
+        )}
+        {copyWeek && (
+          <div style={{ border:'1px solid #ECE9E1', borderRadius:12, padding:12, background:'#FBFAF4' }}>
+            <div style={{ fontSize:12, color:C2.gray, marginBottom:10 }}>
+              Copies the custom hours you set in one week to the same weekdays in the next several weeks. Set a week with overrides first, then copy it forward.
+            </div>
+            <label style={{ fontSize:11, fontWeight:700, color:'#6B7280', textTransform:'uppercase', letterSpacing:'0.06em', display:'block', marginBottom:6 }}>Week starting</label>
+            <input type="date" value={copyWeek.start} onChange={e => setCopyWeek(prev => prev ? { ...prev, start:e.target.value } : prev)} style={{ width:'100%', padding:'9px 10px', border:'1.5px solid #E8E4DC', borderRadius:9, fontSize:14, background:'#fff', marginBottom:10, boxSizing:'border-box' }} />
+            <label style={{ fontSize:11, fontWeight:700, color:'#6B7280', textTransform:'uppercase', letterSpacing:'0.06em', display:'block', marginBottom:6 }}>Copy forward this many weeks</label>
+            <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:10 }}>
+              <input type="number" min={1} max={12} value={copyWeek.weeks} onChange={e => setCopyWeek(prev => prev ? { ...prev, weeks:e.target.value } : prev)} style={{ width:80, padding:'9px 10px', border:'1.5px solid #E8E4DC', borderRadius:9, fontSize:14, background:'#fff' }} />
+              <span style={{ fontSize:12, color:C2.gray }}>up to 12</span>
+            </div>
+            {copyError && (
+              <div style={{ background:'#FEF2F2', border:'1px solid #FCA5A5', color:'#991B1B', borderRadius:8, padding:'7px 10px', fontSize:12, marginBottom:10 }}>{copyError}</div>
+            )}
+            <div style={{ display:'flex', gap:8 }}>
+              <button onClick={() => { setCopyWeek(null); setCopyError(''); }} disabled={copySaving} style={{ flex:1, background:'#F3F4F6', color:'#4B5563', border:'none', padding:'10px', borderRadius:9, fontSize:13, fontWeight:700, cursor: copySaving ? 'not-allowed' : 'pointer' }}>Cancel</button>
+              <button onClick={saveCopyWeek} disabled={copySaving} style={{ flex:1, background:C2.forest, color:'#fff', border:'none', padding:'10px', borderRadius:9, fontSize:13, fontWeight:700, cursor: copySaving ? 'not-allowed' : 'pointer' }}>{copySaving ? 'Copying...' : 'Copy forward'}</button>
+            </div>
+          </div>
         )}
         {ovDraft && (
           <div style={{ border:'1px solid #ECE9E1', borderRadius:12, padding:12, background:'#FBFAF4' }}>
