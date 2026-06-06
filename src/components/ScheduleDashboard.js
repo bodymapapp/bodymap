@@ -5078,7 +5078,7 @@ export function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelle
   );
 }
 
-function TimelineView({ therapist, allAppts, dayOffset, setDayOffset, today, onReschedule, onRefresh, blockedDays = [], onCreateBlock, onRemoveBlock, onUpdateBlock, onScheduleAtTime, selectedBookingId = '', setSelectedBookingId, onRequestCheckout, onRequestCancel, onOpenBooking, paymentsRefreshTick = 0 }) {
+function TimelineView({ therapist, allAppts, dayOffset, setDayOffset, today, onReschedule, onRefresh, blockedDays = [], onCreateBlock, onManageBlock, onScheduleAtTime, selectedBookingId = '', setSelectedBookingId, onRequestCheckout, onRequestCancel, onOpenBooking, paymentsRefreshTick = 0 }) {
   const { toast: tlToast, showToast: tlShowToast } = useToast();
 
   // HK May 31 2026: selected booking is DERIVED from selectedBookingId
@@ -5116,13 +5116,6 @@ function TimelineView({ therapist, allAppts, dayOffset, setDayOffset, today, onR
   const [blockSheetError, setBlockSheetError] = useState('');
   // HK Jun 6 2026: tap an existing block on the timeline to remove it
   // right here, instead of hunting in Settings. Holds the tapped block.
-  const [manageBlock, setManageBlock] = useState(null); // {id, start, end, note, allDay}
-  const [manageBlockSaving, setManageBlockSaving] = useState(false);
-  // HK Jun 6 2026: edit a block in place (the approved unified sheet).
-  const [manageBlockEdit, setManageBlockEdit] = useState(false);
-  const [mbStart, setMbStart] = useState('09:00');
-  const [mbEnd, setMbEnd] = useState('10:00');
-  const [manageBlockError, setManageBlockError] = useState('');
   // Date-specific availability (HK Jun 4 2026). Recurring weekly hours
   // are loaded read-only so the bar can show the day's effective hours;
   // a date override wins. The sheet edits the override for one date.
@@ -5571,7 +5564,7 @@ function TimelineView({ therapist, allAppts, dayOffset, setDayOffset, today, onR
           {myFullDayBlocksToday.length > 0 && (
             <div
               data-appt-card="1"
-              onClick={(e) => { e.stopPropagation(); const b = myFullDayBlocksToday[0]; setManageBlock({ id: b.id, start: null, end: null, note: b.note, allDay: true }); }}
+              onClick={(e) => { e.stopPropagation(); const b = myFullDayBlocksToday[0]; onManageBlock?.({ id: b.id, start: null, end: null, note: b.note, allDay: true }); }}
               style={{
                 position: 'absolute',
                 top: 0,
@@ -5635,7 +5628,7 @@ function TimelineView({ therapist, allAppts, dayOffset, setDayOffset, today, onR
               <div
                 key={`my-block-${b.id}`}
                 data-appt-card="1"
-                onClick={(e) => { e.stopPropagation(); setManageBlock({ id: b.id, start: b.start_time, end: b.end_time, note: b.note, allDay: false }); }}
+                onClick={(e) => { e.stopPropagation(); onManageBlock?.({ id: b.id, start: b.start_time, end: b.end_time, note: b.note, allDay: false }); }}
                 style={{
                   position: 'absolute',
                   top: y,
@@ -5873,89 +5866,6 @@ function TimelineView({ therapist, allAppts, dayOffset, setDayOffset, today, onR
         </>
       )}
 
-      {manageBlock && (
-        <>
-          <div
-            onClick={() => { if (!manageBlockSaving) { setManageBlock(null); setManageBlockEdit(false); } }}
-            style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.4)',zIndex:300,backdropFilter:'blur(2px)'}}
-          />
-          <div style={{
-            position:'fixed', top:'50%', left:'50%', transform:'translate(-50%, -50%)',
-            background:'#fff', borderRadius:14, padding:'24px 26px',
-            boxShadow:'0 20px 60px rgba(0,0,0,0.25)', zIndex:301,
-            width:'min(420px, calc(100vw - 32px))', maxWidth:420,
-          }}>
-            {!manageBlockEdit ? (
-              <>
-                <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:16 }}>
-                  <div style={{ fontSize:24 }}>🌿</div>
-                  <div style={{ flex:1 }}>
-                    <div style={{ fontSize:18, fontWeight:700, color:'#1F2937', fontFamily:'Georgia,serif' }}>You blocked this time</div>
-                    <div style={{ fontSize:12.5, color:'#6B7280', marginTop:3 }}>
-                      {manageBlock.allDay ? 'Blocked all day' : `${fmtTime12(manageBlock.start.slice(0,5))} to ${fmtTime12(manageBlock.end.slice(0,5))}`}{manageBlock.note ? ` · ${manageBlock.note}` : ''}
-                    </div>
-                  </div>
-                </div>
-                {!manageBlock.allDay && (
-                  <button
-                    onClick={() => { setMbStart(manageBlock.start.slice(0,5)); setMbEnd(manageBlock.end.slice(0,5)); setManageBlockError(''); setManageBlockEdit(true); }}
-                    style={{ width:'100%', padding:'15px 16px', borderRadius:12, border:'none', background:'#2A5741', color:'#fff', fontSize:15, fontWeight:700, cursor:'pointer', fontFamily:'inherit', marginBottom:10, textAlign:'left' }}>
-                    🕐&nbsp;&nbsp;Change the time
-                  </button>
-                )}
-                <button
-                  onClick={async () => { if (manageBlockSaving) return; setManageBlockSaving(true); try { await onRemoveBlock?.(manageBlock.id); } finally { setManageBlockSaving(false); setManageBlock(null); setManageBlockEdit(false); } }}
-                  disabled={manageBlockSaving}
-                  style={{ width:'100%', padding:'15px 16px', borderRadius:12, border:'1px solid #F3C9C9', background:'#FDECEC', color:'#B91C1C', fontSize:15, fontWeight:700, cursor: manageBlockSaving?'not-allowed':'pointer', opacity: manageBlockSaving?0.7:1, fontFamily:'inherit', marginBottom:10, textAlign:'left' }}>
-                  🌿&nbsp;&nbsp;{manageBlockSaving ? 'Removing...' : 'Remove (opens this time back up)'}
-                </button>
-                <div style={{ fontSize:12, color:'#6B7280', lineHeight:1.5, margin:'2px 2px 14px' }}>
-                  Removing this lets clients book {manageBlock.allDay ? 'this day' : 'this time'} again. Your appointments are not affected.
-                </div>
-                <button onClick={() => { setManageBlock(null); setManageBlockEdit(false); }} disabled={manageBlockSaving}
-                  style={{ width:'100%', background:'transparent', border:'none', color:'#9aa0a6', fontSize:14, fontWeight:600, padding:'6px', cursor:'pointer', fontFamily:'inherit' }}>
-                  Close
-                </button>
-              </>
-            ) : (
-              <>
-                <div style={{ fontSize:18, fontWeight:700, color:'#1F2937', fontFamily:'Georgia,serif', marginBottom:3 }}>Change the time</div>
-                <div style={{ fontSize:12.5, color:'#6B7280', marginBottom:16 }}>Blocked time{manageBlock.note ? ` · ${manageBlock.note}` : ''}</div>
-                <div style={{ display:'flex', alignItems:'flex-end', gap:12, marginBottom:12, flexWrap:'wrap' }}>
-                  <div style={{ flex:'1 1 130px', minWidth:120 }}>
-                    <label style={{ fontSize:11, fontWeight:700, color:'#6B7280', textTransform:'uppercase', letterSpacing:'0.06em', display:'block', marginBottom:6 }}>Start</label>
-                    <InlineTimeInput value={mbStart} onChange={(t)=>setMbStart(t)} placeholder="9:00 AM" ariaLabel="Start of blocked time" width="100%" disabled={manageBlockSaving} />
-                  </div>
-                  <div style={{ paddingBottom:10, fontFamily:'Georgia,serif', fontStyle:'italic', fontSize:14, color:'#6B7280' }}>to</div>
-                  <div style={{ flex:'1 1 130px', minWidth:120 }}>
-                    <label style={{ fontSize:11, fontWeight:700, color:'#6B7280', textTransform:'uppercase', letterSpacing:'0.06em', display:'block', marginBottom:6 }}>End</label>
-                    <InlineTimeInput value={mbEnd} onChange={(t)=>setMbEnd(t)} placeholder="10:00 AM" ariaLabel="End of blocked time" width="100%" disabled={manageBlockSaving} />
-                  </div>
-                </div>
-                {manageBlockError && <div style={{ fontSize:12.5, color:'#B91C1C', fontWeight:600, marginBottom:12 }}>{manageBlockError}</div>}
-                <div style={{ display:'flex', gap:10 }}>
-                  <button
-                    onClick={async () => {
-                      if (manageBlockSaving) return;
-                      if (!mbStart || !mbEnd || mbEnd <= mbStart) { setManageBlockError('The end time needs to be after the start time.'); return; }
-                      setManageBlockSaving(true);
-                      try { await onUpdateBlock?.(manageBlock.id, `${mbStart}:00`, `${mbEnd}:00`); setManageBlock(prev => prev ? { ...prev, start:`${mbStart}:00`, end:`${mbEnd}:00` } : prev); setManageBlockEdit(false); }
-                      finally { setManageBlockSaving(false); }
-                    }}
-                    disabled={manageBlockSaving}
-                    style={{ flex:1, padding:'14px', borderRadius:12, border:'none', background:'#2A5741', color:'#fff', fontSize:15, fontWeight:700, cursor: manageBlockSaving?'not-allowed':'pointer', opacity: manageBlockSaving?0.7:1, fontFamily:'inherit' }}>
-                    {manageBlockSaving ? 'Saving...' : 'Save'}
-                  </button>
-                  <button onClick={() => { setManageBlockEdit(false); setManageBlockError(''); }} disabled={manageBlockSaving}
-                    style={{ padding:'14px 18px', borderRadius:12, border:'1.5px solid #D1D5DB', background:'#fff', color:'#374151', fontSize:15, fontWeight:600, cursor:'pointer', fontFamily:'inherit' }}>
-                    Back
-                  </button>
-                </div>
-              </>
-            )}
-          </div>
-        </>
-      )}
 
       {pendingBlock && (
         <>
@@ -6114,7 +6024,7 @@ function TimelineView({ therapist, allAppts, dayOffset, setDayOffset, today, onR
   );
 }
 
-function WeeklyView({ therapist, appointments, today, onReschedule, onRefresh, blockedDays = [], selectedBookingId = '', setSelectedBookingId, onRequestCheckout, onRequestCancel, onOpenBooking, paymentsRefreshTick = 0 }) {
+function WeeklyView({ therapist, appointments, today, onReschedule, onRefresh, blockedDays = [], onManageBlock, selectedBookingId = '', setSelectedBookingId, onRequestCheckout, onRequestCancel, onOpenBooking, paymentsRefreshTick = 0 }) {
   const { toast: wkToast, showToast: wkShowToast } = useToast();
   const APPTS=appointments||[];
   const weekStartsOn = therapist?.week_starts_on ?? 0;
@@ -6315,7 +6225,8 @@ function WeeklyView({ therapist, appointments, today, onReschedule, onRefresh, b
                           const eM = parseInt(b.end_time.slice(0,2),10)*60 + parseInt(b.end_time.slice(3,5),10);
                           return (
                             <div key={`b${bi}`}
-                              title={b.reason || 'Blocked'}
+                              title={b.reason || 'Blocked. Tap to edit or remove.'}
+                              onClick={(e) => { e.stopPropagation(); onManageBlock?.({ id: b.id, start: b.start_time, end: b.end_time, note: b.note, allDay: false }); }}
                               style={{
                                 position: 'absolute',
                                 top: 2, bottom: 2,
@@ -6325,6 +6236,7 @@ function WeeklyView({ therapist, appointments, today, onReschedule, onRefresh, b
                                 border: '1px solid #FBBF24',
                                 borderRadius: 2,
                                 opacity: 0.7,
+                                cursor: 'pointer',
                               }}
                             />
                           );
@@ -6609,7 +6521,8 @@ function WeeklyView({ therapist, appointments, today, onReschedule, onRefresh, b
                         const endM = parseInt(b.end_time.slice(0, 2), 10) * 60 + parseInt(b.end_time.slice(3, 5), 10);
                         return (
                           <div key={`block-${bIdx}`}
-                            title={b.reason || 'Blocked'}
+                            title={b.reason || 'Blocked. Tap to edit or remove.'}
+                            onClick={(e) => { e.stopPropagation(); onManageBlock?.({ id: b.id, start: b.start_time, end: b.end_time, note: b.note, allDay: false }); }}
                             style={{
                               position: 'absolute',
                               top: Math.max(0, (startM - winStart) * PX_PER_MIN),
@@ -6619,7 +6532,7 @@ function WeeklyView({ therapist, appointments, today, onReschedule, onRefresh, b
                               border: '1px solid #FBBF24',
                               borderRadius: 4,
                               opacity: 0.55,
-                              pointerEvents: 'none',
+                              cursor: 'pointer',
                             }}/>
                         );
                       })}
@@ -6744,7 +6657,7 @@ function WeeklyView({ therapist, appointments, today, onReschedule, onRefresh, b
   );
 }
 
-function MonthlyView({ therapist, appointments, today, onReschedule, onRefresh, blockedDays = [], selectedBookingId = '', setSelectedBookingId, onRequestCheckout, onRequestCancel, onOpenBooking, paymentsRefreshTick = 0 }) {
+function MonthlyView({ therapist, appointments, today, onReschedule, onRefresh, blockedDays = [], onManageBlock, selectedBookingId = '', setSelectedBookingId, onRequestCheckout, onRequestCancel, onOpenBooking, paymentsRefreshTick = 0 }) {
   const { toast: moToast, showToast: moShowToast } = useToast();
   const APPTS=appointments||[];
   const weekStartsOn = therapist?.week_starts_on ?? 0; // 0 = Sunday, 1 = Monday
@@ -6943,6 +6856,7 @@ function MonthlyView({ therapist, appointments, today, onReschedule, onRefresh, 
                       const reasonLabel = b.note || b.reason || 'Time off';
                       return (
                         <div key={`block-${b.id || idx}`}
+                          onClick={(e) => { e.stopPropagation(); onManageBlock?.({ id: b.id, start: b.start_time, end: b.end_time, note: b.note, allDay: false }); }}
                           style={{
                             background: 'repeating-linear-gradient(45deg,#FEF3C7,#FEF3C7 6px,#FDE68A 6px,#FDE68A 7px)',
                             border: '1.5px solid #FCD34D',
@@ -6952,6 +6866,7 @@ function MonthlyView({ therapist, appointments, today, onReschedule, onRefresh, 
                             display: 'flex',
                             alignItems: 'center',
                             gap: 12,
+                            cursor: 'pointer',
                           }}>
                           <div style={{width:36,height:36,borderRadius:'50%',background:'#FFFBEB',color:'#92400E',display:'flex',alignItems:'center',justifyContent:'center',fontSize:18,flexShrink:0}}>🌿</div>
                           <div style={{flex:1}}>
@@ -6960,6 +6875,7 @@ function MonthlyView({ therapist, appointments, today, onReschedule, onRefresh, 
                               {fmt12(startStr)} - {fmt12(endStr)} · Blocked time off
                             </div>
                           </div>
+                          <span style={{ flexShrink:0, fontSize:11, fontWeight:700, color:'#fff', background:'rgba(146,64,14,0.85)', borderRadius:999, padding:'3px 10px', whiteSpace:'nowrap' }}>Tap to edit</span>
                         </div>
                       );
                     }
@@ -8382,6 +8298,16 @@ export default function ScheduleDashboard({ therapist }) {
 
   // Blocked days state
   const [blockedDays, setBlockedDays] = useState([]);
+  // HK Jun 6 2026: one shared block sheet for all views (daily, weekly,
+  // monthly), lifted to the parent so it renders reliably outside any
+  // timeline canvas. Views call onManageBlock to open it.
+  const [manageBlock, setManageBlock] = useState(null); // {id, start, end, note, allDay}
+  const [manageBlockSaving, setManageBlockSaving] = useState(false);
+  const [manageBlockEdit, setManageBlockEdit] = useState(false);
+  const [mbStart, setMbStart] = useState('09:00');
+  const [mbEnd, setMbEnd] = useState('10:00');
+  const [manageBlockError, setManageBlockError] = useState('');
+  function openManageBlock(b) { setManageBlockEdit(false); setManageBlockError(''); setManageBlock(b); }
   const [showBlockPanel, setShowBlockPanel] = useState(false);
   const [panelHelpOpen, setPanelHelpOpen] = useState(false);
   // Calendar coaching: show the first-open "What you can do here" intro
@@ -9509,15 +9435,103 @@ export default function ScheduleDashboard({ therapist }) {
 
             {/* RIGHT PANE: tab-selected calendar/insights view. */}
             <div style={{ minWidth: 0 }}>
-              {subView==='today'   &&<ViewErrorBoundary viewName="Today"><TimelineView therapist={therapist} allAppts={allAppts} dayOffset={dayOffset} setDayOffset={setDayOffset} today={today} onReschedule={setRescheduleAppt} onRefresh={fetchBookings} blockedDays={blockedDays} onCreateBlock={addBlockedDay} onRemoveBlock={removeBlockedDay} onUpdateBlock={updateBlockedDayTime} onScheduleAtTime={setPendingBookingTime} selectedBookingId={selectedBookingId} setSelectedBookingId={setSelectedBookingId} onRequestCheckout={requestCheckout} onRequestCancel={requestCancel} onOpenBooking={openBooking} paymentsRefreshTick={paymentsRefreshTick}/></ViewErrorBoundary>}
-              {subView==='weekly'  &&<ViewErrorBoundary viewName="Weekly"><WeeklyView therapist={therapist} appointments={allAppts} today={today} onReschedule={setRescheduleAppt} onRefresh={fetchBookings} blockedDays={blockedDays} selectedBookingId={selectedBookingId} setSelectedBookingId={setSelectedBookingId} onRequestCheckout={requestCheckout} onRequestCancel={requestCancel} onOpenBooking={openBooking} paymentsRefreshTick={paymentsRefreshTick}/></ViewErrorBoundary>}
-              {subView==='monthly' &&<ViewErrorBoundary viewName="Monthly"><MonthlyView therapist={therapist} appointments={allAppts} today={today} onReschedule={setRescheduleAppt} onRefresh={fetchBookings} blockedDays={blockedDays} selectedBookingId={selectedBookingId} setSelectedBookingId={setSelectedBookingId} onRequestCheckout={requestCheckout} onRequestCancel={requestCancel} onOpenBooking={openBooking} paymentsRefreshTick={paymentsRefreshTick}/></ViewErrorBoundary>}
+              {subView==='today'   &&<ViewErrorBoundary viewName="Today"><TimelineView therapist={therapist} allAppts={allAppts} dayOffset={dayOffset} setDayOffset={setDayOffset} today={today} onReschedule={setRescheduleAppt} onRefresh={fetchBookings} blockedDays={blockedDays} onCreateBlock={addBlockedDay} onManageBlock={openManageBlock} onScheduleAtTime={setPendingBookingTime} selectedBookingId={selectedBookingId} setSelectedBookingId={setSelectedBookingId} onRequestCheckout={requestCheckout} onRequestCancel={requestCancel} onOpenBooking={openBooking} paymentsRefreshTick={paymentsRefreshTick}/></ViewErrorBoundary>}
+              {subView==='weekly'  &&<ViewErrorBoundary viewName="Weekly"><WeeklyView therapist={therapist} appointments={allAppts} today={today} onReschedule={setRescheduleAppt} onRefresh={fetchBookings} blockedDays={blockedDays} onManageBlock={openManageBlock} selectedBookingId={selectedBookingId} setSelectedBookingId={setSelectedBookingId} onRequestCheckout={requestCheckout} onRequestCancel={requestCancel} onOpenBooking={openBooking} paymentsRefreshTick={paymentsRefreshTick}/></ViewErrorBoundary>}
+              {subView==='monthly' &&<ViewErrorBoundary viewName="Monthly"><MonthlyView therapist={therapist} appointments={allAppts} today={today} onReschedule={setRescheduleAppt} onRefresh={fetchBookings} blockedDays={blockedDays} onManageBlock={openManageBlock} selectedBookingId={selectedBookingId} setSelectedBookingId={setSelectedBookingId} onRequestCheckout={requestCheckout} onRequestCancel={requestCancel} onOpenBooking={openBooking} paymentsRefreshTick={paymentsRefreshTick}/></ViewErrorBoundary>}
               {subView==='yearly'  &&<ViewErrorBoundary viewName="Yearly"><YearlyView therapist={therapist} appointments={allAppts} today={today} blockedDays={blockedDays}/></ViewErrorBoundary>}
               {subView==='insights'&&<ViewErrorBoundary viewName="Insights"><InsightsView appointments={allAppts}/></ViewErrorBoundary>}
             </div>
           </div>
         )
       }
+
+      {/* HK Jun 6 2026: shared block sheet for daily/weekly/monthly.
+          Lifted here so a tap in any view opens the same reliable sheet.
+          Remove is the first action (the most common intent), with
+          Change the time below it. */}
+      {manageBlock && (
+        <>
+          <div
+            onClick={() => { if (!manageBlockSaving) { setManageBlock(null); setManageBlockEdit(false); } }}
+            style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.4)',zIndex:4000,backdropFilter:'blur(2px)'}}
+          />
+          <div style={{
+            position:'fixed', top:'50%', left:'50%', transform:'translate(-50%, -50%)',
+            background:'#fff', borderRadius:14, padding:'24px 26px',
+            boxShadow:'0 20px 60px rgba(0,0,0,0.25)', zIndex:4001,
+            width:'min(420px, calc(100vw - 32px))', maxWidth:420,
+          }}>
+            {!manageBlockEdit ? (
+              <>
+                <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:18 }}>
+                  <div style={{ fontSize:24 }}>🌿</div>
+                  <div style={{ flex:1 }}>
+                    <div style={{ fontSize:18, fontWeight:700, color:'#1F2937', fontFamily:'Georgia,serif' }}>You blocked this time</div>
+                    <div style={{ fontSize:12.5, color:'#6B7280', marginTop:3 }}>
+                      {manageBlock.allDay ? 'Blocked all day' : `${fmt12(manageBlock.start)} to ${fmt12(manageBlock.end)}`}{manageBlock.note ? ` · ${manageBlock.note}` : ''}
+                    </div>
+                  </div>
+                </div>
+                <button
+                  onClick={async () => { if (manageBlockSaving) return; setManageBlockSaving(true); try { await removeBlockedDay(manageBlock.id); } finally { setManageBlockSaving(false); setManageBlock(null); setManageBlockEdit(false); } }}
+                  disabled={manageBlockSaving}
+                  style={{ width:'100%', padding:'16px', borderRadius:12, border:'1.5px solid #F0B4B4', background:'#FDECEC', color:'#B91C1C', fontSize:15.5, fontWeight:800, cursor: manageBlockSaving?'not-allowed':'pointer', opacity: manageBlockSaving?0.7:1, fontFamily:'inherit', marginBottom:8, textAlign:'left' }}>
+                  🗑&nbsp;&nbsp;{manageBlockSaving ? 'Removing...' : 'Remove this block'}
+                </button>
+                <div style={{ fontSize:12, color:'#6B7280', lineHeight:1.5, margin:'0 2px 16px' }}>
+                  This opens {manageBlock.allDay ? 'this day' : 'this time'} back up for booking. Your appointments are not affected.
+                </div>
+                {!manageBlock.allDay && (
+                  <button
+                    onClick={() => { setMbStart(manageBlock.start.slice(0,5)); setMbEnd(manageBlock.end.slice(0,5)); setManageBlockError(''); setManageBlockEdit(true); }}
+                    style={{ width:'100%', padding:'15px 16px', borderRadius:12, border:'1.5px solid #A9C99A', background:'#EAF3E5', color:'#3A5C30', fontSize:15, fontWeight:700, cursor:'pointer', fontFamily:'inherit', marginBottom:10, textAlign:'left' }}>
+                    🕐&nbsp;&nbsp;Change the time instead
+                  </button>
+                )}
+                <button onClick={() => { setManageBlock(null); setManageBlockEdit(false); }} disabled={manageBlockSaving}
+                  style={{ width:'100%', background:'transparent', border:'none', color:'#9aa0a6', fontSize:14, fontWeight:600, padding:'6px', cursor:'pointer', fontFamily:'inherit' }}>
+                  Keep it
+                </button>
+              </>
+            ) : (
+              <>
+                <div style={{ fontSize:18, fontWeight:700, color:'#1F2937', fontFamily:'Georgia,serif', marginBottom:3 }}>Change the time</div>
+                <div style={{ fontSize:12.5, color:'#6B7280', marginBottom:16 }}>Blocked time{manageBlock.note ? ` · ${manageBlock.note}` : ''}</div>
+                <div style={{ display:'flex', alignItems:'flex-end', gap:12, marginBottom:12, flexWrap:'wrap' }}>
+                  <div style={{ flex:'1 1 130px', minWidth:120 }}>
+                    <label style={{ fontSize:11, fontWeight:700, color:'#6B7280', textTransform:'uppercase', letterSpacing:'0.06em', display:'block', marginBottom:6 }}>Start</label>
+                    <InlineTimeInput value={mbStart} onChange={(t)=>setMbStart(t)} placeholder="9:00 AM" ariaLabel="Start of blocked time" width="100%" disabled={manageBlockSaving} />
+                  </div>
+                  <div style={{ paddingBottom:10, fontFamily:'Georgia,serif', fontStyle:'italic', fontSize:14, color:'#6B7280' }}>to</div>
+                  <div style={{ flex:'1 1 130px', minWidth:120 }}>
+                    <label style={{ fontSize:11, fontWeight:700, color:'#6B7280', textTransform:'uppercase', letterSpacing:'0.06em', display:'block', marginBottom:6 }}>End</label>
+                    <InlineTimeInput value={mbEnd} onChange={(t)=>setMbEnd(t)} placeholder="10:00 AM" ariaLabel="End of blocked time" width="100%" disabled={manageBlockSaving} />
+                  </div>
+                </div>
+                {manageBlockError && <div style={{ fontSize:12.5, color:'#B91C1C', fontWeight:600, marginBottom:12 }}>{manageBlockError}</div>}
+                <div style={{ display:'flex', gap:10 }}>
+                  <button
+                    onClick={async () => {
+                      if (manageBlockSaving) return;
+                      if (!mbStart || !mbEnd || mbEnd <= mbStart) { setManageBlockError('The end time needs to be after the start time.'); return; }
+                      setManageBlockSaving(true);
+                      try { await updateBlockedDayTime(manageBlock.id, `${mbStart}:00`, `${mbEnd}:00`); setManageBlock(prev => prev ? { ...prev, start:`${mbStart}:00`, end:`${mbEnd}:00` } : prev); setManageBlockEdit(false); }
+                      finally { setManageBlockSaving(false); }
+                    }}
+                    disabled={manageBlockSaving}
+                    style={{ flex:1, padding:'14px', borderRadius:12, border:'none', background:'#2A5741', color:'#fff', fontSize:15, fontWeight:700, cursor: manageBlockSaving?'not-allowed':'pointer', opacity: manageBlockSaving?0.7:1, fontFamily:'inherit' }}>
+                    {manageBlockSaving ? 'Saving...' : 'Save'}
+                  </button>
+                  <button onClick={() => { setManageBlockEdit(false); setManageBlockError(''); }} disabled={manageBlockSaving}
+                    style={{ padding:'14px 18px', borderRadius:12, border:'1.5px solid #D1D5DB', background:'#fff', color:'#374151', fontSize:15, fontWeight:600, cursor:'pointer', fontFamily:'inherit' }}>
+                    Back
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </>
+      )}
 
       {/* Phase 1 (HK May 31 2026): CheckoutModal lives at root,
           not inside DetailPanel. Survives any DetailPanel remount.
