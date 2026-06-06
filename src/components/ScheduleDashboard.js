@@ -6792,11 +6792,12 @@ function MonthlyView({ therapist, appointments, today, onReschedule, onRefresh, 
           const cellBg = isSel ? '#EEF3EE'
             : isToday ? '#F0FDF4'
             : block.fullDay ? '#FEF3C7'
+            : block.partial ? '#FFFBEB'
             : '#fff';
           const cellBorder = isSel ? '#2A5741'
             : isToday ? '#86EFAC'
             : block.fullDay ? '#FBBF24'
-            : block.partial ? '#B5D4BE'
+            : block.partial ? '#FCD34D'
             : '#F3F4F6';
           const cellBorderWidth = isSel ? 2 : 1.5;
           const dateColor = isSel ? '#1F4030'
@@ -6818,7 +6819,7 @@ function MonthlyView({ therapist, appointments, today, onReschedule, onRefresh, 
                 {da.filter(a=>!a.preview&&a.status==='paid').length>0&&<div style={{width:5,height:5,borderRadius:'50%',background:'#16A34A'}} title="Paid"/>}
                 {da.filter(a=>!a.preview&&a.status==='intake-done').length>0&&<div style={{width:5,height:5,borderRadius:'50%',background:'#3B82F6'}} title="Intake received"/>}
                 {da.filter(a=>!a.preview&&a.status==='pending-intake').length>0&&<div style={{width:5,height:5,borderRadius:'50%',background:'#F59E0B'}} title="No intake"/>}
-                {block.partial && !block.fullDay && <div style={{width:5,height:5,borderRadius:'50%',background:'#6B9E80'}} title="Partial block"/>}
+                {block.partial && !block.fullDay && <div style={{width:5,height:5,borderRadius:'50%',background:'#D97706'}} title="Partial block"/>}
               </div>
             </div>
           );
@@ -6834,6 +6835,7 @@ function MonthlyView({ therapist, appointments, today, onReschedule, onRefresh, 
         // (a.date.getHours() on what was actually a string).
         const dateStrSel = `${selDate.getFullYear()}-${String(selDate.getMonth()+1).padStart(2,'0')}-${String(selDate.getDate()).padStart(2,'0')}`;
         const dayBlocks = (blockedDays || []).filter(b => b.date === dateStrSel && b.start_time && b.end_time);
+        const fullDayBlocks = (blockedDays || []).filter(b => b.date === dateStrSel && !b.start_time && !b.end_time);
         const realAppts = selAppts.filter(a => !a.preview);
         const t24 = (s) => {
           if (!s || typeof s !== 'string') return 0;
@@ -6843,18 +6845,46 @@ function MonthlyView({ therapist, appointments, today, onReschedule, onRefresh, 
           return (Number.isFinite(h) ? h : 0) * 60 + (Number.isFinite(m) ? m : 0);
         };
         const items = [
+          ...fullDayBlocks.map(b => ({ kind: 'fullblock', sortKey: -1, data: b })),
           ...realAppts.map(a => ({ kind: 'appt', sortKey: t2m(a.time), data: a })),
           ...dayBlocks.map(b => ({ kind: 'block', sortKey: t24(b.start_time), data: b })),
         ].sort((x, y) => x.sortKey - y.sortKey);
+        const timeOffCount = dayBlocks.length + fullDayBlocks.length;
         return (
           <>
             <div style={{fontSize:12,fontWeight:700,color:'#6B7280',textTransform:'uppercase',letterSpacing:'0.06em',marginBottom:10}}>
-              {fmtShort(selDate)}, {realAppts.length} appointment{realAppts.length!==1?'s':''}{dayBlocks.length > 0 ? ` · ${dayBlocks.length} time off` : ''}
+              {fmtShort(selDate)}, {realAppts.length} appointment{realAppts.length!==1?'s':''}{timeOffCount > 0 ? ` · ${timeOffCount} time off` : ''}
             </div>
             {items.length === 0
               ? <div style={{background:'#fff',borderRadius:12,padding:24,textAlign:'center',color:'#9CA3AF',fontSize:14}}>No appointments on this day.</div>
               : <div style={{display:'flex',flexDirection:'column',gap:8}}>
                   {items.map((item, idx) => {
+                    if (item.kind === 'fullblock') {
+                      const b = item.data;
+                      const reasonLabel = b.note || b.reason || 'Day blocked';
+                      return (
+                        <div key={`fullblock-${b.id || idx}`}
+                          onClick={(e) => { e.stopPropagation(); onManageBlock?.({ id: b.id, start: null, end: null, note: b.note, allDay: true }); }}
+                          style={{
+                            background: 'repeating-linear-gradient(45deg,#FEF3C7,#FEF3C7 6px,#FDE68A 6px,#FDE68A 7px)',
+                            border: '1.5px solid #FCD34D',
+                            borderLeft: '4px solid #D97706',
+                            borderRadius: 12,
+                            padding: '12px 16px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 12,
+                            cursor: 'pointer',
+                          }}>
+                          <div style={{width:36,height:36,borderRadius:'50%',background:'#FFFBEB',color:'#92400E',display:'flex',alignItems:'center',justifyContent:'center',fontSize:18,flexShrink:0}}>🌿</div>
+                          <div style={{flex:1}}>
+                            <div style={{fontSize:14,fontWeight:700,color:'#92400E'}}>{reasonLabel}</div>
+                            <div style={{fontSize:12,color:'#92400E',opacity:0.85,marginTop:2}}>Blocked all day</div>
+                          </div>
+                          <span style={{ flexShrink:0, fontSize:11, fontWeight:700, color:'#fff', background:'rgba(146,64,14,0.85)', borderRadius:999, padding:'3px 10px', whiteSpace:'nowrap' }}>Tap to edit</span>
+                        </div>
+                      );
+                    }
                     if (item.kind === 'block') {
                       const b = item.data;
                       const startStr = (b.start_time || '00:00').slice(0,5);
@@ -8419,9 +8449,16 @@ export default function ScheduleDashboard({ therapist }) {
 
   async function loadBlockedDays() {
     const tStart = performance.now();
+    // HK Jun 6 2026: weekly and monthly let you navigate back, so loading
+    // only today-forward made past blocks vanish in those views. Load from
+    // ~60 days back (blocks are sparse) through all future dates so every
+    // view that can navigate to a date has its blocks.
+    const floor = new Date();
+    floor.setDate(floor.getDate() - 60);
+    const floorStr = `${floor.getFullYear()}-${String(floor.getMonth()+1).padStart(2,'0')}-${String(floor.getDate()).padStart(2,'0')}`;
     const { data } = await supabase.from('blocked_days').select('*')
       .eq('therapist_id', therapist.id)
-      .gte('date', new Date().toISOString().slice(0,10))
+      .gte('date', floorStr)
       .order('date');
     // eslint-disable-next-line no-console
     console.log(`[SCHED-PERF] loadBlockedDays: ${(performance.now() - tStart).toFixed(0)}ms · rows=${data?.length || 0}`);
