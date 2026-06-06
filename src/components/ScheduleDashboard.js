@@ -5111,11 +5111,6 @@ function TimelineView({ therapist, allAppts, dayOffset, setDayOffset, today, onR
   // the resulting draft block being confirmed in a sheet.
   const longPressTimerRef = useRef(null);
   const longPressOriginRef = useRef(null);
-  // HK Jun 6 2026: drive block taps from pointer events. Inside this
-  // pointer-managed canvas iOS can drop the synthetic click, so onClick
-  // on a band was unreliable. We record the press point and treat a
-  // release with little movement as a tap.
-  const blockTapRef = useRef(null);
   const [pendingBlock, setPendingBlock] = useState(null);  // {date, startTime, endTime, note}
   const [blockSheetSaving, setBlockSheetSaving] = useState(false);
   const [blockSheetError, setBlockSheetError] = useState('');
@@ -5569,8 +5564,7 @@ function TimelineView({ therapist, allAppts, dayOffset, setDayOffset, today, onR
           {myFullDayBlocksToday.length > 0 && (
             <div
               data-appt-card="1"
-              onPointerDown={(e) => { e.stopPropagation(); blockTapRef.current = { x: e.clientX, y: e.clientY }; }}
-              onPointerUp={(e) => { e.stopPropagation(); const o = blockTapRef.current; blockTapRef.current = null; if (o && Math.abs(e.clientX - o.x) < 10 && Math.abs(e.clientY - o.y) < 10) { const b = myFullDayBlocksToday[0]; onManageBlock?.({ id: b.id, start: null, end: null, note: b.note, allDay: true }); } }}
+              onClick={() => { const b = myFullDayBlocksToday[0]; onManageBlock?.({ id: b.id, start: null, end: null, note: b.note, allDay: true }); }}
               style={{
                 position: 'absolute',
                 top: 0,
@@ -5634,8 +5628,7 @@ function TimelineView({ therapist, allAppts, dayOffset, setDayOffset, today, onR
               <div
                 key={`my-block-${b.id}`}
                 data-appt-card="1"
-                onPointerDown={(e) => { e.stopPropagation(); blockTapRef.current = { x: e.clientX, y: e.clientY }; }}
-                onPointerUp={(e) => { e.stopPropagation(); const o = blockTapRef.current; blockTapRef.current = null; if (o && Math.abs(e.clientX - o.x) < 10 && Math.abs(e.clientY - o.y) < 10) { onManageBlock?.({ id: b.id, start: b.start_time, end: b.end_time, note: b.note, allDay: false }); } }}
+                onClick={() => onManageBlock?.({ id: b.id, start: b.start_time, end: b.end_time, note: b.note, allDay: false })}
                 style={{
                   position: 'absolute',
                   top: y,
