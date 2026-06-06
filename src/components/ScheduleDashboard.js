@@ -5709,6 +5709,12 @@ function TimelineView({ therapist, allAppts, dayOffset, setDayOffset, today, onR
                   alignItems:'center',
                   justifyContent:'center',
                   opacity: isShortGap ? 0.9 : 1,
+                  // HK Jun 6 2026: the gap band is decorative (no action of
+                  // its own). It was painted over blocked bands and stealing
+                  // their taps, so a tap on a block did nothing. Let taps pass
+                  // through to the block underneath (and to the canvas long
+                  // press on truly open time).
+                  pointerEvents:'none',
                 }}>
                   {gh>18 && (
                     isShortGap ? (
