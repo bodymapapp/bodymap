@@ -5078,7 +5078,7 @@ export function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelle
   );
 }
 
-function TimelineView({ therapist, allAppts, dayOffset, setDayOffset, today, onReschedule, onRefresh, blockedDays = [], onCreateBlock, onRemoveBlock, onScheduleAtTime, selectedBookingId = '', setSelectedBookingId, onRequestCheckout, onRequestCancel, onOpenBooking, paymentsRefreshTick = 0 }) {
+function TimelineView({ therapist, allAppts, dayOffset, setDayOffset, today, onReschedule, onRefresh, blockedDays = [], onCreateBlock, onRemoveBlock, onUpdateBlock, onScheduleAtTime, selectedBookingId = '', setSelectedBookingId, onRequestCheckout, onRequestCancel, onOpenBooking, paymentsRefreshTick = 0 }) {
   const { toast: tlToast, showToast: tlShowToast } = useToast();
 
   // HK May 31 2026: selected booking is DERIVED from selectedBookingId
@@ -5118,6 +5118,11 @@ function TimelineView({ therapist, allAppts, dayOffset, setDayOffset, today, onR
   // right here, instead of hunting in Settings. Holds the tapped block.
   const [manageBlock, setManageBlock] = useState(null); // {id, start, end, note, allDay}
   const [manageBlockSaving, setManageBlockSaving] = useState(false);
+  // HK Jun 6 2026: edit a block in place (the approved unified sheet).
+  const [manageBlockEdit, setManageBlockEdit] = useState(false);
+  const [mbStart, setMbStart] = useState('09:00');
+  const [mbEnd, setMbEnd] = useState('10:00');
+  const [manageBlockError, setManageBlockError] = useState('');
   // Date-specific availability (HK Jun 4 2026). Recurring weekly hours
   // are loaded read-only so the bar can show the day's effective hours;
   // a date override wins. The sheet edits the override for one date.
@@ -5653,7 +5658,7 @@ function TimelineView({ therapist, allAppts, dayOffset, setDayOffset, today, onR
                   🌿 Blocked {fmtTime12(b.start_time.slice(0,5))} to {fmtTime12(b.end_time.slice(0,5))}
                   {b.note ? <span style={{ marginLeft: 8, fontStyle: 'italic', fontWeight: 500, textTransform: 'none', letterSpacing: 0, color:'#9A3412' }}>· {b.note}</span> : null}
                 </div>
-                <span style={{ flexShrink: 0, fontSize: 11, fontWeight: 700, color: '#fff', background: 'rgba(146,64,14,0.85)', borderRadius: 999, padding: '3px 10px', whiteSpace: 'nowrap' }}>Tap to remove</span>
+                <span style={{ flexShrink: 0, fontSize: 11, fontWeight: 700, color: '#fff', background: 'rgba(146,64,14,0.85)', borderRadius: 999, padding: '3px 10px', whiteSpace: 'nowrap' }}>Tap to edit</span>
               </div>
             );
           })}
@@ -5871,7 +5876,7 @@ function TimelineView({ therapist, allAppts, dayOffset, setDayOffset, today, onR
       {manageBlock && (
         <>
           <div
-            onClick={() => !manageBlockSaving && setManageBlock(null)}
+            onClick={() => { if (!manageBlockSaving) { setManageBlock(null); setManageBlockEdit(false); } }}
             style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.4)',zIndex:300,backdropFilter:'blur(2px)'}}
           />
           <div style={{
@@ -5880,32 +5885,74 @@ function TimelineView({ therapist, allAppts, dayOffset, setDayOffset, today, onR
             boxShadow:'0 20px 60px rgba(0,0,0,0.25)', zIndex:301,
             width:'min(420px, calc(100vw - 32px))', maxWidth:420,
           }}>
-            <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:14 }}>
-              <div style={{ fontSize:24 }}>🌿</div>
-              <div style={{ flex:1 }}>
-                <div style={{ fontSize:18, fontWeight:700, color:'#1F2937', fontFamily:'Georgia,serif' }}>Remove this blocked time?</div>
-                <div style={{ fontSize:12.5, color:'#6B7280', marginTop:3 }}>
-                  {manageBlock.allDay ? 'Blocked all day' : `Blocked ${fmtTime12(manageBlock.start.slice(0,5))} to ${fmtTime12(manageBlock.end.slice(0,5))}`}{manageBlock.note ? ` · ${manageBlock.note}` : ''}
+            {!manageBlockEdit ? (
+              <>
+                <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:16 }}>
+                  <div style={{ fontSize:24 }}>🌿</div>
+                  <div style={{ flex:1 }}>
+                    <div style={{ fontSize:18, fontWeight:700, color:'#1F2937', fontFamily:'Georgia,serif' }}>You blocked this time</div>
+                    <div style={{ fontSize:12.5, color:'#6B7280', marginTop:3 }}>
+                      {manageBlock.allDay ? 'Blocked all day' : `${fmtTime12(manageBlock.start.slice(0,5))} to ${fmtTime12(manageBlock.end.slice(0,5))}`}{manageBlock.note ? ` · ${manageBlock.note}` : ''}
+                    </div>
+                  </div>
                 </div>
-              </div>
-            </div>
-            <div style={{ fontSize:13, color:'#4B5563', lineHeight:1.5, marginBottom:18 }}>
-              This opens the time back up so you can book it again. Your appointments are not affected.
-            </div>
-            <div style={{ display:'flex', gap:10 }}>
-              <button
-                onClick={async () => { if (manageBlockSaving) return; setManageBlockSaving(true); try { await onRemoveBlock?.(manageBlock.id); } finally { setManageBlockSaving(false); setManageBlock(null); } }}
-                disabled={manageBlockSaving}
-                style={{ flex:1, padding:'13px', borderRadius:11, border:'none', background:'#B91C1C', color:'#fff', fontSize:14.5, fontWeight:700, cursor: manageBlockSaving?'not-allowed':'pointer', opacity: manageBlockSaving?0.7:1, fontFamily:'inherit' }}>
-                {manageBlockSaving ? 'Removing...' : 'Remove block'}
-              </button>
-              <button
-                onClick={() => !manageBlockSaving && setManageBlock(null)}
-                disabled={manageBlockSaving}
-                style={{ padding:'13px 18px', borderRadius:11, border:'1.5px solid #D1D5DB', background:'#fff', color:'#374151', fontSize:14.5, fontWeight:600, cursor:'pointer', fontFamily:'inherit' }}>
-                Keep it
-              </button>
-            </div>
+                {!manageBlock.allDay && (
+                  <button
+                    onClick={() => { setMbStart(manageBlock.start.slice(0,5)); setMbEnd(manageBlock.end.slice(0,5)); setManageBlockError(''); setManageBlockEdit(true); }}
+                    style={{ width:'100%', padding:'15px 16px', borderRadius:12, border:'none', background:'#2A5741', color:'#fff', fontSize:15, fontWeight:700, cursor:'pointer', fontFamily:'inherit', marginBottom:10, textAlign:'left' }}>
+                    🕐&nbsp;&nbsp;Change the time
+                  </button>
+                )}
+                <button
+                  onClick={async () => { if (manageBlockSaving) return; setManageBlockSaving(true); try { await onRemoveBlock?.(manageBlock.id); } finally { setManageBlockSaving(false); setManageBlock(null); setManageBlockEdit(false); } }}
+                  disabled={manageBlockSaving}
+                  style={{ width:'100%', padding:'15px 16px', borderRadius:12, border:'1px solid #F3C9C9', background:'#FDECEC', color:'#B91C1C', fontSize:15, fontWeight:700, cursor: manageBlockSaving?'not-allowed':'pointer', opacity: manageBlockSaving?0.7:1, fontFamily:'inherit', marginBottom:10, textAlign:'left' }}>
+                  🌿&nbsp;&nbsp;{manageBlockSaving ? 'Removing...' : 'Remove (opens this time back up)'}
+                </button>
+                <div style={{ fontSize:12, color:'#6B7280', lineHeight:1.5, margin:'2px 2px 14px' }}>
+                  Removing this lets clients book {manageBlock.allDay ? 'this day' : 'this time'} again. Your appointments are not affected.
+                </div>
+                <button onClick={() => { setManageBlock(null); setManageBlockEdit(false); }} disabled={manageBlockSaving}
+                  style={{ width:'100%', background:'transparent', border:'none', color:'#9aa0a6', fontSize:14, fontWeight:600, padding:'6px', cursor:'pointer', fontFamily:'inherit' }}>
+                  Close
+                </button>
+              </>
+            ) : (
+              <>
+                <div style={{ fontSize:18, fontWeight:700, color:'#1F2937', fontFamily:'Georgia,serif', marginBottom:3 }}>Change the time</div>
+                <div style={{ fontSize:12.5, color:'#6B7280', marginBottom:16 }}>Blocked time{manageBlock.note ? ` · ${manageBlock.note}` : ''}</div>
+                <div style={{ display:'flex', alignItems:'flex-end', gap:12, marginBottom:12, flexWrap:'wrap' }}>
+                  <div style={{ flex:'1 1 130px', minWidth:120 }}>
+                    <label style={{ fontSize:11, fontWeight:700, color:'#6B7280', textTransform:'uppercase', letterSpacing:'0.06em', display:'block', marginBottom:6 }}>Start</label>
+                    <InlineTimeInput value={mbStart} onChange={(t)=>setMbStart(t)} placeholder="9:00 AM" ariaLabel="Start of blocked time" width="100%" disabled={manageBlockSaving} />
+                  </div>
+                  <div style={{ paddingBottom:10, fontFamily:'Georgia,serif', fontStyle:'italic', fontSize:14, color:'#6B7280' }}>to</div>
+                  <div style={{ flex:'1 1 130px', minWidth:120 }}>
+                    <label style={{ fontSize:11, fontWeight:700, color:'#6B7280', textTransform:'uppercase', letterSpacing:'0.06em', display:'block', marginBottom:6 }}>End</label>
+                    <InlineTimeInput value={mbEnd} onChange={(t)=>setMbEnd(t)} placeholder="10:00 AM" ariaLabel="End of blocked time" width="100%" disabled={manageBlockSaving} />
+                  </div>
+                </div>
+                {manageBlockError && <div style={{ fontSize:12.5, color:'#B91C1C', fontWeight:600, marginBottom:12 }}>{manageBlockError}</div>}
+                <div style={{ display:'flex', gap:10 }}>
+                  <button
+                    onClick={async () => {
+                      if (manageBlockSaving) return;
+                      if (!mbStart || !mbEnd || mbEnd <= mbStart) { setManageBlockError('The end time needs to be after the start time.'); return; }
+                      setManageBlockSaving(true);
+                      try { await onUpdateBlock?.(manageBlock.id, `${mbStart}:00`, `${mbEnd}:00`); setManageBlock(prev => prev ? { ...prev, start:`${mbStart}:00`, end:`${mbEnd}:00` } : prev); setManageBlockEdit(false); }
+                      finally { setManageBlockSaving(false); }
+                    }}
+                    disabled={manageBlockSaving}
+                    style={{ flex:1, padding:'14px', borderRadius:12, border:'none', background:'#2A5741', color:'#fff', fontSize:15, fontWeight:700, cursor: manageBlockSaving?'not-allowed':'pointer', opacity: manageBlockSaving?0.7:1, fontFamily:'inherit' }}>
+                    {manageBlockSaving ? 'Saving...' : 'Save'}
+                  </button>
+                  <button onClick={() => { setManageBlockEdit(false); setManageBlockError(''); }} disabled={manageBlockSaving}
+                    style={{ padding:'14px 18px', borderRadius:12, border:'1.5px solid #D1D5DB', background:'#fff', color:'#374151', fontSize:15, fontWeight:600, cursor:'pointer', fontFamily:'inherit' }}>
+                    Back
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         </>
       )}
@@ -8592,6 +8639,12 @@ export default function ScheduleDashboard({ therapist }) {
     setBlockedDays(prev => prev.filter(d => d.id !== id));
   }
 
+  // HK Jun 6 2026: edit an existing timed block's window in place.
+  async function updateBlockedDayTime(id, start, end) {
+    await supabase.from('blocked_days').update({ start_time: start, end_time: end }).eq('id', id);
+    setBlockedDays(prev => prev.map(d => d.id === id ? { ...d, start_time: start, end_time: end } : d));
+  }
+
   // Multi-day block range insert (HK May 21 2026, supports the 10-day
   // vacation use case Jackie raised). Walks the inclusive range from
   // blockDate to blockEndDate, creating one full-day blocked_days row
@@ -9456,7 +9509,7 @@ export default function ScheduleDashboard({ therapist }) {
 
             {/* RIGHT PANE: tab-selected calendar/insights view. */}
             <div style={{ minWidth: 0 }}>
-              {subView==='today'   &&<ViewErrorBoundary viewName="Today"><TimelineView therapist={therapist} allAppts={allAppts} dayOffset={dayOffset} setDayOffset={setDayOffset} today={today} onReschedule={setRescheduleAppt} onRefresh={fetchBookings} blockedDays={blockedDays} onCreateBlock={addBlockedDay} onRemoveBlock={removeBlockedDay} onScheduleAtTime={setPendingBookingTime} selectedBookingId={selectedBookingId} setSelectedBookingId={setSelectedBookingId} onRequestCheckout={requestCheckout} onRequestCancel={requestCancel} onOpenBooking={openBooking} paymentsRefreshTick={paymentsRefreshTick}/></ViewErrorBoundary>}
+              {subView==='today'   &&<ViewErrorBoundary viewName="Today"><TimelineView therapist={therapist} allAppts={allAppts} dayOffset={dayOffset} setDayOffset={setDayOffset} today={today} onReschedule={setRescheduleAppt} onRefresh={fetchBookings} blockedDays={blockedDays} onCreateBlock={addBlockedDay} onRemoveBlock={removeBlockedDay} onUpdateBlock={updateBlockedDayTime} onScheduleAtTime={setPendingBookingTime} selectedBookingId={selectedBookingId} setSelectedBookingId={setSelectedBookingId} onRequestCheckout={requestCheckout} onRequestCancel={requestCancel} onOpenBooking={openBooking} paymentsRefreshTick={paymentsRefreshTick}/></ViewErrorBoundary>}
               {subView==='weekly'  &&<ViewErrorBoundary viewName="Weekly"><WeeklyView therapist={therapist} appointments={allAppts} today={today} onReschedule={setRescheduleAppt} onRefresh={fetchBookings} blockedDays={blockedDays} selectedBookingId={selectedBookingId} setSelectedBookingId={setSelectedBookingId} onRequestCheckout={requestCheckout} onRequestCancel={requestCancel} onOpenBooking={openBooking} paymentsRefreshTick={paymentsRefreshTick}/></ViewErrorBoundary>}
               {subView==='monthly' &&<ViewErrorBoundary viewName="Monthly"><MonthlyView therapist={therapist} appointments={allAppts} today={today} onReschedule={setRescheduleAppt} onRefresh={fetchBookings} blockedDays={blockedDays} selectedBookingId={selectedBookingId} setSelectedBookingId={setSelectedBookingId} onRequestCheckout={requestCheckout} onRequestCancel={requestCancel} onOpenBooking={openBooking} paymentsRefreshTick={paymentsRefreshTick}/></ViewErrorBoundary>}
               {subView==='yearly'  &&<ViewErrorBoundary viewName="Yearly"><YearlyView therapist={therapist} appointments={allAppts} today={today} blockedDays={blockedDays}/></ViewErrorBoundary>}
