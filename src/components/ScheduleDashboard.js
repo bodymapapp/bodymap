@@ -5078,7 +5078,7 @@ export function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelle
   );
 }
 
-function TimelineView({ therapist, allAppts, dayOffset, setDayOffset, today, onReschedule, onRefresh, blockedDays = [], onCreateBlock, onScheduleAtTime, selectedBookingId = '', setSelectedBookingId, onRequestCheckout, onRequestCancel, onOpenBooking, paymentsRefreshTick = 0 }) {
+function TimelineView({ therapist, allAppts, dayOffset, setDayOffset, today, onReschedule, onRefresh, blockedDays = [], onCreateBlock, onRemoveBlock, onScheduleAtTime, selectedBookingId = '', setSelectedBookingId, onRequestCheckout, onRequestCancel, onOpenBooking, paymentsRefreshTick = 0 }) {
   const { toast: tlToast, showToast: tlShowToast } = useToast();
 
   // HK May 31 2026: selected booking is DERIVED from selectedBookingId
@@ -5114,6 +5114,10 @@ function TimelineView({ therapist, allAppts, dayOffset, setDayOffset, today, onR
   const [pendingBlock, setPendingBlock] = useState(null);  // {date, startTime, endTime, note}
   const [blockSheetSaving, setBlockSheetSaving] = useState(false);
   const [blockSheetError, setBlockSheetError] = useState('');
+  // HK Jun 6 2026: tap an existing block on the timeline to remove it
+  // right here, instead of hunting in Settings. Holds the tapped block.
+  const [manageBlock, setManageBlock] = useState(null); // {id, start, end, note, allDay}
+  const [manageBlockSaving, setManageBlockSaving] = useState(false);
   // Date-specific availability (HK Jun 4 2026). Recurring weekly hours
   // are loaded read-only so the bar can show the day's effective hours;
   // a date override wins. The sheet edits the override for one date.
@@ -5562,6 +5566,7 @@ function TimelineView({ therapist, allAppts, dayOffset, setDayOffset, today, onR
           {myFullDayBlocksToday.length > 0 && (
             <div
               data-appt-card="1"
+              onClick={(e) => { e.stopPropagation(); const b = myFullDayBlocksToday[0]; setManageBlock({ id: b.id, start: null, end: null, note: b.note, allDay: true }); }}
               style={{
                 position: 'absolute',
                 top: 0,
@@ -5571,7 +5576,8 @@ function TimelineView({ therapist, allAppts, dayOffset, setDayOffset, today, onR
                 background: 'repeating-linear-gradient(45deg, rgba(217,119,6,0.08), rgba(217,119,6,0.08) 8px, rgba(217,119,6,0.16) 8px, rgba(217,119,6,0.16) 16px)',
                 border: '1.5px solid rgba(217,119,6,0.4)',
                 borderRadius: 12,
-                pointerEvents: 'none',
+                pointerEvents: 'auto',
+                cursor: 'pointer',
                 zIndex: 1,
               }}
             >
@@ -5604,6 +5610,9 @@ function TimelineView({ therapist, allAppts, dayOffset, setDayOffset, today, onR
                   {myFullDayBlocksToday[0].note}
                 </div>
               )}
+              <div style={{ position: 'absolute', top: myFullDayBlocksToday[0].note ? 76 : 50, left: 0, right: 0, textAlign: 'center' }}>
+                <span style={{ fontSize: 11, fontWeight: 700, color: '#fff', background: 'rgba(146,64,14,0.85)', borderRadius: 999, padding: '4px 12px' }}>Tap to remove</span>
+              </div>
             </div>
           )}
 
@@ -5621,6 +5630,7 @@ function TimelineView({ therapist, allAppts, dayOffset, setDayOffset, today, onR
               <div
                 key={`my-block-${b.id}`}
                 data-appt-card="1"
+                onClick={(e) => { e.stopPropagation(); setManageBlock({ id: b.id, start: b.start_time, end: b.end_time, note: b.note, allDay: false }); }}
                 style={{
                   position: 'absolute',
                   top: y,
@@ -5632,14 +5642,18 @@ function TimelineView({ therapist, allAppts, dayOffset, setDayOffset, today, onR
                   borderRadius: 8,
                   display: 'flex',
                   alignItems: 'center',
+                  justifyContent: 'space-between',
                   paddingLeft: 14,
-                  pointerEvents: 'none',
+                  paddingRight: 12,
+                  pointerEvents: 'auto',
+                  cursor: 'pointer',
                 }}
               >
                 <div style={{ fontSize: 11.5, fontWeight: 700, color: '#92400E', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                   🌿 Blocked {fmtTime12(b.start_time.slice(0,5))} to {fmtTime12(b.end_time.slice(0,5))}
                   {b.note ? <span style={{ marginLeft: 8, fontStyle: 'italic', fontWeight: 500, textTransform: 'none', letterSpacing: 0, color:'#9A3412' }}>· {b.note}</span> : null}
                 </div>
+                <span style={{ flexShrink: 0, fontSize: 11, fontWeight: 700, color: '#fff', background: 'rgba(146,64,14,0.85)', borderRadius: 999, padding: '3px 10px', whiteSpace: 'nowrap' }}>Tap to remove</span>
               </div>
             );
           })}
@@ -5850,6 +5864,48 @@ function TimelineView({ therapist, allAppts, dayOffset, setDayOffset, today, onR
               <button onClick={removeHoursOverride} disabled={hoursSheetSaving}
                 style={{width:'100%',marginTop:10,background:'transparent',color:'#991B1B',border:'none',padding:'8px',fontSize:12.5,fontWeight:600,cursor:hoursSheetSaving?'not-allowed':'pointer',textDecoration:'underline'}}>Remove this adjustment (use weekly hours)</button>
             )}
+          </div>
+        </>
+      )}
+
+      {manageBlock && (
+        <>
+          <div
+            onClick={() => !manageBlockSaving && setManageBlock(null)}
+            style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.4)',zIndex:300,backdropFilter:'blur(2px)'}}
+          />
+          <div style={{
+            position:'fixed', top:'50%', left:'50%', transform:'translate(-50%, -50%)',
+            background:'#fff', borderRadius:14, padding:'24px 26px',
+            boxShadow:'0 20px 60px rgba(0,0,0,0.25)', zIndex:301,
+            width:'min(420px, calc(100vw - 32px))', maxWidth:420,
+          }}>
+            <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:14 }}>
+              <div style={{ fontSize:24 }}>🌿</div>
+              <div style={{ flex:1 }}>
+                <div style={{ fontSize:18, fontWeight:700, color:'#1F2937', fontFamily:'Georgia,serif' }}>Remove this blocked time?</div>
+                <div style={{ fontSize:12.5, color:'#6B7280', marginTop:3 }}>
+                  {manageBlock.allDay ? 'Blocked all day' : `Blocked ${fmtTime12(manageBlock.start.slice(0,5))} to ${fmtTime12(manageBlock.end.slice(0,5))}`}{manageBlock.note ? ` · ${manageBlock.note}` : ''}
+                </div>
+              </div>
+            </div>
+            <div style={{ fontSize:13, color:'#4B5563', lineHeight:1.5, marginBottom:18 }}>
+              This opens the time back up so you can book it again. Your appointments are not affected.
+            </div>
+            <div style={{ display:'flex', gap:10 }}>
+              <button
+                onClick={async () => { if (manageBlockSaving) return; setManageBlockSaving(true); try { await onRemoveBlock?.(manageBlock.id); } finally { setManageBlockSaving(false); setManageBlock(null); } }}
+                disabled={manageBlockSaving}
+                style={{ flex:1, padding:'13px', borderRadius:11, border:'none', background:'#B91C1C', color:'#fff', fontSize:14.5, fontWeight:700, cursor: manageBlockSaving?'not-allowed':'pointer', opacity: manageBlockSaving?0.7:1, fontFamily:'inherit' }}>
+                {manageBlockSaving ? 'Removing...' : 'Remove block'}
+              </button>
+              <button
+                onClick={() => !manageBlockSaving && setManageBlock(null)}
+                disabled={manageBlockSaving}
+                style={{ padding:'13px 18px', borderRadius:11, border:'1.5px solid #D1D5DB', background:'#fff', color:'#374151', fontSize:14.5, fontWeight:600, cursor:'pointer', fontFamily:'inherit' }}>
+                Keep it
+              </button>
+            </div>
           </div>
         </>
       )}
@@ -9400,7 +9456,7 @@ export default function ScheduleDashboard({ therapist }) {
 
             {/* RIGHT PANE: tab-selected calendar/insights view. */}
             <div style={{ minWidth: 0 }}>
-              {subView==='today'   &&<ViewErrorBoundary viewName="Today"><TimelineView therapist={therapist} allAppts={allAppts} dayOffset={dayOffset} setDayOffset={setDayOffset} today={today} onReschedule={setRescheduleAppt} onRefresh={fetchBookings} blockedDays={blockedDays} onCreateBlock={addBlockedDay} onScheduleAtTime={setPendingBookingTime} selectedBookingId={selectedBookingId} setSelectedBookingId={setSelectedBookingId} onRequestCheckout={requestCheckout} onRequestCancel={requestCancel} onOpenBooking={openBooking} paymentsRefreshTick={paymentsRefreshTick}/></ViewErrorBoundary>}
+              {subView==='today'   &&<ViewErrorBoundary viewName="Today"><TimelineView therapist={therapist} allAppts={allAppts} dayOffset={dayOffset} setDayOffset={setDayOffset} today={today} onReschedule={setRescheduleAppt} onRefresh={fetchBookings} blockedDays={blockedDays} onCreateBlock={addBlockedDay} onRemoveBlock={removeBlockedDay} onScheduleAtTime={setPendingBookingTime} selectedBookingId={selectedBookingId} setSelectedBookingId={setSelectedBookingId} onRequestCheckout={requestCheckout} onRequestCancel={requestCancel} onOpenBooking={openBooking} paymentsRefreshTick={paymentsRefreshTick}/></ViewErrorBoundary>}
               {subView==='weekly'  &&<ViewErrorBoundary viewName="Weekly"><WeeklyView therapist={therapist} appointments={allAppts} today={today} onReschedule={setRescheduleAppt} onRefresh={fetchBookings} blockedDays={blockedDays} selectedBookingId={selectedBookingId} setSelectedBookingId={setSelectedBookingId} onRequestCheckout={requestCheckout} onRequestCancel={requestCancel} onOpenBooking={openBooking} paymentsRefreshTick={paymentsRefreshTick}/></ViewErrorBoundary>}
               {subView==='monthly' &&<ViewErrorBoundary viewName="Monthly"><MonthlyView therapist={therapist} appointments={allAppts} today={today} onReschedule={setRescheduleAppt} onRefresh={fetchBookings} blockedDays={blockedDays} selectedBookingId={selectedBookingId} setSelectedBookingId={setSelectedBookingId} onRequestCheckout={requestCheckout} onRequestCancel={requestCancel} onOpenBooking={openBooking} paymentsRefreshTick={paymentsRefreshTick}/></ViewErrorBoundary>}
               {subView==='yearly'  &&<ViewErrorBoundary viewName="Yearly"><YearlyView therapist={therapist} appointments={allAppts} today={today} blockedDays={blockedDays}/></ViewErrorBoundary>}
