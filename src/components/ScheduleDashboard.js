@@ -6332,19 +6332,41 @@ function WeeklyView({ therapist, appointments, today, onReschedule, onRefresh, b
                   );
                 })()}
 
-                {/* Appointment rows (or block message) */}
-                {dayAppts.length===0 && isFullBlocked
-                  ? <div style={{padding:'14px 16px',fontSize:12,color:'#92400E',fontStyle:'italic',textAlign:'center'}}>
-                      {block.reasons.length ? block.reasons[0] : 'You blocked this day off. Booking page will not offer it.'}
-                    </div>
-                  : dayAppts.length===0 && block.partial
-                  ? <div style={{padding:'14px 16px',fontSize:12,color:'#5C7A66',fontStyle:'italic',textAlign:'center'}}>
-                      Part of this day is blocked. Booking page only offers the open windows.
-                    </div>
-                  : dayAppts.length===0
-                  ? <div style={{padding:'14px 16px',fontSize:12,color:'#B4B4B4',fontStyle:'italic',textAlign:'center'}}>Open day</div>
-                  : <div style={{display:'flex',flexDirection:'column'}}>
-                      {dayAppts.map((appt,idx)=>{
+                {/* Appointment + timed-block rows, time sorted */}
+                {(() => {
+                  const dStr = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+                  const blkRows = (blockedDays || []).filter(b => b.date === dStr && b.start_time && b.end_time);
+                  const tMin = (s) => parseInt((s||'0').slice(0,2),10)*60 + parseInt((s||'0').slice(3,5),10);
+                  const rows = [
+                    ...dayAppts.map(a => ({ kind:'appt', sort: t2m(a.time), a })),
+                    ...blkRows.map(b => ({ kind:'block', sort: tMin(b.start_time), b })),
+                  ].sort((x,y) => x.sort - y.sort);
+                  if (rows.length === 0) {
+                    if (isFullBlocked) return (
+                      <div style={{padding:'14px 16px',fontSize:12,color:'#92400E',fontStyle:'italic',textAlign:'center'}}>
+                        {block.reasons.length ? block.reasons[0] : 'You blocked this day off. Booking page will not offer it.'}
+                      </div>
+                    );
+                    return <div style={{padding:'14px 16px',fontSize:12,color:'#B4B4B4',fontStyle:'italic',textAlign:'center'}}>Open day</div>;
+                  }
+                  return (
+                    <div style={{display:'flex',flexDirection:'column'}}>
+                      {rows.map((row,idx)=>{
+                        if (row.kind === 'block') {
+                          const b = row.b;
+                          return (
+                            <div key={`wblk-${b.id||idx}`} onClick={(e)=>{ e.stopPropagation(); onManageBlock?.({ id:b.id, start:b.start_time, end:b.end_time, note:b.note, allDay:false }); }}
+                              style={{display:'flex',alignItems:'center',gap:12,padding:'12px 14px',cursor:'pointer',borderTop:idx>0?'1px solid #F3F4F6':'none',background:'#FFFBEB'}}>
+                              <div style={{width:36,height:36,borderRadius:'50%',background:'#FEF3C7',color:'#92400E',display:'flex',alignItems:'center',justifyContent:'center',fontSize:16,flexShrink:0}}>🌿</div>
+                              <div style={{flex:1,minWidth:0}}>
+                                <div style={{fontSize:14,fontWeight:700,color:'#92400E'}}>{b.note || b.reason || 'Time off'}</div>
+                                <div style={{fontSize:12,color:'#92400E',opacity:0.85}}>{fmt12(b.start_time.slice(0,5))} - {fmt12(b.end_time.slice(0,5))} · Blocked</div>
+                              </div>
+                              <span style={{flexShrink:0,fontSize:11,fontWeight:700,color:'#fff',background:'rgba(146,64,14,0.85)',borderRadius:999,padding:'3px 10px',whiteSpace:'nowrap'}}>Tap to edit</span>
+                            </div>
+                          );
+                        }
+                        const appt = row.a;
                         const st=STATUS[appt.status]||STATUS['pending-intake'];
                         return (
                           <div key={appt.id} onClick={()=>!appt.preview&&setSelected(appt)}
@@ -6370,7 +6392,8 @@ function WeeklyView({ therapist, appointments, today, onReschedule, onRefresh, b
                         );
                       })}
                     </div>
-                }
+                  );
+                })()}
               </div>
             );
           })}
