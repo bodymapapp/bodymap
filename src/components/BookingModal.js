@@ -97,6 +97,10 @@ export default function BookingModal({ therapist, mode = 'create', existingBooki
   const [loadingSlots, setLoadingSlots] = useState(false);
   const [blockedDates, setBlockedDates] = useState(new Set());
   const [blockedDay, setBlockedDay] = useState(false);
+  // HK Jun 5 2026: when a manual booking is stopped only by a block the
+  // therapist set herself, we hold that block here and offer one tap to
+  // remove it and book, instead of a dead-end "pick another time".
+  const [blockConflict, setBlockConflict] = useState(null);
   // Phase 9.1: partial-day blocks keyed by date string.
   const [partialBlocksByDate, setPartialBlocksByDate] = useState({});
   // HK May 29 2026: existing-bookings count per date for the sage-dots
@@ -286,6 +290,11 @@ export default function BookingModal({ therapist, mode = 'create', existingBooki
     generateSlots();
   }, [date, serviceId, blockedDates]);
 
+  // HK Jun 5 2026: a stale "remove block" banner should never linger once
+  // the therapist changes the time, date, or service. Each save attempt
+  // recomputes it fresh.
+  useEffect(() => { setBlockConflict(null); }, [slot, date, serviceId]);
+
   async function generateSlots() {
     setLoadingSlots(true);
     setSlots([]);
@@ -395,8 +404,40 @@ export default function BookingModal({ therapist, mode = 'create', existingBooki
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loadingSlots, slots.length, serviceId]);
 
+  // HK Jun 5 2026: the guided-fix action. Remove the therapist's own
+  // block, mirror that into local state so the grid and guard agree, then
+  // continue the same booking. Only ever removes a block (never a client
+  // booking), and only the specific block that was in the way.
+  async function removeBlockAndBook() {
+    if (!blockConflict?.id) { setBlockConflict(null); return; }
+    setSaving(true);
+    setError('');
+    const { error: delErr } = await supabase
+      .from('blocked_days').delete()
+      .eq('id', blockConflict.id)
+      .eq('therapist_id', therapist.id);
+    if (delErr) { setSaving(false); setError('Could not remove the block. Please try again.'); return; }
+    const hhmm = blockConflict.start ? blockConflict.start.slice(0, 5) : null;
+    const hhmmEnd = blockConflict.end ? blockConflict.end.slice(0, 5) : null;
+    if (hhmm) {
+      setPartialBlocksByDate(prev => {
+        const next = { ...prev };
+        if (next[date]) {
+          next[date] = next[date].filter(b => !(b.start_time === hhmm && b.end_time === hhmmEnd));
+          if (next[date].length === 0) delete next[date];
+        }
+        return next;
+      });
+    } else {
+      setBlockedDates(prev => { const n = new Set(prev); n.delete(date); return n; });
+    }
+    setBlockConflict(null);
+    save();
+  }
+
   async function save() {
     setError('');
+    setBlockConflict(null);
     if (!name.trim())   { setError('Client name is required.'); return; }
     if (!date)          { setError('Please pick a date.'); return; }
     if (!slot)          { setError('Please pick a time slot.'); return; }
@@ -562,7 +603,7 @@ export default function BookingModal({ therapist, mode = 'create', existingBooki
             .eq('booking_date', date),
           supabase
             .from('blocked_days')
-            .select('date, start_time, end_time')
+            .select('id, date, start_time, end_time, note')
             .eq('therapist_id', therapist.id)
             .eq('date', date),
         ]);
@@ -578,12 +619,21 @@ export default function BookingModal({ therapist, mode = 'create', existingBooki
         }
         if (!hit) {
           for (const b of (blkRes.data || [])) {
-            if (!b.start_time) { hit = { block: true }; break; }
-            if (overlaps(slotStart, slotEnd, (b.start_time || '').slice(0, 5), (b.end_time || '').slice(0, 5))) { hit = { block: true }; break; }
+            if (!b.start_time) { hit = { block: true, blockId: b.id, blockStart: null, blockEnd: null, blockNote: b.note }; break; }
+            if (overlaps(slotStart, slotEnd, (b.start_time || '').slice(0, 5), (b.end_time || '').slice(0, 5))) { hit = { block: true, blockId: b.id, blockStart: b.start_time, blockEnd: b.end_time, blockNote: b.note }; break; }
           }
         }
         if (hit) {
           setSaving(false);
+          // HK Jun 5 2026: guided fix. When the only thing in the way is a
+          // block the therapist set herself, do not dead-end. Name it and
+          // offer one tap to remove it and book. A real client conflict
+          // still gets the plain message and is never auto-removed.
+          if (hit.block && hit.blockId) {
+            setBlockConflict({ id: hit.blockId, start: hit.blockStart, end: hit.blockEnd, note: hit.blockNote });
+            setError('');
+            return;
+          }
           setError(hit.block
             ? 'That time falls on blocked-off time. Pick another time.'
             : `That time overlaps ${hit.name}. Pick another time, or reschedule the other booking first.`);
@@ -1209,6 +1259,27 @@ export default function BookingModal({ therapist, mode = 'create', existingBooki
           gap: 10,
         }}>
           {error && <div style={{ fontSize: 13, color: '#DC2626', fontWeight: 600 }}>⚠ {error}</div>}
+
+          {blockConflict && (
+            <div style={{ background: '#FFFBEB', border: '1.5px solid #FCD34D', borderRadius: 12, padding: '12px 14px' }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: '#92400E' }}>
+                You blocked this time{blockConflict.start ? ` from ${fmt12(blockConflict.start.slice(0,5))} to ${fmt12(blockConflict.end.slice(0,5))}` : ' (all day)'}{blockConflict.note ? ` · ${blockConflict.note}` : ''}.
+              </div>
+              <div style={{ fontSize: 12, color: '#9A3412', marginTop: 3 }}>
+                Remove the block to book {name.trim() || 'your client'} here. Nothing else changes.
+              </div>
+              <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
+                <button onClick={removeBlockAndBook} disabled={saving}
+                  style={{ flex: 1, padding: '11px', borderRadius: 10, border: 'none', background: C.forest, color: '#fff', fontSize: 13.5, fontWeight: 700, cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.7 : 1, fontFamily: 'inherit' }}>
+                  {saving ? 'Working...' : 'Remove block and book'}
+                </button>
+                <button onClick={() => setBlockConflict(null)} disabled={saving}
+                  style={{ padding: '11px 14px', borderRadius: 10, border: '1.5px solid #E5D5C8', background: 'transparent', color: '#92400E', fontSize: 13.5, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
+                  Keep block
+                </button>
+              </div>
+            </div>
+          )}
 
           {date && slot && (
             <div style={{ background: '#F0FDF4', border: '1.5px solid #86EFAC', borderRadius: 12, padding: '10px 14px' }}>
