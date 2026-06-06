@@ -173,6 +173,11 @@ export default function CalendarGrid({ therapist, embedded = false, firstOpen = 
   const [pending, setPending] = useState(false);
   const [showHolidayPicker, setShowHolidayPicker] = useState(false);
   const [toast, setToast] = useState(null); // {message, type}
+  // HK Jun 6 2026: a drag across the calendar blocks a range of days. An
+  // accidental drag should be one tap to reverse. We remember the rows the
+  // last drag created and offer Undo for a few seconds.
+  const [undo, setUndo] = useState(null); // {ids:[], count}
+  const undoTimerRef = useRef(null);
 
   // HK May 27 2026: replaced floating popover with inline detail panel.
   // The popover on tap was covering neighboring cells and blocking the
@@ -247,9 +252,31 @@ export default function CalendarGrid({ therapist, embedded = false, firstOpen = 
     return map;
   }, [bookings]);
 
+  useEffect(() => () => { if (undoTimerRef.current) clearTimeout(undoTimerRef.current); }, []);
+
   function showToast(message, type = 'success') {
     setToast({ message, type });
     setTimeout(() => setToast(null), 3200);
+  }
+
+  // HK Jun 6 2026: arm a several-second Undo window after a drag-block.
+  function armUndo(ids) {
+    if (!ids || ids.length === 0) return;
+    if (undoTimerRef.current) clearTimeout(undoTimerRef.current);
+    setUndo({ ids, count: ids.length });
+    undoTimerRef.current = setTimeout(() => setUndo(null), 9000);
+  }
+
+  async function undoLastBlock() {
+    const ids = undo?.ids || [];
+    if (undoTimerRef.current) clearTimeout(undoTimerRef.current);
+    setUndo(null);
+    if (ids.length === 0) return;
+    setPending(true);
+    await supabase.from('blocked_days').delete().in('id', ids);
+    setBlockedDays(prev => prev.filter(b => !ids.includes(b.id)));
+    setPending(false);
+    showToast('Undone', 'info');
   }
 
   async function toggleOneOffBlock(dateStr) {
@@ -285,7 +312,7 @@ export default function CalendarGrid({ therapist, embedded = false, firstOpen = 
         .select();
       if (data) {
         setBlockedDays(prev => [...prev, ...data]);
-        showToast(`Blocked ${datesToBlock.length} day${datesToBlock.length === 1 ? '' : 's'}`);
+        armUndo(data.map(d => d.id));
       }
     } else {
       showToast('Days already blocked', 'info');
@@ -1148,6 +1175,32 @@ export default function CalendarGrid({ therapist, embedded = false, firstOpen = 
     }}>{toast.message}</div>
   );
 
+  // ─── Undo banner (after a drag-block) ────────────────────────────
+  const UndoBanner = undo && (
+    <div style={{
+      position: 'fixed',
+      bottom: 24,
+      left: '50%',
+      transform: 'translateX(-50%)',
+      zIndex: 201,
+      background: C.forest,
+      color: C.white,
+      borderRadius: 999,
+      padding: '8px 8px 8px 20px',
+      display: 'flex',
+      alignItems: 'center',
+      gap: 14,
+      boxShadow: '0 6px 20px rgba(15, 23, 42, 0.18)',
+      maxWidth: 'calc(100vw - 32px)',
+    }}>
+      <span style={{ fontSize: 13.5, fontWeight: 500 }}>Blocked {undo.count} day{undo.count === 1 ? '' : 's'}</span>
+      <button onClick={undoLastBlock} disabled={pending}
+        style={{ background: C.white, color: C.forest, border: 'none', borderRadius: 999, padding: '9px 20px', fontSize: 14, fontWeight: 700, cursor: pending ? 'not-allowed' : 'pointer', fontFamily: 'inherit' }}>
+        Undo
+      </button>
+    </div>
+  );
+
   // ─── Top-level render ────────────────────────────────────────────
 
   return (
@@ -1188,6 +1241,7 @@ export default function CalendarGrid({ therapist, embedded = false, firstOpen = 
       <RangeModal />
       <HolidayPickerModal />
       {Toast}
+      {UndoBanner}
     </div>
   );
 }
