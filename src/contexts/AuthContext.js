@@ -6,6 +6,36 @@ import { seedNewTherapistDefaults } from '../lib/seedDefaults';
 const AuthContext = createContext({});
 export const useAuth = () => useContext(AuthContext);
 
+// HK Jun 6 2026: never surface a raw technical error to a person on the
+// login or signup screen. A customer who sees "Failed to fetch" gives up.
+// Map connection drops, DNS blips, and known auth errors to calm, plain
+// language. No em dashes.
+function friendlyAuthError(error) {
+  const raw = (error && error.message) || '';
+  const looksLikeNetwork =
+    (error && (error.name === 'TypeError' || error.name === 'AuthRetryableFetchError')) ||
+    /failed to fetch|load failed|networkerror|network error|connection|err_|fetch/i.test(raw);
+  if (looksLikeNetwork) {
+    return "We could not reach MyBodyMap just now. Please check your internet connection and try again.";
+  }
+  if (raw === 'Invalid login credentials') {
+    return "That email or password does not match our records. Please try again.";
+  }
+  if (raw === 'Email not confirmed') {
+    return "Please confirm your email first. Check your inbox for the confirmation link.";
+  }
+  if (raw === 'User already registered') {
+    return "An account with this email already exists. Sign in instead.";
+  }
+  if (raw.includes('therapists_custom_url_key')) {
+    return "That intake URL is already taken. Please choose a different one.";
+  }
+  if (raw.includes('duplicate key')) {
+    return "An account with these details already exists.";
+  }
+  return raw || 'Something went wrong. Please try again.';
+}
+
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [therapist, setTherapist] = useState(null);
@@ -102,11 +132,7 @@ export const AuthProvider = ({ children }) => {
       if (t) setTherapist(t);
       return { success: true };
     } catch (error) {
-      let msg = error.message;
-      if (msg === "User already registered") msg = "An account with this email already exists. Sign in instead.";
-      else if (msg.includes("therapists_custom_url_key")) msg = "That intake URL is already taken. Please choose a different one.";
-      else if (msg.includes("duplicate key")) msg = "An account with these details already exists.";
-      return { success: false, error: msg };
+      return { success: false, error: friendlyAuthError(error) };
     }
   };
 
@@ -145,11 +171,7 @@ export const AuthProvider = ({ children }) => {
       const { data: t } = await supabase.from('therapists').select('*').eq('id', authData.user.id).single();
       return { success: true, therapist: t };
     } catch (error) {
-      let msg = error.message;
-      if (msg === "User already registered") msg = "An account with this email already exists. Sign in instead.";
-      else if (msg.includes("therapists_custom_url_key")) msg = "That intake URL is already taken. Please choose a different one.";
-      else if (msg.includes("duplicate key")) msg = "An account with these details already exists.";
-      return { success: false, error: msg };
+      return { success: false, error: friendlyAuthError(error) };
     }
   };
 
@@ -172,11 +194,7 @@ export const AuthProvider = ({ children }) => {
       if (error) throw error;
       return { success: true };
     } catch (error) {
-      let msg = error.message;
-      if (msg === "User already registered") msg = "An account with this email already exists. Sign in instead.";
-      else if (msg.includes("therapists_custom_url_key")) msg = "That intake URL is already taken. Please choose a different one.";
-      else if (msg.includes("duplicate key")) msg = "An account with these details already exists.";
-      return { success: false, error: msg };
+      return { success: false, error: friendlyAuthError(error) };
     }
   };
 
@@ -187,11 +205,7 @@ export const AuthProvider = ({ children }) => {
       setTherapist(data);
       return { success: true, data };
     } catch (error) {
-      let msg = error.message;
-      if (msg === "User already registered") msg = "An account with this email already exists. Sign in instead.";
-      else if (msg.includes("therapists_custom_url_key")) msg = "That intake URL is already taken. Please choose a different one.";
-      else if (msg.includes("duplicate key")) msg = "An account with these details already exists.";
-      return { success: false, error: msg };
+      return { success: false, error: friendlyAuthError(error) };
     }
   };
 
