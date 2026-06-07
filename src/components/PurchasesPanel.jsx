@@ -30,6 +30,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { selectInFn } from '../lib/supabaseBatch';
+import { ChevronButton } from './ChevronIcon';
 
 const C = {
   forest: '#2A5741',
@@ -306,6 +307,24 @@ export default function PurchasesPanel({ therapistId }) {
   // Bump this counter to trigger a refetch (after a refund, etc.)
   const [refetchKey, setRefetchKey] = useState(0);
 
+  // HK Jun 7 2026: this card was eating too much vertical space on the
+  // Clients page. Collapse it behind the standard ChevronButton and
+  // remember the therapist's choice per device. Default collapsed so
+  // the space is reclaimed on first load; the summary line keeps the
+  // active counts visible at a glance even when closed. Stored value
+  // 'false' means the therapist chose to keep it open.
+  const [collapsed, setCollapsed] = useState(() => {
+    try { return localStorage.getItem('bm_purchases_collapsed') !== 'false'; }
+    catch { return true; }
+  });
+  const toggleCollapsed = () => {
+    setCollapsed((prev) => {
+      const next = !prev;
+      try { localStorage.setItem('bm_purchases_collapsed', next ? 'true' : 'false'); } catch {}
+      return next;
+    });
+  };
+
   useEffect(() => {
     if (!therapistId) return;
     let cancelled = false;
@@ -447,7 +466,18 @@ export default function PurchasesPanel({ therapistId }) {
       padding: 18,
       marginBottom: 20,
     }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14, gap: 12 }}>
+      <div
+        onClick={toggleCollapsed}
+        role="button"
+        tabIndex={0}
+        aria-expanded={!collapsed}
+        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleCollapsed(); } }}
+        style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          marginBottom: collapsed ? 0 : 14, gap: 12,
+          cursor: 'pointer', userSelect: 'none', WebkitTapHighlightColor: 'transparent',
+        }}
+      >
         <div>
           <div style={{
             fontSize: 11, fontWeight: 700, color: C.sage,
@@ -465,9 +495,10 @@ export default function PurchasesPanel({ therapistId }) {
             {summaryLine}
           </div>
         </div>
+        <ChevronButton open={!collapsed} ariaLabel={collapsed ? 'Expand packages and memberships' : 'Collapse packages and memberships'} />
       </div>
 
-      {sortedPackages.length > 0 && (
+      {!collapsed && sortedPackages.length > 0 && (
         <div style={{ marginBottom: sortedSubs.length > 0 ? 16 : 0 }}>
           <div style={{
             fontSize: 11, fontWeight: 700, color: C.muted,
@@ -483,7 +514,7 @@ export default function PurchasesPanel({ therapistId }) {
         </div>
       )}
 
-      {sortedSubs.length > 0 && (
+      {!collapsed && sortedSubs.length > 0 && (
         <div>
           <div style={{
             fontSize: 11, fontWeight: 700, color: C.muted,
