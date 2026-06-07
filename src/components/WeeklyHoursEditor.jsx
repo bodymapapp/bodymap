@@ -17,6 +17,7 @@
 // component only owns the interaction and a transient drag draft.
 
 import React, { useRef, useState } from "react";
+import { RoundIconButton } from "./ChevronIcon";
 
 const C = {
   forest:"#2A5741", cream:"#FCF8EE", border:"#E5D5C8", line:"#ECE9E1",
@@ -142,7 +143,8 @@ export default function WeeklyHoursEditor({ availability, getBlocks, setDayHours
         var isOn = !!(r && r.active);
         var blocks = blocksFor(dow);
         return (
-          <div key={dow} style={{ display:"flex", alignItems:"center", gap:10, marginBottom:8 }}>
+          <div key={dow} style={{ marginBottom:8 }}>
+            <div style={{ display:"flex", alignItems:"center", gap:10 }}>
             <div style={{ width:54, flexShrink:0 }}>
               <div style={{ fontSize:13, fontWeight:700, color: isOn ? C.ink : C.mutedText }}>{name}</div>
               <button onClick={function(){ toggle(dow); }} style={{ display:"inline-flex", alignItems:"center", gap:5, background:"none", border:"none", padding:0, cursor:"pointer", marginTop:2 }}>
@@ -159,9 +161,6 @@ export default function WeeklyHoursEditor({ availability, getBlocks, setDayHours
                   return (
                     <div key={idx} style={{ position:"absolute", top:3, bottom:3, left:pct(s)+"%", width:(pct(en)-pct(s))+"%", background:"linear-gradient(135deg,#DFF0E4,#C9E6D2)", border:"1.5px solid "+C.sageStroke, borderRadius:8, display:"flex", alignItems:"center", justifyContent:"center" }}>
                       <span style={{ fontSize:10.5, fontWeight:800, color:C.sageText, whiteSpace:"nowrap", pointerEvents:"none", padding:"0 2px", overflow:"hidden" }}>{fmt(s)} - {fmt(en)}</span>
-                      {blocks.length > 1 && (
-                        <button onClick={function(){ removeBreak(dow, idx); }} style={{ position:"absolute", top:-8, right:-6, width:16, height:16, borderRadius:"50%", background:"#fff", border:"1px solid "+C.border, color:C.gray, fontSize:11, lineHeight:1, cursor:"pointer", padding:0 }}>×</button>
-                      )}
                       <div onPointerDown={function(e){ onHandleDown(e, dow, idx, "start"); }} style={{ position:"absolute", top:-3, bottom:-3, left:0, width:26, transform:"translateX(-50%)", display:"flex", alignItems:"center", justifyContent:"center", cursor:"grab", touchAction:"none" }}>
                         <div style={{ width:8, height:30, borderRadius:5, background:C.forest, border:"2px solid #fff", boxShadow:"0 1px 4px rgba(0,0,0,.25)" }} />
                       </div>
@@ -177,9 +176,37 @@ export default function WeeklyHoursEditor({ availability, getBlocks, setDayHours
             )}
 
             {isOn && (
-              <button onClick={function(){ addBreak(dow); }} title="Add a break (split shift)" style={{ flexShrink:0, width:28, height:28, borderRadius:8, border:"1px solid "+C.border, background:"#fff", color:C.forest, fontSize:16, lineHeight:1, cursor:"pointer", padding:0 }}>+</button>
+              <RoundIconButton onClick={function(){ addBreak(dow); }} ariaLabel="Add another time block (split shift)" size={32} fontSize={22}>+</RoundIconButton>
+            )}
+            </div>
+
+            {/* HK Jun 7 2026: a day can hold more than one time block (split
+                shift). The only way to remove one used to be a 16px x tucked
+                into the block corner, on top of the drag handles, so it was
+                invisible and uncatchable. When a day has two or more blocks,
+                list them here below the track with our standard round remove
+                button. Removing is blocked at one block (use the day toggle
+                to close a day), so the last block always stays. */}
+            {isOn && blocks.length > 1 && (
+              <div style={{ marginLeft:64, marginTop:7 }}>
+                <div style={{ fontSize:10.5, color:C.gray, fontWeight:700, letterSpacing:0.3, marginBottom:6 }}>
+                  This day has {blocks.length} time blocks. Tap to remove one.
+                </div>
+                <div style={{ display:"flex", flexDirection:"column", gap:7 }}>
+                  {blocks.map(function(b, idx){
+                    return (
+                      <div key={idx} style={{ display:"flex", alignItems:"center", gap:9 }}>
+                        <span style={{ width:11, height:11, borderRadius:3, background:"linear-gradient(135deg,#DFF0E4,#C9E6D2)", border:"1.5px solid "+C.sageStroke, flexShrink:0, display:"inline-block" }} />
+                        <span style={{ fontSize:12.5, color:C.ink, fontWeight:600, flex:1 }}>{fmt(toMin(b.start))} to {fmt(toMin(b.end))}</span>
+                        <RoundIconButton onClick={function(){ removeBreak(dow, idx); }} ariaLabel={"Remove the "+fmt(toMin(b.start))+" to "+fmt(toMin(b.end))+" block"} size={32}>×</RoundIconButton>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
             )}
           </div>
+
         );
       })}
 
