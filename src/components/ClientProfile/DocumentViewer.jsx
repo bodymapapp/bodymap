@@ -69,6 +69,13 @@ export default function DocumentViewer({ doc, onClose, onExtracted }) {
     return () => { document.body.style.overflow = prev; };
   }, []);
 
+  // Esc closes the viewer (web).
+  useEffect(() => {
+    const onKey = (e) => { if (e.key === 'Escape') onClose && onClose(); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onClose]);
+
   const handleRead = async () => {
     setReading(true);
     setReadError('');
@@ -132,7 +139,10 @@ export default function DocumentViewer({ doc, onClose, onExtracted }) {
       </div>
 
       {/* Body */}
-      <div style={{ flex: 1, overflowY: 'auto', WebkitOverflowScrolling: 'touch', padding: 14 }}>
+      <div
+        onClick={(e) => { if (e.target === e.currentTarget) onClose && onClose(); }}
+        style={{ flex: 1, overflowY: 'auto', WebkitOverflowScrolling: 'touch', padding: 14 }}
+      >
         {(hasRead || readError) && (
           <div style={{
             maxWidth: 720, margin: '0 auto 14px', background: C.paper, border: `1px solid ${C.lineFaint}`,

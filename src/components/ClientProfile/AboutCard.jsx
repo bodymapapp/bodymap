@@ -65,6 +65,13 @@ export default function AboutCard({ client, onUpdated, pulse = false }) {
   const [altPhone, setAltPhone] = useState(client?.alt_phone || '');
   const [gender, setGender] = useState(client?.gender || '');
   const [referralSource, setReferralSource] = useState(client?.referral_source || '');
+  // Health and safety fields (HK Jun 8 2026). Editable here, and the
+  // document reader can fill blanks from a read intake form.
+  const [allergies, setAllergies] = useState(client?.allergies || '');
+  const [healthConditions, setHealthConditions] = useState(client?.health_conditions || '');
+  const [medications, setMedications] = useState(client?.medications || '');
+  const [areasToAvoid, setAreasToAvoid] = useState(client?.areas_to_avoid || '');
+  const [emergencyContact, setEmergencyContact] = useState(client?.emergency_contact || '');
   // 'name' | 'email' | 'phone' | 'notes' | 'address_line1' | etc
   const [justSaved, setJustSaved] = useState(null);
   // 'name' | etc for inline error message
@@ -82,6 +89,11 @@ export default function AboutCard({ client, onUpdated, pulse = false }) {
     setCity(client?.city || '');
     setState(client?.state || '');
     setZip(client?.zip || '');
+    setAllergies(client?.allergies || '');
+    setHealthConditions(client?.health_conditions || '');
+    setMedications(client?.medications || '');
+    setAreasToAvoid(client?.areas_to_avoid || '');
+    setEmergencyContact(client?.emergency_contact || '');
   }, [client?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Pulse animation when the hero pencil button is tapped. Outer
@@ -143,6 +155,11 @@ export default function AboutCard({ client, onUpdated, pulse = false }) {
     if (field === 'alt_phone')       payload.alt_phone       = value.trim() || null;
     if (field === 'gender')          payload.gender          = value || null;
     if (field === 'referral_source') payload.referral_source = value || null;
+    if (field === 'allergies')        payload.allergies        = value.trim() || null;
+    if (field === 'health_conditions') payload.health_conditions = value.trim() || null;
+    if (field === 'medications')       payload.medications       = value.trim() || null;
+    if (field === 'areas_to_avoid')    payload.areas_to_avoid    = value.trim() || null;
+    if (field === 'emergency_contact') payload.emergency_contact = value.trim() || null;
 
     const { error } = await supabase
       .from('clients')
@@ -167,6 +184,11 @@ export default function AboutCard({ client, onUpdated, pulse = false }) {
       if (field === 'alt_phone')       setAltPhone(client?.alt_phone || '');
       if (field === 'gender')          setGender(client?.gender || '');
       if (field === 'referral_source') setReferralSource(client?.referral_source || '');
+      if (field === 'allergies')        setAllergies(client?.allergies || '');
+      if (field === 'health_conditions') setHealthConditions(client?.health_conditions || '');
+      if (field === 'medications')       setMedications(client?.medications || '');
+      if (field === 'areas_to_avoid')    setAreasToAvoid(client?.areas_to_avoid || '');
+      if (field === 'emergency_contact') setEmergencyContact(client?.emergency_contact || '');
       return;
     }
 
@@ -279,6 +301,57 @@ export default function AboutCard({ client, onUpdated, pulse = false }) {
         justSaved={justSaved}
         errorOn={errorOn}
         errorMsg={errorMsg}
+      />
+      <div style={{
+        marginTop: 18, marginBottom: 2, paddingTop: 14, borderTop: `1px solid ${C.lineSoft}`,
+        fontSize: 11, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: C.sage,
+      }}>
+        Health and safety
+      </div>
+      <RowMultiline
+        label="Allergies"
+        value={allergies}
+        setValue={setAllergies}
+        onSave={(v) => saveField('allergies', v)}
+        justSaved={justSaved === 'allergies'}
+        error={errorOn === 'allergies' ? errorMsg : ''}
+        placeholder="Latex, nut oils, scents"
+      />
+      <RowMultiline
+        label="Conditions"
+        value={healthConditions}
+        setValue={setHealthConditions}
+        onSave={(v) => saveField('health_conditions', v)}
+        justSaved={justSaved === 'health_conditions'}
+        error={errorOn === 'health_conditions' ? errorMsg : ''}
+        placeholder="Injuries, pregnancy, conditions to know about"
+      />
+      <RowMultiline
+        label="Medications"
+        value={medications}
+        setValue={setMedications}
+        onSave={(v) => saveField('medications', v)}
+        justSaved={justSaved === 'medications'}
+        error={errorOn === 'medications' ? errorMsg : ''}
+        placeholder="Anything relevant for bodywork"
+      />
+      <RowMultiline
+        label="Areas to avoid"
+        value={areasToAvoid}
+        setValue={setAreasToAvoid}
+        onSave={(v) => saveField('areas_to_avoid', v)}
+        justSaved={justSaved === 'areas_to_avoid'}
+        error={errorOn === 'areas_to_avoid' ? errorMsg : ''}
+        placeholder="Left shoulder, low back"
+      />
+      <Row
+        label="Emergency contact"
+        value={emergencyContact}
+        setValue={setEmergencyContact}
+        onSave={(v) => saveField('emergency_contact', v)}
+        justSaved={justSaved === 'emergency_contact'}
+        error={errorOn === 'emergency_contact' ? errorMsg : ''}
+        placeholder="Name and phone"
       />
       <RowMultiline
         label="Notes"
