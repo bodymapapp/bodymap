@@ -14,6 +14,7 @@
 //   - Chevron animates rotation; whole header is the hit target.
 
 import React from 'react';
+import { ChevronButton } from '../ChevronIcon';
 
 const C = {
   forestInk: '#1F3A2C',
@@ -173,39 +174,11 @@ export default function ProfileSection({
         </div>
 
         {interactive && (
-          <button
-            aria-label={isOpen ? 'Collapse section' : 'Expand section'}
-            style={{
-              flexShrink: 0,
-              background: 'transparent',
-              border: 'none',
-              padding: 6,
-              cursor: 'pointer',
-              borderRadius: 6,
-              color: C.muted,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
+          <ChevronButton
+            open={isOpen}
             onClick={(e) => { e.stopPropagation(); onToggle(); }}
-          >
-            <svg
-              width="14"
-              height="14"
-              viewBox="0 0 12 12"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.8"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              style={{
-                transform: isOpen ? 'rotate(90deg)' : 'rotate(0deg)',
-                transition: 'transform 0.2s ease',
-              }}
-            >
-              <path d="M4 2l4 4-4 4" />
-            </svg>
-          </button>
+            ariaLabel={isOpen ? 'Collapse section' : 'Expand section'}
+          />
         )}
       </div>
 
