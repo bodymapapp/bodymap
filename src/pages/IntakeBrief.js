@@ -14,7 +14,7 @@
 // the session ID directly instead of from URL params.
 
 import React, { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useSearchParams } from 'react-router-dom';
 import { isSampleSessionId, getSampleSession, getSampleClient, getSampleSessions } from '../data/sampleClients';
 import { supabase } from '../lib/supabase';
 import DocumentLayout, { T, Pill } from '../components/DocumentLayout';
@@ -23,6 +23,8 @@ import { deriveCadence, getStandingFlags } from '../lib/sessionIntelligence';
 export default function IntakeBrief({ sessionIdProp, chrome = 'full' }) {
   const params = useParams();
   const sessionId = sessionIdProp || params.sessionId;
+  const [searchParams] = useSearchParams();
+  const briefToken = searchParams.get('t');
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -48,6 +50,20 @@ export default function IntakeBrief({ sessionIdProp, chrome = 'full' }) {
         setLoading(false);
         return;
       }
+      // Standalone public route: read through the gated function (valid
+      // token or logged-in owner). Embedded in-app use (sessionIdProp)
+      // stays a direct authenticated read. Fall back to the direct read
+      // if the function is unavailable, so nothing breaks in transition.
+      if (!sessionIdProp) {
+        try {
+          const res = await supabase.functions.invoke('brief-view', { body: { sessionId, token: briefToken } });
+          if (res?.data?.ok) {
+            setData({ session: res.data.session, client: res.data.client, therapist: res.data.therapist, history: res.data.history || [] });
+            setLoading(false);
+            return;
+          }
+        } catch (_e) { /* fall through to direct read */ }
+      }
       const { data: session } = await supabase.from('sessions').select('*').eq('id', sessionId).maybeSingle();
       if (!session) { setLoading(false); return; }
       const { data: client } = await supabase.from('clients').select('name,phone,email').eq('id', session.client_id).maybeSingle();
@@ -57,7 +73,7 @@ export default function IntakeBrief({ sessionIdProp, chrome = 'full' }) {
       setLoading(false);
     }
     load();
-  }, [sessionId]);
+  }, [sessionId, sessionIdProp, briefToken]);
 
   if (loading) return <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', fontFamily: T.serif, color: T.inkSoft, background: T.cream }}>Loading...</div>;
   if (!data) return <div style={{ padding: 40, fontFamily: T.serif, background: T.cream, minHeight: '100vh' }}>Session not found.</div>;

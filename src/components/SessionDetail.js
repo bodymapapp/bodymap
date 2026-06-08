@@ -1325,9 +1325,9 @@ export default function SessionDetail({ session, client, onBack, onUpdate }) {
           PDF) without leaving the session detail page. */}
       {drawerDoc != null && (() => {
         const docMeta = {
-          1: { name: "Today's Intake", url: `/brief/intake/${session.id}`, Component: IntakeBrief },
-          2: { name: "Pre-Session Brief", url: `/brief/pre/${session.id}`, Component: PreSessionBrief },
-          3: { name: "Post-Session Record", url: `/brief/post/${session.id}`, Component: PostSessionBrief },
+          1: { name: "Today's Intake", url: `/brief/intake/${session.id}?t=${session.brief_token}`, Component: IntakeBrief },
+          2: { name: "Pre-Session Brief", url: `/brief/pre/${session.id}?t=${session.brief_token}`, Component: PreSessionBrief },
+          3: { name: "Post-Session Record", url: `/brief/post/${session.id}?t=${session.brief_token}`, Component: PostSessionBrief },
           4: { name: "Your Recap", url: `/recap/${session.id}`, Component: PostSessionSummary },
         }[drawerDoc];
         if (!docMeta) return null;

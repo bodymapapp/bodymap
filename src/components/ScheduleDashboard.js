@@ -5033,9 +5033,9 @@ export function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelle
           Save PDF, Copy/Share image) work without any navigation. */}
       {drawerDoc != null && currentSession?.id && (() => {
         const docMeta = {
-          1: { name: "Today's Intake",      url: `/brief/intake/${currentSession.id}`, Component: IntakeBrief },
-          2: { name: 'Pre-Session Brief',   url: `/brief/pre/${currentSession.id}`,    Component: PreSessionBrief },
-          3: { name: 'Post-Session Record', url: `/brief/post/${currentSession.id}`,   Component: PostSessionBrief },
+          1: { name: "Today's Intake",      url: `/brief/intake/${currentSession.id}?t=${currentSession.brief_token}`, Component: IntakeBrief },
+          2: { name: 'Pre-Session Brief',   url: `/brief/pre/${currentSession.id}?t=${currentSession.brief_token}`,    Component: PreSessionBrief },
+          3: { name: 'Post-Session Record', url: `/brief/post/${currentSession.id}?t=${currentSession.brief_token}`,   Component: PostSessionBrief },
           4: { name: 'Your Recap',          url: `/recap/${currentSession.id}`,        Component: PostSessionSummary },
         }[drawerDoc];
         if (!docMeta) return null;
