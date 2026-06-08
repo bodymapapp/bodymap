@@ -12,6 +12,7 @@
 // document". Anything without a matching client field still lives here.
 
 import React, { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { C, F } from './tokens';
 import { downloadDocumentBlob, readDocument, fetchDocument } from '../../lib/clientDocuments';
 
@@ -61,6 +62,13 @@ export default function DocumentViewer({ doc, onClose, onExtracted }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [doc.file_path]);
 
+  // Lock background scroll while the viewer is open.
+  useEffect(() => {
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = prev; };
+  }, []);
+
   const handleRead = async () => {
     setReading(true);
     setReadError('');
@@ -85,10 +93,10 @@ export default function DocumentViewer({ doc, onClose, onExtracted }) {
   const fields = Array.isArray(meta.extracted_fields) ? meta.extracted_fields : [];
   const hasRead = meta.extract_status === 'done' && (meta.extracted_summary || fields.length);
 
-  return (
+  return createPortal((
     <div style={{
-      position: 'fixed', inset: 0, zIndex: 5000, background: 'rgba(20,28,23,0.55)',
-      display: 'flex', flexDirection: 'column', backdropFilter: 'blur(2px)',
+      position: 'fixed', inset: 0, zIndex: 5000, background: 'rgba(20,28,23,0.78)',
+      display: 'flex', flexDirection: 'column',
     }}>
       {/* Header */}
       <div style={{
@@ -195,7 +203,7 @@ export default function DocumentViewer({ doc, onClose, onExtracted }) {
         <div ref={pdfHostRef} style={{ maxWidth: 720, margin: '0 auto', display: isPdf ? 'flex' : 'none', flexDirection: 'column', gap: 12 }} />
       </div>
     </div>
-  );
+  ), document.body);
 }
 
 // Render a PDF blob into the host element using pdf.js, one canvas per page.
