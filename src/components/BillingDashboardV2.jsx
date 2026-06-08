@@ -29,6 +29,7 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
+import { ChevronButton } from './ChevronIcon';
 import CheckoutModal from './CheckoutModal';
 import ImportedDataFootnote from './ImportedDataFootnote';
 
@@ -626,31 +627,7 @@ function ReceiptCard({ session, onRefundClick }) {
 // that rotates 180 degrees when open. Consistent visual signal that
 // "this is a thing you can open." Tap target is 32x32.
 function ChevronPill({ open }) {
-  return (
-    <div style={{
-      width: 32, height: 32, borderRadius: 16,
-      display: 'flex', alignItems: 'center', justifyContent: 'center',
-      background: open ? T.forest : T.sageTint,
-      transition: 'background 0.2s ease',
-      flexShrink: 0,
-    }}>
-      <svg
-        width="14" height="14" viewBox="0 0 14 14"
-        style={{
-          transform: open ? 'rotate(180deg)' : 'rotate(0deg)',
-          transition: 'transform 0.2s ease',
-        }}>
-        <path
-          d="M3 5 L7 9 L11 5"
-          stroke={open ? '#FFFFFF' : T.forest}
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          fill="none"
-        />
-      </svg>
-    </div>
-  );
+  return <ChevronButton open={open} size={32} ariaLabel={open ? 'Collapse' : 'Expand'} />;
 }
 
 function DeepDiveCard({ icon, title, sub, children }) {

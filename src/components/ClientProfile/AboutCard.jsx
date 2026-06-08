@@ -22,6 +22,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../../lib/supabase';
 import AutoGrowingTextarea from '../AutoGrowingTextarea';
+import { ChevronButton } from '../ChevronIcon';
 import { recordFactHistory, HISTORY_FIELDS, listFactHistory, HISTORY_FIELD_LABELS, HISTORY_SOURCE_LABELS } from '../../lib/clientHistory';
 
 const C = {
@@ -884,23 +885,7 @@ function AddressBlock({
             {hasAny ? (summary || 'Address on file') : 'Add an address (optional)'}
           </div>
         </div>
-        <div style={{
-          width: 32, height: 32, borderRadius: 999,
-          background: open ? C.forest : '#E8DFD0',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          flexShrink: 0,
-          transition: 'background 0.15s',
-        }}>
-          <span style={{
-            color: '#fff',
-            fontSize: 14,
-            fontWeight: 800,
-            transform: open ? 'rotate(180deg)' : 'rotate(0deg)',
-            transition: 'transform 0.18s',
-            display: 'block',
-            lineHeight: 1,
-          }}>⌄</span>
-        </div>
+        <ChevronButton open={open} ariaLabel={open ? 'Collapse address' : 'Expand address'} />
       </button>
       {open && (
         <div style={{ padding: '4px 8px 10px 8px' }}>

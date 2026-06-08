@@ -5,6 +5,7 @@
 // the entire section group below it. Chevron rotates 90deg when open.
 
 import React from "react";
+import { ChevronButton } from "./ChevronIcon";
 
 const C = {
   forestInk: '#1F3A2C',
@@ -109,23 +110,7 @@ export default function SettingsSectionHeader({ title, sub, count, sprigType = '
         )}
       </div>
       {isClickable && (
-        <svg
-          width="13"
-          height="13"
-          viewBox="0 0 12 12"
-          fill="none"
-          stroke={isOpen ? C.forest : '#B5BEB1'}
-          strokeWidth="1.7"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          style={{
-            flexShrink: 0,
-            transform: isOpen ? 'rotate(90deg)' : 'rotate(0deg)',
-            transition: 'transform 0.2s, stroke 0.15s',
-          }}
-        >
-          <path d="M4 2l4 4-4 4" />
-        </svg>
+        <ChevronButton open={isOpen} ariaLabel={isOpen ? 'Collapse' : 'Expand'} />
       )}
     </div>
   );

@@ -20,6 +20,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabase';
+import { ChevronButton } from './ChevronIcon';
 import { openExternalClick } from '../lib/openExternal';
 
 const C = { forest:'#2A5741', sage:'#6B9E80', beige:'#F5F0E8', white:'#FFFFFF', dark:'#1A1A2E', gray:'#6B7280', light:'#E8E4DC' };
@@ -1122,12 +1123,7 @@ export default function OnboardingChecklist({ therapist, services: parentService
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0 }}>
           <ProgressRing done={done} total={total} size={56} />
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{
-            transition: 'transform 0.2s ease',
-            transform: ribbonOpen ? 'rotate(180deg)' : 'rotate(0deg)',
-          }}>
-            <polyline points="6 9 12 15 18 9" />
-          </svg>
+          <ChevronButton open={ribbonOpen} ariaLabel={ribbonOpen ? 'Collapse' : 'Expand'} />
         </div>
       </button>
 
