@@ -27,6 +27,7 @@ import PreferencesCard from './PreferencesCard';
 import MedicalCard from './MedicalCard';
 import MembershipCard from './MembershipCard';
 import AgreementCard from './AgreementCard';
+import DocumentsCard from './DocumentsCard';
 import Timeline from './Timeline';
 import SessionList from '../SessionList';
 
@@ -54,9 +55,14 @@ export default function ClientProfile({ client, therapistId, therapist, onBack, 
     medical: true,
     membership: true,
     agreement: true,
+    documents: true,
     timeline: true,
   });
   const toggle = (key) => setOpenSections(s => ({ ...s, [key]: !s[key] }));
+
+  // Live summary from the documents card, used to show an at-a-glance
+  // "Consent on file" read on the collapsed section header.
+  const [docSummary, setDocSummary] = useState({ count: 0, hasConsent: false });
 
   // Triggers from the ProfileHeader hero buttons. The Edit button
   // (hero pencil) flips a pulse flag on the AboutCard so the card
@@ -385,8 +391,30 @@ export default function ClientProfile({ client, therapistId, therapist, onBack, 
           </ProfileSection>
 
           <ProfileSection
-            accent="timeline"
+            accent="documents"
             order={7}
+            title="Forms and documents"
+            dataSectionId="documents"
+            trailingLabel={docSummary.hasConsent
+              ? 'Consent on file'
+              : (docSummary.count > 0
+                  ? `${docSummary.count} document${docSummary.count === 1 ? '' : 's'}`
+                  : 'Consent, intake, paperwork')}
+            count={docSummary.count > 0 ? docSummary.count : undefined}
+            isOpen={openSections.documents}
+            onToggle={() => toggle('documents')}
+          >
+            <DocumentsCard
+              client={client}
+              therapist={therapist}
+              readOnly={!!previewProfile}
+              onSummary={setDocSummary}
+            />
+          </ProfileSection>
+
+          <ProfileSection
+            accent="timeline"
+            order={8}
             title="Timeline"
             trailingLabel={timelineCount > 0
               ? `${timelineCount} event${timelineCount === 1 ? '' : 's'}`

@@ -47,6 +47,7 @@ const ACCENTS = {
   medical:     { bar: C.rose,       label: 'MEDICAL'       },
   membership:  { bar: C.gold,       label: 'MEMBERSHIPS & PACKAGES' },
   agreement:   { bar: C.forest,     label: 'CLIENT AGREEMENT' },
+  documents:   { bar: C.sage,       label: 'FORMS & DOCUMENTS' },
   timeline:    { bar: C.forest,     label: 'ACTIVITY'      },
 };
 
