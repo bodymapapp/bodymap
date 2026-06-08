@@ -14,9 +14,9 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { C, F } from './tokens';
-import { downloadDocumentBlob, readDocument, fetchDocument } from '../../lib/clientDocuments';
+import { downloadDocumentBlob, readDocument, fetchDocument, applyReadToClient, CLIENT_FIELD_LABELS } from '../../lib/clientDocuments';
 
-export default function DocumentViewer({ doc, onClose, onExtracted }) {
+export default function DocumentViewer({ doc, clientId, clientName, onClose, onExtracted, onClientUpdated }) {
   const [loading, setLoading] = useState(true);
   const [renderError, setRenderError] = useState('');
   const [imgUrl, setImgUrl] = useState('');
@@ -24,6 +24,8 @@ export default function DocumentViewer({ doc, onClose, onExtracted }) {
   const [reading, setReading] = useState(false);
   const [readError, setReadError] = useState('');
   const [showText, setShowText] = useState(false);
+  const [applying, setApplying] = useState(false);
+  const [applyResult, setApplyResult] = useState(null);
 
   const pdfHostRef = useRef(null);
   const objectUrlRef = useRef('');
@@ -88,6 +90,7 @@ export default function DocumentViewer({ doc, onClose, onExtracted }) {
       } else {
         const fresh = await fetchDocument(doc.id);
         setMeta(fresh);
+        setApplyResult(null);
         onExtracted && onExtracted(fresh);
       }
     } catch (e) {
@@ -97,8 +100,26 @@ export default function DocumentViewer({ doc, onClose, onExtracted }) {
     }
   };
 
+  const applyToProfile = async () => {
+    if (!clientId) return;
+    setApplying(true);
+    try {
+      const res = await applyReadToClient(clientId, meta.extracted_client_fields || {});
+      setApplyResult(res);
+      const appliedKeys = Object.keys(res.applied || {});
+      if (appliedKeys.length && onClientUpdated) onClientUpdated(res.applied);
+    } catch (e) {
+      setApplyResult({ error: 'Could not update the profile just now.' });
+    } finally {
+      setApplying(false);
+    }
+  };
+
   const fields = Array.isArray(meta.extracted_fields) ? meta.extracted_fields : [];
   const hasRead = meta.extract_status === 'done' && (meta.extracted_summary || fields.length);
+  const cf = (meta.extracted_client_fields && typeof meta.extracted_client_fields === 'object') ? meta.extracted_client_fields : {};
+  const cfKeys = Object.keys(cf).filter(k => cf[k] != null && String(cf[k]).trim() !== '');
+  const canApply = !!clientId && cfKeys.length > 0;
 
   return createPortal((
     <div style={{
@@ -185,6 +206,37 @@ export default function DocumentViewer({ doc, onClose, onExtracted }) {
                         border: `1px solid ${C.lineFaint}`, borderRadius: 9, padding: 12, maxHeight: 320, overflowY: 'auto',
                       }}>
                         {meta.extracted_text}
+                      </div>
+                    )}
+                  </div>
+                )}
+                {(canApply || applyResult) && (
+                  <div style={{ marginTop: 14, paddingTop: 14, borderTop: `1px solid ${C.lineFaint}` }}>
+                    {canApply && !applyResult && (
+                      <>
+                        <button onClick={applyToProfile} disabled={applying} style={{
+                          width: '100%', background: applying ? '#9CB6A6' : C.forest, color: '#fff', border: 'none',
+                          borderRadius: 10, padding: '11px 14px', fontFamily: F.sans, fontSize: 14, fontWeight: 700,
+                          cursor: applying ? 'default' : 'pointer',
+                        }}>
+                          {applying ? 'Adding.' : `Add ${cfKeys.length} detail${cfKeys.length === 1 ? '' : 's'} to ${clientName || 'this client'}'s profile`}
+                        </button>
+                        <div style={{ marginTop: 7, fontSize: 11.5, color: C.muted, fontFamily: F.sans, lineHeight: 1.5 }}>
+                          Fills only blank fields. Anything already filled is left as is for you to review.
+                        </div>
+                      </>
+                    )}
+                    {applyResult && applyResult.error && (
+                      <div style={{ fontFamily: F.sans, fontSize: 13, color: C.amber }}>{applyResult.error}</div>
+                    )}
+                    {applyResult && !applyResult.error && (
+                      <div style={{ fontFamily: F.sans, fontSize: 13.5, color: C.forest, lineHeight: 1.55 }}>
+                        {Object.keys(applyResult.applied || {}).length > 0
+                          ? `Added to profile: ${Object.keys(applyResult.applied).map(k => CLIENT_FIELD_LABELS[k] || k).join(', ')}.`
+                          : 'Nothing new to add.'}
+                        {applyResult.skipped && applyResult.skipped.length > 0
+                          ? ` ${applyResult.skipped.length} field${applyResult.skipped.length === 1 ? '' : 's'} already had a value, left as is: ${applyResult.skipped.join(', ')}.`
+                          : ''}
                       </div>
                     )}
                   </div>

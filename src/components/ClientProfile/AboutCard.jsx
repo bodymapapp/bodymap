@@ -96,6 +96,35 @@ export default function AboutCard({ client, onUpdated, pulse = false }) {
     setEmergencyContact(client?.emergency_contact || '');
   }, [client?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Keep fields in sync when the client object is updated externally
+  // (e.g. the document reader fills blanks). The viewer is a separate
+  // full screen, so there is no concurrent in-place edit to clobber.
+  useEffect(() => {
+    setName(client?.name || '');
+    setEmail(client?.email || '');
+    setPhone(client?.phone || '');
+    setAltPhone(client?.alt_phone || '');
+    setBirthday(client?.birthday || '');
+    setGender(client?.gender || '');
+    setReferralSource(client?.referral_source || '');
+    setAddressLine1(client?.address_line1 || '');
+    setAddressLine2(client?.address_line2 || '');
+    setCity(client?.city || '');
+    setState(client?.state || '');
+    setZip(client?.zip || '');
+    setAllergies(client?.allergies || '');
+    setHealthConditions(client?.health_conditions || '');
+    setMedications(client?.medications || '');
+    setAreasToAvoid(client?.areas_to_avoid || '');
+    setEmergencyContact(client?.emergency_contact || '');
+    setNotes(client?.notes || '');
+  }, [
+    client?.name, client?.email, client?.phone, client?.alt_phone, client?.birthday,
+    client?.gender, client?.referral_source, client?.address_line1, client?.address_line2,
+    client?.city, client?.state, client?.zip, client?.allergies, client?.health_conditions,
+    client?.medications, client?.areas_to_avoid, client?.emergency_contact, client?.notes,
+  ]);
+
   // Pulse animation when the hero pencil button is tapped. Outer
   // wrapper gets the bm-cp-attn class for ~1.4s, then it clears.
   const cardRef = useRef(null);

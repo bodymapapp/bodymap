@@ -446,6 +446,9 @@ export default function ClientProfile({ client, therapistId, therapist, onBack, 
               therapist={therapist}
               readOnly={!!previewProfile}
               onSummary={setDocSummary}
+              onClientUpdated={(payload) => {
+                setProfile(p => p ? ({ ...p, client: { ...p.client, ...payload } }) : p);
+              }}
             />
           </ProfileSection>
 

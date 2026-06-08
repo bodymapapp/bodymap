@@ -39,14 +39,16 @@ Return ONLY valid JSON with this exact shape, no commentary, no code fences:
 {
   "summary": "Two or three plain sentences: what this document is and the key things it contains.",
   "fields": [{ "label": "Client name", "value": "Jane Doe" }],
-  "full_text": "A faithful transcription of the readable text in the document."
+  "full_text": "A faithful transcription of the readable text in the document.",
+  "client_fields": { "name": "Jane Doe", "phone": "555-123-4567", "allergies": "Latex" }
 }
 
 Rules:
 - summary: plain language, factual, max 60 words.
 - fields: the key facts a therapist would want at a glance, as label/value pairs. Examples: client name, date, signature present (Yes/No), date of birth, emergency contact, allergies, medical conditions, medications, areas to avoid, pressure preference, consent granted (Yes/No). Include only what is actually on the document. Max 14. Keep values short.
 - full_text: transcribe the text you can read. If handwriting or scan quality makes parts unreadable, transcribe what you can and note [unclear] inline. Do not pad.
-- If the document is blank or unreadable, set summary to say so, fields to an empty array, and full_text to an empty string.`;
+- client_fields: an object of values that clearly belong to the client, for filling their profile. Include a key ONLY when the value is clearly present on the form. Do not guess. Allowed keys exactly: name, email, phone, alt_phone, birthday, gender, address_line1, address_line2, city, state, zip, referral_source, allergies, health_conditions, medications, areas_to_avoid, emergency_contact. Format birthday as YYYY-MM-DD only if a full date is present, otherwise omit it. Keep each value concise. Omit any key not present. If nothing applies, use an empty object.
+- If the document is blank or unreadable, set summary to say so, fields to an empty array, full_text to an empty string, and client_fields to an empty object.`;
 
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
@@ -175,11 +177,25 @@ serve(async (req) => {
       ? extracted.fields.filter((f: any) => f && f.label).slice(0, 14).map((f: any) => ({ label: String(f.label).slice(0, 60), value: String(f.value ?? "").slice(0, 300) }))
       : [];
 
+    // Normalize the reader's profile-field guesses to known columns only.
+    const ALLOWED = ["name","email","phone","alt_phone","birthday","gender","address_line1","address_line2","city","state","zip","referral_source","allergies","health_conditions","medications","areas_to_avoid","emergency_contact"];
+    const rawCF = (extracted.client_fields && typeof extracted.client_fields === "object") ? extracted.client_fields : {};
+    const clientFields: Record<string, string> = {};
+    for (const k of ALLOWED) {
+      let v = rawCF[k];
+      if (v == null) continue;
+      v = String(v).trim();
+      if (!v) continue;
+      if (k === "birthday" && !/^\d{4}-\d{2}-\d{2}$/.test(v)) continue; // only a clean date
+      clientFields[k] = v.slice(0, 300);
+    }
+
     const { error: upErr } = await admin.from("client_documents").update({
       extract_status: "done",
       extracted_summary: (extracted.summary || "").slice(0, 2000),
       extracted_fields: fields,
       extracted_text: (extracted.full_text || "").slice(0, 20000),
+      extracted_client_fields: clientFields,
       extracted_at: new Date().toISOString(),
       extract_error: null,
     }).eq("id", document_id);
@@ -192,7 +208,7 @@ serve(async (req) => {
 
     return new Response(JSON.stringify({
       ok: true,
-      extracted: { summary: extracted.summary || "", fields, full_text: (extracted.full_text || "").slice(0, 20000) },
+      extracted: { summary: extracted.summary || "", fields, full_text: (extracted.full_text || "").slice(0, 20000), client_fields: clientFields },
     }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (err) {
     console.error("[read-document] error:", err);

@@ -90,3 +90,7 @@ do $$ begin
       check (extract_status in ('none','processing','done','failed'));
   end if;
 end $$;
+
+-- Phase 3: the reader also returns normalized profile-field guesses,
+-- stored here so the viewer can offer a one-tap "fill blanks" apply.
+alter table public.client_documents add column if not exists extracted_client_fields jsonb;

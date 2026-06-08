@@ -76,7 +76,7 @@ function CategoryChips({ value, onChange }) {
   );
 }
 
-export default function DocumentsCard({ client, therapist, readOnly = false, onSummary }) {
+export default function DocumentsCard({ client, therapist, readOnly = false, onSummary, onClientUpdated }) {
   const therapistId = therapist?.id;
   const clientId = client?.id;
   const canUse = !readOnly && !!therapistId && !!clientId;
@@ -371,11 +371,14 @@ export default function DocumentsCard({ client, therapist, readOnly = false, onS
       {viewerDoc && (
         <DocumentViewer
           doc={viewerDoc}
+          clientId={readOnly ? null : client?.id}
+          clientName={client?.name ? String(client.name).split(' ')[0] : ''}
           onClose={() => setViewerDoc(null)}
           onExtracted={(updated) => {
             setViewerDoc(v => (v && v.id === updated.id ? updated : v));
             setDocs(list => list.map(d => (d.id === updated.id ? updated : d)));
           }}
+          onClientUpdated={onClientUpdated}
         />
       )}
     </div>

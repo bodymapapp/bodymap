@@ -45,7 +45,42 @@ export function isImageFile(file) {
   return !!file && typeof file.type === 'string' && file.type.startsWith('image/');
 }
 
-const DOC_SELECT = 'id,title,category,file_path,file_name,mime_type,size_bytes,page_count,captured_via,created_at,extract_status,extracted_summary,extracted_fields,extracted_text,extracted_at,extract_error';
+const DOC_SELECT = 'id,title,category,file_path,file_name,mime_type,size_bytes,page_count,captured_via,created_at,extract_status,extracted_summary,extracted_fields,extracted_text,extracted_client_fields,extracted_at,extract_error';
+
+export const CLIENT_FIELD_LABELS = {
+  name: 'Name', email: 'Email', phone: 'Phone', alt_phone: 'Alternate phone',
+  birthday: 'Birthday', gender: 'Gender', address_line1: 'Address', address_line2: 'Address line 2',
+  city: 'City', state: 'State', zip: 'Zip', referral_source: 'How they found you',
+  allergies: 'Allergies', health_conditions: 'Conditions', medications: 'Medications',
+  areas_to_avoid: 'Areas to avoid', emergency_contact: 'Emergency contact',
+};
+const CLIENT_FIELD_KEYS = Object.keys(CLIENT_FIELD_LABELS);
+
+// Apply a read document's field guesses to the client, filling only
+// blanks. Fields that already have a value are left untouched so we
+// never overwrite. Returns { applied: {col:value}, skipped: [labels] }.
+export async function applyReadToClient(clientId, clientFields) {
+  const incoming = clientFields && typeof clientFields === 'object' ? clientFields : {};
+  const wanted = CLIENT_FIELD_KEYS.filter(k => incoming[k] != null && String(incoming[k]).trim() !== '');
+  if (wanted.length === 0) return { applied: {}, skipped: [] };
+
+  const { data: current, error: selErr } = await supabase
+    .from('clients').select(wanted.join(',')).eq('id', clientId).single();
+  if (selErr) throw selErr;
+
+  const applied = {};
+  const skipped = [];
+  for (const k of wanted) {
+    const has = current[k] != null && String(current[k]).trim() !== '';
+    if (has) skipped.push(CLIENT_FIELD_LABELS[k]);
+    else applied[k] = String(incoming[k]).trim();
+  }
+  if (Object.keys(applied).length > 0) {
+    const { error: upErr } = await supabase.from('clients').update(applied).eq('id', clientId);
+    if (upErr) throw upErr;
+  }
+  return { applied, skipped };
+}
 
 // List active (non-deleted) documents for a client, newest first.
 export async function listDocuments(therapistId, clientId) {
