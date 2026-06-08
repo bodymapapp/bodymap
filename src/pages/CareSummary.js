@@ -95,7 +95,7 @@ export default function CareSummary() {
         // Find session by feedback_code or id
         const { data: session } = await supabase
           .from("sessions")
-          .select("*")
+          .select("id, client_id, therapist_id, front_focus, front_avoid, back_focus, back_avoid, pressure, goal, public_notes, completed, completed_at, created_at, booking_id, feedback_code")
           .or(`feedback_code.eq.${code},id.eq.${code}`)
           .maybeSingle();
 
@@ -118,7 +118,7 @@ export default function CareSummary() {
         // Get all sessions for pattern context
         const { data: allSessions } = await supabase
           .from("sessions")
-          .select("*")
+          .select("id, client_id, therapist_id, front_focus, front_avoid, back_focus, back_avoid, pressure, goal, public_notes, completed, completed_at, created_at, booking_id, feedback_code")
           .eq("client_id", session.client_id)
           .eq("completed", true)
           .order("created_at", { ascending: false })

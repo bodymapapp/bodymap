@@ -355,7 +355,7 @@ export default function ClientIntake() {
       // Get their previous sessions, exclude the current booking's session
       const { data: sessions } = await supabase
         .from('sessions')
-        .select('*')
+        .select('id, client_id, booking_id, created_at, completed, front_focus, front_avoid, back_focus, back_avoid, pressure, goal, table_temp, room_temp, music, lighting, conversation, draping, oil_pref, med_flag')
         .eq('client_id', client.id)
         .order('created_at', { ascending: false })
         .limit(5);

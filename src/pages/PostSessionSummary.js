@@ -57,7 +57,7 @@ export default function PostSessionSummary({ sessionIdProp, chrome = 'full' }) {
         return;
       }
 
-      const { data: session } = await supabase.from('sessions').select('*').eq('id', sessionId).maybeSingle();
+      const { data: session } = await supabase.from('sessions').select('id, client_id, therapist_id, front_focus, front_avoid, back_focus, back_avoid, pressure, goal, public_notes, completed, completed_at, created_at, booking_id, feedback_code').eq('id', sessionId).maybeSingle();
       if (!session) { setLoading(false); return; }
       const { data: client } = await supabase.from('clients').select('name,phone,email').eq('id', session.client_id).maybeSingle();
       const { data: therapist } = await supabase.from('therapists').select('full_name,business_name,custom_url,phone').eq('id', session.therapist_id).maybeSingle();
