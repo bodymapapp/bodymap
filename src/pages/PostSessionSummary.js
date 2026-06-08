@@ -40,6 +40,23 @@ export default function PostSessionSummary({ sessionIdProp, chrome = 'full' }) {
         setLoading(false);
         return;
       }
+      // Read through the server-side recap function so the client never
+      // receives the therapist's raw notes. The note shown to the client
+      // is parsed on the server. Fall back to the direct read if the
+      // function is unavailable, so a recap never fails to load. The
+      // fallback is removed once the sessions read lockdown is finalized.
+      let fn = null;
+      try {
+        const res = await supabase.functions.invoke('recap-view', { body: { sessionId } });
+        if (res?.data?.ok) fn = res.data;
+      } catch (_e) { /* fall through to direct read */ }
+
+      if (fn) {
+        setData({ session: fn.session, client: fn.client, therapist: fn.therapist, history: fn.history || [], note: fn.note });
+        setLoading(false);
+        return;
+      }
+
       const { data: session } = await supabase.from('sessions').select('*').eq('id', sessionId).maybeSingle();
       if (!session) { setLoading(false); return; }
       const { data: client } = await supabase.from('clients').select('name,phone,email').eq('id', session.client_id).maybeSingle();
@@ -80,10 +97,12 @@ export default function PostSessionSummary({ sessionIdProp, chrome = 'full' }) {
     );
   }
 
-  const soap = parseSoap(session.therapist_notes || '');
-  const noteToClient = session.public_notes || soap.noteToClient || '';
-  const aftercareItems = getAftercareItems(soap);
-  const aftercareCustom = soap.aftercareCustom || '';
+  // On the live path the note is parsed on the server (data.note). The
+  // sample/preview path and the direct-read fallback parse locally.
+  const soapLocal = parseSoap(session.therapist_notes || '');
+  const noteToClient = data.note ? (data.note.noteToClient || '') : (session.public_notes || soapLocal.noteToClient || '');
+  const aftercareItems = data.note ? (data.note.aftercareItems || []) : getAftercareItems(soapLocal);
+  const aftercareCustom = data.note ? (data.note.aftercareCustom || '') : (soapLocal.aftercareCustom || '');
 
   const therapistName = therapist?.business_name || therapist?.full_name || 'Your therapist';
   const therapistFullName = therapist?.full_name || '';
