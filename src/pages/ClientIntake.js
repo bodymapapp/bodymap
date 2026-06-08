@@ -317,10 +317,11 @@ export default function ClientIntake() {
       const isEmail = contact.includes('@');
       const digits = contact.replace(/\D/g, '');
 
-      // Fetch all clients for this therapist once, then match on email, phone, or name
+      // Fetch this therapist's clients (id + match fields only, never
+      // clinical columns) then match on email, phone, or name.
       const { data: allClients } = await supabase
         .from('clients')
-        .select('*')
+        .select('id, name, email, phone')
         .eq('therapist_id', therapist.id);
 
       if (!allClients?.length) return null;
