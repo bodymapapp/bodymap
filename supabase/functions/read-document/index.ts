@@ -40,7 +40,8 @@ Return ONLY valid JSON with this exact shape, no commentary, no code fences:
   "summary": "Two or three plain sentences: what this document is and the key things it contains.",
   "fields": [{ "label": "Client name", "value": "Jane Doe" }],
   "full_text": "A faithful transcription of the readable text in the document.",
-  "client_fields": { "name": "Jane Doe", "phone": "555-123-4567", "allergies": "Latex" }
+  "client_fields": { "name": "Jane Doe", "phone": "555-123-4567", "allergies": "Latex" },
+  "document_date": "2026-03-14"
 }
 
 Rules:
@@ -48,6 +49,7 @@ Rules:
 - fields: the key facts a therapist would want at a glance, as label/value pairs. Examples: client name, date, signature present (Yes/No), date of birth, emergency contact, allergies, medical conditions, medications, areas to avoid, pressure preference, consent granted (Yes/No). Include only what is actually on the document. Max 14. Keep values short.
 - full_text: transcribe the text you can read. If handwriting or scan quality makes parts unreadable, transcribe what you can and note [unclear] inline. Do not pad.
 - client_fields: an object of values that clearly belong to the client, for filling their profile. Include a key ONLY when the value is clearly present on the form. Do not guess. Allowed keys exactly: name, email, phone, alt_phone, birthday, gender, address_line1, address_line2, city, state, zip, referral_source, allergies, health_conditions, medications, areas_to_avoid, emergency_contact. Format birthday as YYYY-MM-DD only if a full date is present, otherwise omit it. Keep each value concise. Omit any key not present. If nothing applies, use an empty object.
+- document_date: the date written or printed on the document itself (when it was signed, dated, or filled out), as YYYY-MM-DD. This is the date the document is true as of, which may be in the past. Include it only if a clear date is on the document. Omit it entirely if there is no date on the document.
 - If the document is blank or unreadable, set summary to say so, fields to an empty array, full_text to an empty string, and client_fields to an empty object.`;
 
 serve(async (req) => {
@@ -190,12 +192,17 @@ serve(async (req) => {
       clientFields[k] = v.slice(0, 300);
     }
 
+    const docDate = (typeof extracted.document_date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(extracted.document_date.trim()))
+      ? extracted.document_date.trim()
+      : null;
+
     const { error: upErr } = await admin.from("client_documents").update({
       extract_status: "done",
       extracted_summary: (extracted.summary || "").slice(0, 2000),
       extracted_fields: fields,
       extracted_text: (extracted.full_text || "").slice(0, 20000),
       extracted_client_fields: clientFields,
+      document_date: docDate,
       extracted_at: new Date().toISOString(),
       extract_error: null,
     }).eq("id", document_id);

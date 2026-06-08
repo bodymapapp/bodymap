@@ -94,3 +94,7 @@ end $$;
 -- Phase 3: the reader also returns normalized profile-field guesses,
 -- stored here so the viewer can offer a one-tap "fill blanks" apply.
 alter table public.client_documents add column if not exists extracted_client_fields jsonb;
+
+-- The reader also extracts the date printed on the document, used as the
+-- effective date when applying facts to the client history.
+alter table public.client_documents add column if not exists document_date date;

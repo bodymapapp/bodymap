@@ -16,7 +16,7 @@ import { createPortal } from 'react-dom';
 import { C, F } from './tokens';
 import { downloadDocumentBlob, readDocument, fetchDocument, applyReadToClient, CLIENT_FIELD_LABELS } from '../../lib/clientDocuments';
 
-export default function DocumentViewer({ doc, clientId, clientName, onClose, onExtracted, onClientUpdated }) {
+export default function DocumentViewer({ doc, clientId, clientName, therapistId, onClose, onExtracted, onClientUpdated }) {
   const [loading, setLoading] = useState(true);
   const [renderError, setRenderError] = useState('');
   const [imgUrl, setImgUrl] = useState('');
@@ -104,7 +104,12 @@ export default function DocumentViewer({ doc, clientId, clientName, onClose, onE
     if (!clientId) return;
     setApplying(true);
     try {
-      const res = await applyReadToClient(clientId, meta.extracted_client_fields || {});
+      const effectiveOn = meta.document_date || (meta.created_at ? String(meta.created_at).slice(0, 10) : null);
+      const res = await applyReadToClient(clientId, meta.extracted_client_fields || {}, {
+        therapistId,
+        documentId: meta.id,
+        effectiveOn,
+      });
       setApplyResult(res);
       const appliedKeys = Object.keys(res.applied || {});
       if (appliedKeys.length && onClientUpdated) onClientUpdated(res.applied);

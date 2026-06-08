@@ -22,6 +22,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../../lib/supabase';
 import AutoGrowingTextarea from '../AutoGrowingTextarea';
+import { recordFactHistory, HISTORY_FIELDS, listFactHistory, HISTORY_FIELD_LABELS, HISTORY_SOURCE_LABELS } from '../../lib/clientHistory';
 
 const C = {
   paper:  '#FFFFFF',
@@ -77,6 +78,28 @@ export default function AboutCard({ client, onUpdated, pulse = false }) {
   // 'name' | etc for inline error message
   const [errorOn, setErrorOn] = useState(null);
   const [errorMsg, setErrorMsg] = useState('');
+  // Change history panel for the Health and safety group.
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [historyRows, setHistoryRows] = useState(null);
+  const [historyLoading, setHistoryLoading] = useState(false);
+
+  const toggleHistory = async () => {
+    const next = !historyOpen;
+    setHistoryOpen(next);
+    if (next && historyRows === null && client?.id && !client?.__sample) {
+      setHistoryLoading(true);
+      try {
+        const rows = await listFactHistory(client.id);
+        setHistoryRows(rows);
+      } catch (_e) {
+        setHistoryRows([]);
+      } finally {
+        setHistoryLoading(false);
+      }
+    }
+  };
+  // Reload history when reopened after a client switch.
+  useEffect(() => { setHistoryRows(null); setHistoryOpen(false); }, [client?.id]);
 
   // Reset local state if the parent swaps to a different client.
   useEffect(() => {
@@ -223,6 +246,16 @@ export default function AboutCard({ client, onUpdated, pulse = false }) {
 
     setJustSaved(field);
     setTimeout(() => setJustSaved(null), 1500);
+    if (HISTORY_FIELDS.includes(field)) {
+      recordFactHistory({
+        therapistId: client?.therapist_id,
+        clientId: client?.id,
+        field,
+        value: payload[field],
+        previousValue: client?.[field],
+        source: 'edit',
+      });
+    }
     if (onUpdated) onUpdated(payload);
   }
 
@@ -382,6 +415,45 @@ export default function AboutCard({ client, onUpdated, pulse = false }) {
         error={errorOn === 'emergency_contact' ? errorMsg : ''}
         placeholder="Name and phone"
       />
+      {!isSample && (
+        <div style={{ marginTop: 4 }}>
+          <button type="button" onClick={toggleHistory} style={{
+            background: 'none', border: 'none', padding: '6px 0', cursor: 'pointer',
+            fontFamily: F.sans, fontSize: 12.5, fontWeight: 700, color: C.sage,
+          }}>
+            {historyOpen ? 'Hide change history' : 'View change history'}
+          </button>
+          {historyOpen && (
+            <div style={{ marginTop: 4 }}>
+              {historyLoading && (
+                <div style={{ fontFamily: F.sans, fontSize: 12.5, color: C.muted }}>Loading.</div>
+              )}
+              {!historyLoading && historyRows && historyRows.length === 0 && (
+                <div style={{ fontFamily: F.sans, fontSize: 12.5, color: C.muted, lineHeight: 1.5 }}>
+                  No changes recorded yet. Edits and document reads from here on will show up here.
+                </div>
+              )}
+              {!historyLoading && historyRows && historyRows.length > 0 && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
+                  {historyRows.map(r => (
+                    <div key={r.id} style={{
+                      borderLeft: `2px solid ${C.lineSoft}`, paddingLeft: 10,
+                    }}>
+                      <div style={{ fontFamily: F.sans, fontSize: 13, color: C.ink, lineHeight: 1.4 }}>
+                        <span style={{ fontWeight: 700 }}>{HISTORY_FIELD_LABELS[r.field] || r.field}:</span>{' '}
+                        {r.value ? r.value : <span style={{ fontStyle: 'italic', color: C.muted }}>cleared</span>}
+                      </div>
+                      <div style={{ fontFamily: F.sans, fontSize: 11.5, color: C.muted, marginTop: 2 }}>
+                        {prettyHistoryDate(r.effective_on)} · {HISTORY_SOURCE_LABELS[r.source] || r.source}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
       <RowMultiline
         label="Notes"
         value={notes}
@@ -399,6 +471,14 @@ export default function AboutCard({ client, onUpdated, pulse = false }) {
 // inside the collapsed-by-default 'Client info' section so therapists
 // never saw it. The signal is now a permanent tile in StatusStrip
 // where every important client state lives.
+
+// Format a YYYY-MM-DD date as a short local date without timezone drift.
+function prettyHistoryDate(d) {
+  if (!d) return '';
+  try {
+    return new Date(`${d}T00:00:00`).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+  } catch (_e) { return d; }
+}
 
 // Single-line tap-to-edit row. Click anywhere on the row body to
 // enter edit mode. Blur or Enter saves. Esc cancels.

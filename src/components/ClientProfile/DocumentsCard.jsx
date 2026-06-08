@@ -373,6 +373,7 @@ export default function DocumentsCard({ client, therapist, readOnly = false, onS
           doc={viewerDoc}
           clientId={readOnly ? null : client?.id}
           clientName={client?.name ? String(client.name).split(' ')[0] : ''}
+          therapistId={therapistId}
           onClose={() => setViewerDoc(null)}
           onExtracted={(updated) => {
             setViewerDoc(v => (v && v.id === updated.id ? updated : v));
