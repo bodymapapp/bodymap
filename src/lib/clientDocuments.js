@@ -45,11 +45,13 @@ export function isImageFile(file) {
   return !!file && typeof file.type === 'string' && file.type.startsWith('image/');
 }
 
+const DOC_SELECT = 'id,title,category,file_path,file_name,mime_type,size_bytes,page_count,captured_via,created_at,extract_status,extracted_summary,extracted_fields,extracted_text,extracted_at,extract_error';
+
 // List active (non-deleted) documents for a client, newest first.
 export async function listDocuments(therapistId, clientId) {
   const { data, error } = await supabase
     .from('client_documents')
-    .select('id,title,category,file_path,file_name,mime_type,size_bytes,page_count,captured_via,created_at')
+    .select(DOC_SELECT)
     .eq('therapist_id', therapistId)
     .eq('client_id', clientId)
     .is('deleted_at', null)
@@ -133,7 +135,7 @@ export async function uploadDocument({ therapistId, clientId, file, title, categ
   const ins = await supabase
     .from('client_documents')
     .insert(row)
-    .select('id,title,category,file_path,file_name,mime_type,size_bytes,page_count,captured_via,created_at')
+    .select(DOC_SELECT)
     .single();
   if (ins.error) {
     try { await supabase.storage.from(DOC_BUCKET).remove([path]); } catch (_e) { /* best effort */ }
@@ -142,12 +144,42 @@ export async function uploadDocument({ therapistId, clientId, file, title, categ
   return ins.data;
 }
 
+// Trigger the on-demand reader (Phase 2). Returns the function result.
+export async function readDocument(documentId) {
+  const { data, error } = await supabase.functions.invoke('read-document', {
+    body: { document_id: documentId },
+  });
+  if (error) throw error;
+  return data; // { ok, extracted } | { ok:false, error }
+}
+
+// Re-fetch a single document row (after a read) to refresh extracted data.
+export async function fetchDocument(id) {
+  const { data, error } = await supabase
+    .from('client_documents')
+    .select(DOC_SELECT)
+    .eq('id', id)
+    .is('deleted_at', null)
+    .single();
+  if (error) throw error;
+  return data;
+}
+
 export async function signedUrlFor(filePath, { download = false } = {}) {
   const { data, error } = await supabase.storage
     .from(DOC_BUCKET)
     .createSignedUrl(filePath, 60, download ? { download: true } : undefined);
   if (error) throw error;
   return data.signedUrl;
+}
+
+// Fetch the raw file bytes through the SDK (RLS-checked) so the document
+// can be shown inside the app, never by navigating the browser to the
+// storage URL. Returns a Blob.
+export async function downloadDocumentBlob(filePath) {
+  const { data, error } = await supabase.storage.from(DOC_BUCKET).download(filePath);
+  if (error) throw error;
+  return data; // Blob
 }
 
 export async function renameDocument(id, title) {

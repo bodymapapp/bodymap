@@ -13,9 +13,10 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { C, F, S } from './tokens';
 import { RoundIconButton } from '../ChevronIcon';
+import DocumentViewer from './DocumentViewer';
 import {
   DOC_CATEGORIES, DOC_MAX_BYTES, categoryLabel,
-  listDocuments, uploadDocument, signedUrlFor, renameDocument,
+  listDocuments, uploadDocument, renameDocument,
   setDocumentCategory, softDeleteDocument, imageFileToPdf, isImageFile,
 } from '../../lib/clientDocuments';
 
@@ -90,7 +91,7 @@ export default function DocumentsCard({ client, therapist, readOnly = false, onS
   const [editingId, setEditingId] = useState('');
   const [editTitle, setEditTitle] = useState('');
   const [editCategory, setEditCategory] = useState('consent');
-  const [openingId, setOpeningId] = useState('');
+  const [viewerDoc, setViewerDoc] = useState(null);
 
   const fileRef = useRef(null);
   const cameraRef = useRef(null);
@@ -164,21 +165,7 @@ export default function DocumentsCard({ client, therapist, readOnly = false, onS
     }
   };
 
-  const openDoc = async (doc) => {
-    // Open a blank tab synchronously (inside the tap) so iOS Safari does not
-    // block it, then point it at the signed URL once it resolves.
-    const win = window.open('', '_blank');
-    setOpeningId(doc.id);
-    try {
-      const url = await signedUrlFor(doc.file_path);
-      if (win) win.location = url; else window.location.assign(url);
-    } catch (e) {
-      if (win) win.close();
-      setError('Could not open that document. Please try again.');
-    } finally {
-      setOpeningId('');
-    }
-  };
+  const openDoc = (doc) => setViewerDoc(doc);
 
   const startEdit = (doc) => {
     setConfirmingId('');
@@ -330,10 +317,10 @@ export default function DocumentsCard({ client, therapist, readOnly = false, onS
                     style={{ flex: 1, minWidth: 0, textAlign: 'left', background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontFamily: F.sans }}
                   >
                     <div style={{ fontSize: 14.5, fontWeight: 700, color: C.forest, lineHeight: 1.25, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {doc.title}{openingId === doc.id ? ' · opening' : ''}
+                      {doc.title}
                     </div>
                     <div style={{ fontSize: 12, color: C.muted, marginTop: 3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {[categoryLabel(doc.category), formatDocDate(doc.created_at), formatSize(doc.size_bytes), doc.captured_via === 'camera' ? 'Photo' : 'File'].filter(Boolean).join(' · ')}
+                      {[categoryLabel(doc.category), formatDocDate(doc.created_at), formatSize(doc.size_bytes), doc.captured_via === 'camera' ? 'Photo' : 'File', doc.extract_status === 'done' ? 'Read' : null].filter(Boolean).join(' · ')}
                     </div>
                   </button>
                   {!editing && !confirming && (
@@ -379,6 +366,17 @@ export default function DocumentsCard({ client, therapist, readOnly = false, onS
             );
           })}
         </div>
+      )}
+
+      {viewerDoc && (
+        <DocumentViewer
+          doc={viewerDoc}
+          onClose={() => setViewerDoc(null)}
+          onExtracted={(updated) => {
+            setViewerDoc(v => (v && v.id === updated.id ? updated : v));
+            setDocs(list => list.map(d => (d.id === updated.id ? updated : d)));
+          }}
+        />
       )}
     </div>
   );

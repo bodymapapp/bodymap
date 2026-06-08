@@ -72,3 +72,21 @@ create policy client_documents_obj_update on storage.objects for update to authe
 drop policy if exists client_documents_obj_delete on storage.objects;
 create policy client_documents_obj_delete on storage.objects for delete to authenticated
   using (bucket_id='client-documents' and (storage.foldername(name))[1] = auth.uid()::text);
+
+-- Phase 2: on-demand document reading. The reader (read-document edge
+-- function) writes a plain summary, key facts, and a text transcription
+-- back onto the document row. This is where read content lives when there
+-- is no matching client field, so nothing is lost.
+alter table public.client_documents add column if not exists extract_status text not null default 'none';
+alter table public.client_documents add column if not exists extracted_summary text;
+alter table public.client_documents add column if not exists extracted_fields jsonb;
+alter table public.client_documents add column if not exists extracted_text text;
+alter table public.client_documents add column if not exists extracted_at timestamptz;
+alter table public.client_documents add column if not exists extract_error text;
+
+do $$ begin
+  if not exists (select 1 from pg_constraint where conname='client_documents_extract_status_chk') then
+    alter table public.client_documents add constraint client_documents_extract_status_chk
+      check (extract_status in ('none','processing','done','failed'));
+  end if;
+end $$;
