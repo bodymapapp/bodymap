@@ -5364,6 +5364,39 @@ function TimelineView({ therapist, allAppts, dayOffset, setDayOffset, today, onR
     return !b.start_time && !b.end_time;
   });
 
+  // HK Jun 7 2026: the open-time gap bands were computed from
+  // appointments only, so a gap drawn between two bookings ran straight
+  // across a timed block (a 12 to 1 lunch, say) and the gap's centered
+  // "Open · Nh available" label landed on top of the block label and its
+  // Tap to edit pill. Subtract the therapist's own timed blocks from
+  // each gap so the open band splits around the block. Keep the same
+  // 90 minute minimum so we never surface slivers.
+  if (myBlocksToday.length > 0 && gaps.length > 0) {
+    const blockIv = myBlocksToday.map(b => {
+      const [sh, sm] = b.start_time.slice(0,5).split(':').map(Number);
+      const [eh, em] = b.end_time.slice(0,5).split(':').map(Number);
+      return { start: sh*60+sm, end: eh*60+em };
+    }).sort((a, z) => a.start - z.start);
+    const rebuilt = [];
+    for (const g of gaps) {
+      let segs = [{ start: g.start, end: g.end }];
+      for (const iv of blockIv) {
+        const next = [];
+        for (const s of segs) {
+          if (iv.end <= s.start || iv.start >= s.end) { next.push(s); continue; }
+          if (iv.start > s.start) next.push({ start: s.start, end: iv.start });
+          if (iv.end < s.end) next.push({ start: iv.end, end: s.end });
+        }
+        segs = next;
+      }
+      for (const s of segs) {
+        const mins = s.end - s.start;
+        if (mins > 90) rebuilt.push({ start: s.start, end: s.end, mins });
+      }
+    }
+    gaps.splice(0, gaps.length, ...rebuilt);
+  }
+
   const snapTo15 = (mins) => Math.round(mins / 15) * 15;
 
   const minutesToTimeStr = (mins) => {
