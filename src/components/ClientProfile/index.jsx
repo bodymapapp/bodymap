@@ -64,6 +64,12 @@ export default function ClientProfile({ client, therapistId, therapist, onBack, 
   // "Consent on file" read on the collapsed section header.
   const [docSummary, setDocSummary] = useState({ count: 0, hasConsent: false });
 
+  // Collapse all / expand all. The status strip stays put; this only
+  // drives the collapsible sections below it.
+  const anySectionOpen = Object.values(openSections).some(Boolean);
+  const setAllSections = (open) => setOpenSections(s =>
+    Object.keys(s).reduce((acc, k) => { acc[k] = open; return acc; }, {}));
+
   // Triggers from the ProfileHeader hero buttons. The Edit button
   // (hero pencil) flips a pulse flag on the AboutCard so the card
   // scrolls into view and softly highlights, telling the therapist
@@ -245,6 +251,14 @@ export default function ClientProfile({ client, therapistId, therapist, onBack, 
           agreement are too important to hide behind a click. */}
       {profile && <StatusStrip
         profile={profile}
+        docSummary={docSummary}
+        onDocumentsTap={() => {
+          setOpenSections(s => ({ ...s, documents: true }));
+          setTimeout(() => {
+            const el = document.querySelector('[data-section-id="documents"]');
+            if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }, 50);
+        }}
         onAgreementTap={() => {
           // Force the Agreement section open and scroll to it. If
           // the agreement is unsigned, the user will see the
@@ -264,6 +278,29 @@ export default function ClientProfile({ client, therapistId, therapist, onBack, 
 
       {profile && (
         <div style={{ padding: '0 14px 24px' }}>
+
+          {/* Collapse all / Expand all. Right-aligned, quiet, so a
+              therapist can flatten the whole profile to scan headers
+              or open it all back up in one tap. */}
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 10 }}>
+            <button
+              type="button"
+              onClick={() => setAllSections(!anySectionOpen)}
+              style={{
+                display: 'inline-flex', alignItems: 'center', gap: 6,
+                background: 'transparent', border: 'none', padding: '4px 2px',
+                cursor: 'pointer', fontFamily: F.sans, fontSize: 12.5, fontWeight: 700,
+                color: '#6B7F72', letterSpacing: '0.02em',
+              }}
+            >
+              <svg width="13" height="13" viewBox="0 0 12 12" fill="none" stroke="currentColor"
+                strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"
+                style={{ transform: anySectionOpen ? 'rotate(0deg)' : 'rotate(180deg)', transition: 'transform 0.2s ease' }}>
+                <path d="M2 4l4 4 4-4" />
+              </svg>
+              {anySectionOpen ? 'Collapse all' : 'Expand all'}
+            </button>
+          </div>
 
           {/* Client info: inline tap-to-edit fields wrapped in the
               same collapsible ProfileSection chrome the rest of the

@@ -20,7 +20,7 @@
 import React from 'react';
 import { C, F, S, formatShortDate, formatCurrency } from './tokens';
 
-export default function StatusStrip({ profile, onNextBooking, onAgreementTap }) {
+export default function StatusStrip({ profile, onNextBooking, onAgreementTap, onDocumentsTap, docSummary }) {
   if (!profile) return null;
   const { stats, packagePurchases = [], memberSubscriptions = [], client } = profile;
 
@@ -46,6 +46,13 @@ export default function StatusStrip({ profile, onNextBooking, onAgreementTap }) 
   const cardBrand = client?.card_brand || '';
   const cardLast4 = client?.card_last4 || '';
   const cardSavedAt = client?.card_saved_at || null;
+
+  // ─── Documents tile content (HK Jun 7 2026) ───
+  // Sixth tile, balancing the strip to a clean 2x3 / 3x2 grid. Mirrors
+  // the live summary from the Forms and documents section so consent
+  // status is visible at a glance without expanding anything.
+  const docCount = docSummary?.count || 0;
+  const docHasConsent = !!docSummary?.hasConsent;
 
   return (
     <div style={{
@@ -172,6 +179,36 @@ export default function StatusStrip({ profile, onNextBooking, onAgreementTap }) 
               <BigText>None on file</BigText>
               <Detail>
                 <span style={{ fontStyle: 'italic' }}>Saved on first paid booking</span>
+              </Detail>
+            </>
+          )}
+        </Tile>
+
+        {/* Documents (HK Jun 7 2026). Sixth tile. Surfaces consent /
+            document status at a glance; taps open the Forms and
+            documents section. */}
+        <Tile
+          icon="📄"
+          label="Documents"
+          tone={docHasConsent ? 'sage' : 'neutral'}
+          accentBorder={docHasConsent}
+          onClick={onDocumentsTap}
+        >
+          {docHasConsent ? (
+            <>
+              <BigText>Consent on file</BigText>
+              <Detail>{docCount} document{docCount === 1 ? '' : 's'}</Detail>
+            </>
+          ) : docCount > 0 ? (
+            <>
+              <BigText>{docCount} document{docCount === 1 ? '' : 's'}</BigText>
+              <Detail>No consent yet</Detail>
+            </>
+          ) : (
+            <>
+              <BigText>None yet</BigText>
+              <Detail>
+                <span style={{ fontStyle: 'italic' }}>Tap to add</span>
               </Detail>
             </>
           )}
