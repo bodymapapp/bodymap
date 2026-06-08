@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { planTier, planPrice } from '../lib/plan';
 
 const C = { forest: '#2A5741', sage: '#6B9E80', gray: '#9CA3AF', beige: '#F5F0E8' };
 
@@ -143,7 +144,7 @@ export default function MobileBottomNav({ active, onChange, unreadCount, onSignO
                 </div>
               )}
               <div style={{ fontSize: 11, color: '#16A34A', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4 }}>
-                <span>🌿</span> Silver
+                <span>🌿</span> {planTier(therapist?.plan)} · {planPrice(therapist?.plan)}
               </div>
             </div>
           </div>

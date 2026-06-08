@@ -4,6 +4,7 @@ import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { db, supabase } from '../lib/supabase';
 import { openExternalClick } from '../lib/openExternal';
+import { planTier, planPrice } from '../lib/plan';
 import { isSampleId, isSampleSessionId, getSampleClient, getSampleSession, buildSampleProfile } from '../data/sampleClients';
 import ClientList from '../components/ClientList';
 import SessionList from '../components/SessionList';
@@ -5862,7 +5863,7 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
         id="plan"
         taxonomy="5.1"
         label="Your plan"
-        summary={(!therapist?.plan || therapist?.plan === 'free' || therapist?.plan === 'bronze') ? 'Bronze · Free' : therapist?.plan === 'silver' ? 'Silver · $19/mo' : therapist?.plan === 'gold' ? 'Gold · $49/mo' : 'Bronze · Free'}
+        summary={`${planTier(therapist?.plan)} · ${planPrice(therapist?.plan)}`}
         status="done"
         icon={<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 11h18M7 15h3"/></svg>}
         isOpen={openRow === 'plan'}
@@ -5871,7 +5872,7 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div>
             <p style={{ fontSize: '18px', fontWeight: '700', color: C2.darkGray, margin: '0 0 4px 0' }}>
-              {(!therapist?.plan || therapist?.plan === 'free' || therapist?.plan === 'bronze') ? 'Bronze - Free' : therapist?.plan === 'silver' ? 'Silver - $19/mo' : therapist?.plan === 'gold' ? 'Gold - $49/mo' : 'Bronze - Free'}
+              {`${planTier(therapist?.plan)} - ${planPrice(therapist?.plan)}`}
             </p>
             <p style={{ fontSize: '13px', color: C2.gray, margin: '0 0 4px 0' }}>
               {(!therapist?.plan || therapist?.plan === 'free' || therapist?.plan === 'bronze') ? 'All tools included free. Upgrade to unlock unlimited.' : therapist?.plan === 'silver' ? 'Unlimited clients + full session history.' : therapist?.plan === 'gold' ? 'All features including Platform insights.' : 'All tools included free. Upgrade to unlock unlimited.'}
@@ -6417,7 +6418,7 @@ export default function Dashboard({ view }) {
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
           <NotificationsBell therapistId={therapist?.id} isMobile={isMobile} />
           <span style={{ fontSize: '10px', fontWeight: '700', color: C.forest, background: '#F0FDF4', border: '1px solid #86EFAC', padding: '3px 8px', borderRadius: '20px', whiteSpace: 'nowrap' }}>
-            🌿 Silver · Free
+            🌿 {planTier(therapist?.plan)} · {planPrice(therapist?.plan)}
           </span>
           {isMobile ? (
             <button
@@ -6657,7 +6658,7 @@ export default function Dashboard({ view }) {
           <div style={{ background: C.white, borderRadius: '12px', padding: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
             <p style={{ fontSize: '14px', color: C.gray, margin: '0 0 8px 0' }}>Plan</p>
             <p style={{ fontSize: '20px', fontWeight: '700', color: C.darkGray, margin: 0 }}>
-              {(!therapist?.plan || therapist?.plan === 'free' || therapist?.plan === 'bronze') ? 'Bronze (Free)' : therapist?.plan === 'silver' ? 'Silver ($19/mo)' : therapist?.plan === 'gold' ? 'Gold ($49/mo)' : 'Bronze (Free)'}
+              {`${planTier(therapist?.plan)} (${planPrice(therapist?.plan)})`}
             </p>
           </div>
         </div>
