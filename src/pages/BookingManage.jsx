@@ -46,11 +46,25 @@ export default function BookingManage() {
       if (!alive) return;
       setTherapist(t || null);
       if (bookingId) {
-        const { data: b } = await supabase
-          .from('bookings')
-          .select('booking_date, start_time, client_name, services(name)')
-          .eq('id', bookingId)
-          .maybeSingle();
+        // Read the booking's display fields through the gated lookup so
+        // contact details are not pulled with the public key. Fall back
+        // to the direct read during the transition.
+        let b = null;
+        try {
+          const res = await supabase.functions.invoke('booking-lookup', { body: { op: 'manage', bookingId } });
+          if (res?.data?.ok && res.data.booking) {
+            const bk = res.data.booking;
+            b = { booking_date: bk.booking_date, start_time: bk.start_time, client_name: bk.client_name, services: { name: bk.service_name } };
+          }
+        } catch (_e) { /* fall through */ }
+        if (!b) {
+          const { data: bd } = await supabase
+            .from('bookings')
+            .select('booking_date, start_time, client_name, services(name)')
+            .eq('id', bookingId)
+            .maybeSingle();
+          b = bd || null;
+        }
         if (!alive) return;
         setBooking(b || null);
       }

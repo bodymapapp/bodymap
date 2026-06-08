@@ -3533,23 +3533,30 @@ export default function BookingPage() {
               // client, even with fresh email and phone. Removed
               // 2026-05-05 after HK reported the false-positive.)
 
-              // 1. Email match (exact, case-insensitive — both sides lowercased)
-              if (email) {
-                const {data:byEmail} = await supabase.from('bookings')
-                  .select('id').eq('therapist_id',therapist.id)
-                  .eq('client_email',email).neq('status','cancelled').limit(1);
-                if (byEmail?.length) isRepeat = true;
-              }
-
-              // 2. Phone match — last 10 digits, ignoring formatting.
-              // A phone number reuse across bookings is very rarely
-              // a coincidence (unlike names).
-              if (!isRepeat && phone.length >= 7) {
-                const {data:allPhones} = await supabase.from('bookings')
-                  .select('client_phone').eq('therapist_id',therapist.id)
-                  .neq('status','cancelled').not('client_phone','is',null);
-                if ((allPhones||[]).some(b => b.client_phone?.replace(/\D/g,'').slice(-10) === phone))
-                  isRepeat = true;
+              // Returning-client check via the gated lookup so the practice's
+              // contact details are not pulled with the public key. Falls
+              // back to the direct match during the transition.
+              {
+                let fnOk = false;
+                try {
+                  const res = await supabase.functions.invoke('booking-lookup', { body: { op: 'returning', therapistId: therapist.id, email, phone } });
+                  if (res?.data?.ok) { fnOk = true; if (res.data.isRepeat) isRepeat = true; }
+                } catch (_e) { /* fall through */ }
+                if (!fnOk) {
+                  if (email) {
+                    const {data:byEmail} = await supabase.from('bookings')
+                      .select('id').eq('therapist_id',therapist.id)
+                      .eq('client_email',email).neq('status','cancelled').limit(1);
+                    if (byEmail?.length) isRepeat = true;
+                  }
+                  if (!isRepeat && phone.length >= 7) {
+                    const {data:allPhones} = await supabase.from('bookings')
+                      .select('client_phone').eq('therapist_id',therapist.id)
+                      .neq('status','cancelled').not('client_phone','is',null);
+                    if ((allPhones||[]).some(b => b.client_phone?.replace(/\D/g,'').slice(-10) === phone))
+                      isRepeat = true;
+                  }
+                }
               }
 
               setIsRepeatClient(isRepeat);

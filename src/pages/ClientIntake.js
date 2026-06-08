@@ -96,17 +96,25 @@ export default function ClientIntake() {
       let resolvedBookingId = bookingIdFromUrl || null;
       if (!resolvedBookingId && intakeData.clientEmail) {
         const today = new Date().toISOString().split('T')[0];
-        const { data: nextBooking } = await supabase
-          .from('bookings')
-          .select('id')
-          .eq('therapist_id', therapist.id)
-          .eq('client_email', intakeData.clientEmail.toLowerCase().trim())
-          .neq('status', 'cancelled')
-          .gte('booking_date', today)
-          .order('booking_date', { ascending: true })
-          .limit(1)
-          .maybeSingle();
-        if (nextBooking) resolvedBookingId = nextBooking.id;
+        let nextId = null, fnOk = false;
+        try {
+          const res = await supabase.functions.invoke('booking-lookup', { body: { op: 'nextBooking', therapistId: therapist.id, email: intakeData.clientEmail } });
+          if (res?.data?.ok) { fnOk = true; nextId = res.data.bookingId; }
+        } catch (_e) { /* fall through */ }
+        if (!fnOk) {
+          const { data: nextBooking } = await supabase
+            .from('bookings')
+            .select('id')
+            .eq('therapist_id', therapist.id)
+            .eq('client_email', intakeData.clientEmail.toLowerCase().trim())
+            .neq('status', 'cancelled')
+            .gte('booking_date', today)
+            .order('booking_date', { ascending: true })
+            .limit(1)
+            .maybeSingle();
+          nextId = nextBooking?.id || null;
+        }
+        if (nextId) resolvedBookingId = nextId;
       }
 
       // Step 3: Create session with resolved booking_id
