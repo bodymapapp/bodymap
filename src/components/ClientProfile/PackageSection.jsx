@@ -24,6 +24,7 @@
 // client and plan.
 
 import React, { useEffect, useRef, useState } from 'react';
+import { ChevronButton } from '../ChevronIcon';
 import { supabase } from '../../lib/supabase';
 import CheckoutModal from '../CheckoutModal';
 import SidePanel from '../SidePanel';
@@ -861,12 +862,7 @@ export default function PackageSection({ client, therapist, hasMembership, secti
               Prepaid bundle of sessions, one-time payment
             </div>
           </div>
-          <span style={{
-            color: C.gray,
-            fontSize: 14,
-            transform: addExpanded ? 'rotate(90deg)' : 'rotate(0deg)',
-            transition: 'transform 0.15s',
-          }}>›</span>
+          <ChevronButton open={addExpanded} size={30} ariaLabel={addExpanded ? 'Collapse' : 'Expand'} />
         </button>
 
         {addExpanded && (

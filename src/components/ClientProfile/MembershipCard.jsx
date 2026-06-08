@@ -18,6 +18,7 @@
 // flow when they manually attach a sub here.
 
 import React, { useEffect, useState } from 'react';
+import { ChevronButton } from '../ChevronIcon';
 import { supabase } from '../../lib/supabase';
 import CheckoutModal from '../CheckoutModal';
 import PackageSection, { usePackageData } from './PackageSection';
@@ -920,12 +921,7 @@ export default function MembershipCard({ client, therapist }) {
                 Monthly recurring plan with renewals
               </div>
             </div>
-            <span style={{
-              color: C.gray,
-              fontSize: 14,
-              transform: membershipAddExpanded ? 'rotate(90deg)' : 'rotate(0deg)',
-              transition: 'transform 0.15s',
-            }}>›</span>
+            <ChevronButton open={membershipAddExpanded} size={30} ariaLabel={membershipAddExpanded ? 'Collapse' : 'Expand'} />
           </button>
 
           {membershipAddExpanded && (

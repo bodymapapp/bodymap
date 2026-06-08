@@ -20,6 +20,7 @@
 // hairline dividers.
 
 import React from "react";
+import { ChevronButton } from "./ChevronIcon";
 
 const C = {
   cream: '#FAF4E8',
@@ -222,20 +223,7 @@ export default function CollapsibleSection({
         {/* Right rail: status indicator + chevron */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0 }}>
           <StatusIndicator status={status} />
-          <svg
-            width="10" height="10" viewBox="0 0 12 12"
-            fill="none"
-            stroke={isOpen ? C.forest : '#B5BEB1'}
-            strokeWidth="1.6"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            style={{
-              transform: isOpen ? 'rotate(90deg)' : 'rotate(0deg)',
-              transition: 'transform 0.18s',
-            }}
-          >
-            <path d="M4 2l4 4-4 4"/>
-          </svg>
+          <ChevronButton open={isOpen} ariaLabel={isOpen ? 'Collapse' : 'Expand'} />
         </div>
       </div>
 
