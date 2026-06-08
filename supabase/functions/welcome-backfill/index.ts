@@ -108,22 +108,25 @@ serve(async (req) => {
     const unsubUrl   = unsubToken ? `${UNSUB_BASE_URL}?t=${unsubToken}` : UNSUB_BASE_URL;
     const unsubFooter = t.id ? unsubscribeFooterHtml(t.id, unsubUrl) : '';
 
+    // Steps mirror the in-app OnboardingChecklist (realigned 2026-06-07).
+    // Keep this list identical in order and topic to send-welcome and to
+    // src/components/OnboardingChecklist.js.
     const steps = [
       { n:'1', title:'Move your clients over',
         body:'Import from Square, MassageBook, Vagaro, or any CSV in two clicks. Go to <b>Clients &gt; Import Clients</b> and upload your export file. Any row with a name, phone, or email comes in. Missing info can be added later.',
         link: dashLink, cta:'Import clients' },
-      { n:'2', title:'Add your first service',
+      { n:'2', title:'Set up your services',
         body:'Tell clients what you offer and at what price. Go to <b>Settings &gt; Services</b> and add your massage types, duration, and price. This is what shows on your booking page.',
         link: dashLink, cta:'Settings' },
-      { n:'3', title:'Set your working hours',
+      { n:'3', title:'Set your weekly hours',
         body:'Clients can only book during your available times. Go to <b>Settings &gt; Availability</b> and toggle on your working days and set your start and end times.',
         link: dashLink, cta:'Set hours' },
-      { n:'4', title:'Share your booking link',
-        body:`Your personal booking page is live at <a href="${bookingLink}" style="color:#2A5741;">${bookingLink}</a>. Share it in your email signature, Instagram bio, or text it directly to clients. They book, fill their body map, and you see it all before they arrive.`,
-        link: bookingLink, cta:'View your booking page' },
-      { n:'5', title:'Send your first intake',
-        body:'Go to <b>Clients &gt; Send Intake</b> and send the body map link to your first client. They tap their focus zones, pressure preference, and any areas to avoid. It will be waiting in your dashboard before they arrive. After the first session, MyBodyMap remembers everything for next time.',
-        link: dashLink, cta:'Send an intake' },
+      { n:'4', title:'Look at your booking page',
+        body:`Open your booking page the way clients see it: <a href="${bookingLink}" style="color:#2A5741;">${bookingLink}</a>. Look at it on your phone, tap through a booking, and make sure it feels like you. This is the page that does the scheduling for you.`,
+        link: bookingLink, cta:'See your booking page' },
+      { n:'5', title:'Set policies and agreement',
+        body:'Set your cancellation window, your new-client deposit, and the agreement clients sign. Go to <b>Settings</b> and set these once. From then on they quietly protect your time and your income.',
+        link: dashLink, cta:'Set policies' },
     ];
 
     const stepsHtml = steps.map(s => `

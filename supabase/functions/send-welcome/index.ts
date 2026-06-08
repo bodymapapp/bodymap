@@ -36,35 +36,38 @@ serve(async (req) => {
     const unsubUrl = unsubToken ? `${UNSUB_BASE_URL}?t=${unsubToken}` : UNSUB_BASE_URL;
     const unsubFooter = therapistId ? unsubscribeFooterHtml(therapistId, unsubUrl) : '';
 
-    // E1.1 Welcome / Onboarding - warm healer voice, 5 steps in any order.
-    // Replaced 2026-04-23: previous version had marketing voice ("autopilot",
-    // "most modern platform"). New copy honors the therapist as a healer
-    // and positions setup as small, do-when-you-can tasks.
+    // E1.1 Welcome / Onboarding. The 5 steps MUST mirror the in-app
+    // OnboardingChecklist (src/components/OnboardingChecklist.js), which
+    // was revised 2026-05-23 to: move clients over, services, weekly
+    // hours, look at the booking page, set policies + agreement. The
+    // email had drifted to the older import / service / hours / payments
+    // / intake list. Realigned 2026-06-07 (HK) so the email and the
+    // in-app checklist tell the therapist the same 5 things, same order.
     const steps = [
       {
-        n: '1', title: 'Bring your clients in',
-        body: 'Import your list or add a few by hand. This is the foundation that everything else sits on top of.',
-        link: `${dashLink}`, cta: 'Import clients'
+        n: '1', title: 'Move your clients over',
+        body: 'Import them from Square, MassageBook, Vagaro, or any CSV. New to all this? Start fresh and add a few by hand. This is the foundation everything else sits on.',
+        link: `${dashLink}`, cta: 'Move your clients over'
       },
       {
-        n: '2', title: 'Tell us what you offer',
-        body: 'Your 60-min deep tissue. Your 90-min prenatal. Your hot stone add-on. Add your services so clients book the right thing.',
-        link: `${dashLink}/settings`, cta: 'Add services'
+        n: '2', title: 'Set up your services',
+        body: 'Your 60-min deep tissue. Your 90-min prenatal. Your hot stone add-on. List what you offer and the price, so clients book the right thing.',
+        link: `${dashLink}/settings`, cta: 'Set up services'
       },
       {
-        n: '3', title: 'Set your hours',
-        body: "When you're open. When you're closed. When you are with a client and not to be disturbed. This is how clients book themselves without you typing a single text.",
-        link: `${dashLink}/schedule`, cta: 'Set hours'
+        n: '3', title: 'Set your weekly hours',
+        body: "When you're open. When you're closed. When you are with a client and not to be disturbed. Clients can only book during the times you open, no texting back and forth.",
+        link: `${dashLink}/settings`, cta: 'Set your hours'
       },
       {
-        n: '4', title: 'Connect payments',
-        body: `Stripe or Square. One minute. After this, clients pay the moment they book. You never have to send "hey can you Venmo me" again.`,
-        link: `${dashLink}/billing`, cta: 'Connect payments'
+        n: '4', title: 'Look at your booking page',
+        body: 'Open the page your clients see and book through. Looking at it the way they do, on a phone, is the moment this starts to feel real.',
+        link: bookingLink, cta: 'See your booking page'
       },
       {
-        n: '5', title: 'Send your first intake',
-        body: `Pick one regular client. Text them your MyBodyMap link. Watch them fill out a visual body map on their phone in 60 seconds instead of scribbling on a clipboard. The first time you see it land in your dashboard is the moment this all clicks.`,
-        link: `${dashLink}`, cta: 'Send first intake'
+        n: '5', title: 'Set policies and agreement',
+        body: 'Your cancellation window, your new-client deposit, and the agreement clients sign. Set these once and they quietly protect your time and your income from then on.',
+        link: `${dashLink}/settings`, cta: 'Set policies'
       },
     ];
 
