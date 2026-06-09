@@ -206,6 +206,26 @@ serve(async (req) => {
       console.warn('[stripe-payment-link-webhook] renewal resolution failed (non-blocking):', rErr);
     }
 
+    // Phase 28b (HK Jun 9 2026): if this payment is for a package, record
+    // the Stripe payment id on the package_purchases row so a later refund
+    // can find the charge. The package was created active when the link
+    // was sent, so we only stamp the payment id and do not change status
+    // (avoids reactivating a package the therapist may have cancelled).
+    try {
+      const { data: pkgPayRow } = await supabase
+        .from('session_payments')
+        .select('package_purchase_id')
+        .eq('id', sessionPaymentId)
+        .maybeSingle();
+      if (pkgPayRow?.package_purchase_id) {
+        await supabase.from('package_purchases').update({
+          stripe_payment_id: paymentIntentId || null,
+        }).eq('id', pkgPayRow.package_purchase_id);
+      }
+    } catch (pkgErr) {
+      console.warn('[stripe-payment-link-webhook] package stamp failed (non-blocking):', pkgErr);
+    }
+
     return new Response(JSON.stringify({ received: true, marked_paid: sessionPaymentId, booking_id: bookingId }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });

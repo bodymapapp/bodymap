@@ -1994,23 +1994,18 @@ function MethodPicker({ cardOnFile, onCardOnFile, onCardNew, onSendLink, onMarkP
             subtitle="Type card number now"
             primary={!cardOnFile && !redeemablePackage}
           />
-          {/* Send pay link (Phase 19.4): supports bookings AND
-              subscriptions. For packages, the create-payment-link
-              edge function doesn't yet accept package_purchase_id -
-              extending it is item 28b in BLOCK_PLAN, will land in a
-              follow-up. Until then, hide this option for package
-              checkout. The other three methods (Mark as paid, Card
-              on file, Enter new card) work identically across all
-              three contexts. */}
-          {!isPackage && (
-            <MethodButton
-              onClick={onSendLink}
-              disabled={!validAmount}
-              icon="📲"
-              title="Send pay link"
-              subtitle="Text or email a one-time link"
-            />
-          )}
+          {/* Send pay link (Phase 19.4 + 28b): bookings, subscriptions,
+              AND packages. create-payment-link accepts package_purchase_id
+              as of Jun 9 2026, so this is no longer hidden for packages.
+              The same one-time Stripe link is texted or emailed to the
+              client; the webhook records the payment when they pay. */}
+          <MethodButton
+            onClick={onSendLink}
+            disabled={!validAmount}
+            icon="📲"
+            title="Send pay link"
+            subtitle="Text or email a one-time link"
+          />
         </>
       ) : (
         <div style={{

@@ -42,6 +42,10 @@ serve(async (req) => {
       // The session_payments row is keyed to whichever path is used.
       member_subscription_id,
       member_subscription_renewal_id,
+      // Phase 28b (HK Jun 9 2026): package mode. Pass package_purchase_id
+      // to collect for a prepaid bundle the therapist already added to the
+      // client. Mutually exclusive with booking_id / member_subscription_id.
+      package_purchase_id,
       amount_cents,
       tip_cents = 0,
       service_name = 'Massage session',
@@ -54,13 +58,16 @@ serve(async (req) => {
     } = await req.json();
 
     if (!therapist_id) return respond({ error: 'therapist_id required' }, 400);
-    // Mode validation: exactly one of booking_id or member_subscription_id.
+    // Mode validation: exactly one of booking_id, member_subscription_id,
+    // or package_purchase_id.
     const isSubscriptionMode = !!member_subscription_id;
-    if (!booking_id && !member_subscription_id) {
-      return respond({ error: 'booking_id or member_subscription_id required' }, 400);
+    const isPackageMode = !!package_purchase_id;
+    const contextCount = (booking_id ? 1 : 0) + (member_subscription_id ? 1 : 0) + (package_purchase_id ? 1 : 0);
+    if (contextCount === 0) {
+      return respond({ error: 'booking_id, member_subscription_id, or package_purchase_id required' }, 400);
     }
-    if (booking_id && member_subscription_id) {
-      return respond({ error: 'booking_id and member_subscription_id are mutually exclusive' }, 400);
+    if (contextCount > 1) {
+      return respond({ error: 'booking_id, member_subscription_id, and package_purchase_id are mutually exclusive' }, 400);
     }
     if (!amount_cents || amount_cents <= 0) return respond({ error: 'amount_cents required' }, 400);
 
@@ -148,6 +155,19 @@ serve(async (req) => {
       clientId = sub.client_id;
       const planName = (sub as any).membership?.name || 'Membership';
       chargeContextLabel = `${planName} renewal`;
+    } else if (isPackageMode) {
+      const { data: pkg, error: pkgErr } = await supabase
+        .from('package_purchases')
+        .select('id, therapist_id, client_id')
+        .eq('id', package_purchase_id)
+        .single();
+      if (pkgErr || !pkg) return respond({ error: 'package_purchase_not_found' }, 404);
+      if (pkg.therapist_id !== therapist_id) {
+        return respond({ error: 'package_not_owned_by_therapist' }, 403);
+      }
+      clientId = pkg.client_id;
+      // service_name already arrives as "Name - N sessions" from the caller.
+      chargeContextLabel = service_name;
     } else {
       const { data: booking, error: bErr } = await supabase
         .from('bookings')
@@ -178,6 +198,7 @@ serve(async (req) => {
         booking_id: booking_id || null,
         member_subscription_id: member_subscription_id || null,
         member_subscription_renewal_id: member_subscription_renewal_id || null,
+        package_purchase_id: package_purchase_id || null,
         therapist_id,
         client_id: clientId,
         amount_cents,
@@ -221,6 +242,7 @@ serve(async (req) => {
                 session_payment_id: paymentRow.id,
                 booking_id: booking_id || '',
                 member_subscription_id: member_subscription_id || '',
+                package_purchase_id: package_purchase_id || '',
                 therapist_id,
               },
             },
@@ -318,6 +340,9 @@ serve(async (req) => {
     }
     if (member_subscription_renewal_id) {
       params.append('metadata[member_subscription_renewal_id]', member_subscription_renewal_id);
+    }
+    if (package_purchase_id) {
+      params.append('metadata[package_purchase_id]', package_purchase_id);
     }
     params.append('metadata[therapist_id]', therapist_id);
     // After-payment redirect to a 'thanks' page on the therapist site
