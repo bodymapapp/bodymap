@@ -15,7 +15,12 @@
 // installed PWAs kept serving the old JS from memory on resume). Paired
 // with a visibilitychange update check in index.html so a resumed PWA
 // (which never fires window.load) still notices a new deploy.
-const CACHE_NAME = 'bodymap-v36';
+// HK Jun 9 2026 v37: bump to force every open client off the pre-fix
+// bundle. The package pay-link fix (SMS send + confirmation that shows
+// before refresh callbacks) shipped, but open tabs kept running the old
+// JS. Bumping CACHE_NAME purges the old cache on activate and posts the
+// SW_UPDATE_READY banner so the page reloads onto the new bundle.
+const CACHE_NAME = 'bodymap-v37';
 
 self.addEventListener('install', event => {
   self.skipWaiting();
