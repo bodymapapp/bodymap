@@ -111,12 +111,20 @@ export function usePackageData(client, therapist, hasMembership) {
   const [paidPackageIds, setPaidPackageIds] = useState(new Set());
   const [loading, setLoading] = useState(true);
   const [refetchKey, setRefetchKey] = useState(0);
+  // HK Jun 9 2026: only show the full-section loading state on the very
+  // first load. A refetch after a charge or a sent pay link refreshes in
+  // the background instead of flipping loading=true, which used to trip
+  // the section's early loading return and unmount the open CheckoutModal
+  // mid-confirmation (the package pay-link success screen vanished and
+  // fell back to the form). Booking checkout never unmounts, which is why
+  // it always showed the confirmation.
+  const initialLoadDoneRef = useRef(false);
 
   useEffect(() => {
     if (!client?.id || !therapist?.id) return;
     let cancelled = false;
     async function load() {
-      setLoading(true);
+      if (!initialLoadDoneRef.current) setLoading(true);
       const [pkgRes, plansRes, bkRes] = await Promise.all([
         supabase
           .from('package_purchases')
@@ -160,6 +168,7 @@ export function usePackageData(client, therapist, hasMembership) {
       setBookings(bkRes.data || []);
       setPaidPackageIds(paidIds);
       setLoading(false);
+      initialLoadDoneRef.current = true;
     }
     load();
     return () => { cancelled = true; };

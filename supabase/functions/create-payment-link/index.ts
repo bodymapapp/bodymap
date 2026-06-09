@@ -143,58 +143,6 @@ serve(async (req) => {
       }
     }
 
-    // HK Jun 9 2026: SMS auto-send. When delivery is 'sms' and the
-    // therapist has Twilio configured, text the link to the client
-    // using the therapist's own practice number, the same way email
-    // delivery auto-sends via Resend. Before this, choosing SMS created
-    // the link but never sent it (the success screen only offered a
-    // manual 'Open SMS' button), so the client received nothing. This
-    // sends server-side so the Twilio auth token never reaches the
-    // browser. Best-effort: a send failure never blocks link creation.
-    function toE164(raw: string): string {
-      const cleaned = String(raw || '').replace(/\D/g, '');
-      if (!cleaned) return '';
-      if (cleaned.startsWith('1')) return `+${cleaned}`;
-      if (String(raw).trim().startsWith('+')) return String(raw).trim();
-      return `+1${cleaned}`;
-    }
-    async function maybeSmsLink(linkUrl: string): Promise<boolean> {
-      if (delivery !== 'sms' || !client_phone) return false;
-      const sid = (therapist as any).twilio_account_sid;
-      const token = (therapist as any).twilio_auth_token;
-      const fromNum = (therapist as any).twilio_phone_number;
-      if (!sid || !token || !fromNum) return false;
-      try {
-        const dollars = (amount_cents + (tip_cents || 0)) / 100;
-        const amountStr = Number.isInteger(dollars) ? `$${dollars}` : `$${dollars.toFixed(2)}`;
-        const to = toE164(client_phone);
-        const from = toE164(fromNum);
-        if (!to || !from) return false;
-        const greetingName = (client_name && String(client_name).trim().split(' ')[0]) || 'there';
-        const body = `Hi ${greetingName}, this is ${therapistDisplayName}. Here is your secure payment link for ${amountStr} (${service_name}): ${linkUrl}`;
-        const res = await fetch(
-          `https://api.twilio.com/2010-04-01/Accounts/${sid}/Messages.json`,
-          {
-            method: 'POST',
-            headers: {
-              'Authorization': `Basic ${btoa(`${sid}:${token}`)}`,
-              'Content-Type': 'application/x-www-form-urlencoded',
-            },
-            body: new URLSearchParams({ To: to, From: from, Body: body }),
-          },
-        );
-        if (!res.ok) {
-          const errBody = await res.text();
-          console.error('[create-payment-link] auto-sms failed', res.status, errBody);
-          return false;
-        }
-        return true;
-      } catch (e) {
-        console.error('[create-payment-link] auto-sms threw', String(e));
-        return false;
-      }
-    }
-
     // Booking mode: load booking row for client info + ownership check.
     // Subscription mode: load subscription row for client info + ownership.
     let clientId: string | null = null;
@@ -336,7 +284,10 @@ serve(async (req) => {
           .eq('id', paymentRow.id);
 
         const emailedSquare = await maybeEmailLink(checkoutResult.url);
-        const textedSquare = await maybeSmsLink(checkoutResult.url);
+        // HK Jun 9 2026: SMS is sent from the therapist's own phone via the
+        // Open SMS button on the success screen, not through Twilio. Never
+        // auto-text here; texted stays false so the frontend shows Open SMS.
+        const textedSquare = false;
         return respond({
           success: true,
           payment_link_url: checkoutResult.url,
@@ -441,7 +392,9 @@ serve(async (req) => {
       .eq('id', paymentRow.id);
 
     const emailedStripe = await maybeEmailLink(stripeData.url);
-    const textedStripe = await maybeSmsLink(stripeData.url);
+    // HK Jun 9 2026: SMS goes through the therapist's own phone (Open SMS on
+    // the success screen), not Twilio. Never auto-text here.
+    const textedStripe = false;
     return respond({
       success: true,
       payment_link_url: stripeData.url,
