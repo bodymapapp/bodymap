@@ -144,7 +144,7 @@ export default function MobileBottomNav({ active, onChange, unreadCount, onSignO
                 </div>
               )}
               <div style={{ fontSize: 11, color: '#16A34A', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4 }}>
-                <span>🌿</span> {planTier(therapist?.plan)} · {planPrice(therapist?.plan)}
+                <span>🌿</span> {planTier(therapist)} · {planPrice(therapist)}
               </div>
             </div>
           </div>
