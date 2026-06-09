@@ -1326,6 +1326,7 @@ export default function CheckoutModal({
         tip_cents: tipCents,
         client_email: client?.email || appt?.email,
         client_name: client?.name || appt?.client || null,
+        client_phone: client?.phone || appt?.phone || null,
         delivery: linkDelivery,
       };
       if (isSubscription) {
@@ -1349,14 +1350,16 @@ export default function CheckoutModal({
         body: JSON.stringify(payload),
       });
       const data = await res.json();
-      if (data.error) throw new Error(data.error);
+      if (!res.ok || data.error) throw new Error(data.error || 'Could not create the payment link. Please try again.');
       const url = data.payment_link_url;
+      if (!url) throw new Error('Could not create the payment link. Please try again.');
       setLinkUrl(url);
 
-      if (packageRow && onPackageCreated) {
-        onPackageCreated(packageRow);
-      }
-
+      // Show the confirmation FIRST, before any parent callback runs, so
+      // nothing a refresh callback does can leave the therapist stuck on
+      // the send screen with no confirmation. The texted / emailed flags
+      // come straight from the function so the success screen shows
+      // exactly what was delivered.
       setSuccessDetail({
         method: 'Payment link',
         detail: url,
@@ -1364,9 +1367,15 @@ export default function CheckoutModal({
         deliveryHint: linkDelivery,
         emailed: !!data.emailed,
         emailedTo: data.emailed_to || null,
+        texted: !!data.texted,
+        textedTo: data.texted_to || null,
       });
       setStep('success');
-      onPaid?.();
+
+      // Parent refresh callbacks are fired defensively after the success
+      // screen is already set. A throw here must never block it.
+      try { if (packageRow && onPackageCreated) onPackageCreated(packageRow); } catch (cbErr) { console.error('onPackageCreated failed', cbErr); }
+      try { onPaid?.(); } catch (cbErr) { console.error('onPaid failed', cbErr); }
     } catch (e) {
       setErrorMsg(e?.message || 'Failed to create payment link.');
     } finally {
@@ -2364,8 +2373,13 @@ function SuccessView({ detail, onClose, linkUrl, linkDelivery, clientPhone, clie
   let subline;
   const isPackageRedemption = detail?.method === 'Redeemed from package';
   if (isLink) {
-    headline = 'Payment link ready';
-    subline = 'Send it to your client through their preferred channel.';
+    const autoSent = detail?.texted || detail?.emailed;
+    headline = autoSent ? 'Payment link sent' : 'Payment link ready';
+    subline = detail?.texted
+      ? `Texted to ${detail?.textedTo || clientPhone || 'your client'}. They can pay by card from their phone.`
+      : detail?.emailed
+        ? `Emailed to ${detail?.emailedTo || clientEmail || 'your client'}. They can pay by card from the link.`
+        : 'Send it to your client through their preferred channel.';
   } else if (isPackageRedemption) {
     headline = 'Session drawn from package';
     subline = `${detail?.package_name || 'Package'}. ${detail?.sessions_left} session${detail?.sessions_left === 1 ? '' : 's'} left in this package.`;
@@ -2406,14 +2420,18 @@ function SuccessView({ detail, onClose, linkUrl, linkDelivery, clientPhone, clie
     return (
       <ResultScreen
         variant="share"
-        headline="Payment link ready"
+        headline={detail?.texted || detail?.emailed ? 'Payment link sent' : 'Payment link ready'}
         subline={subline}
         linkUrl={linkUrl}
-        banner={detail?.emailed ? `Payment link emailed to ${detail.emailedTo || clientEmail}` : null}
+        banner={detail?.texted
+          ? `Payment link texted to ${detail.textedTo || clientPhone}`
+          : detail?.emailed
+            ? `Payment link emailed to ${detail.emailedTo || clientEmail}`
+            : null}
         primary={{ label: 'Done', onClick: onClose }}
       >
         <div style={{ display: 'flex', gap: 10 }}>
-          {clientPhone && (
+          {clientPhone && !detail?.texted && (
             <a href={`sms:${clientPhone}?body=${encodeURIComponent(smsBody)}`} style={{ flex: 1, display: 'block', background: linkDelivery === 'sms' ? `linear-gradient(135deg, ${C.forestDeep}, ${C.forest})` : '#fff', color: linkDelivery === 'sms' ? '#fff' : C.forestDeep, border: linkDelivery === 'sms' ? 'none' : `1.5px solid ${C.border}`, borderRadius: 12, padding: '12px 14px', fontSize: 14, fontWeight: 700, textDecoration: 'none', textAlign: 'center', boxShadow: linkDelivery === 'sms' ? '0 2px 10px rgba(42,87,65,0.2)' : 'none' }}>
               💬 Open SMS
             </a>

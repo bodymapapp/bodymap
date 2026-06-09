@@ -51,6 +51,11 @@ serve(async (req) => {
       service_name = 'Massage session',
       client_email,
       client_name,
+      // HK Jun 9 2026: client_phone needed so SMS delivery can actually
+      // send the link via the therapist's Twilio number server-side,
+      // mirroring the email auto-send. Without this, SMS delivery did
+      // nothing (the link was created but never sent to the client).
+      client_phone,
       // HK Jun 3 2026: when delivery is 'email' and we have the client's
       // email on file, send the payment link to them automatically via
       // Resend instead of making the therapist hand-send a mailto link.
@@ -85,7 +90,7 @@ serve(async (req) => {
     // flow.
     const { data: therapist, error: tErr } = await supabase
       .from('therapists')
-      .select('id, stripe_account_id, stripe_account_connected, square_access_token, square_location_id, square_merchant_id, square_connected, full_name, business_name, custom_url, email')
+      .select('id, stripe_account_id, stripe_account_connected, square_access_token, square_location_id, square_merchant_id, square_connected, full_name, business_name, custom_url, email, twilio_account_sid, twilio_auth_token, twilio_phone_number')
       .eq('id', therapist_id)
       .single();
     if (tErr || !therapist) return respond({ error: 'therapist_not_found' }, 404);
@@ -134,6 +139,58 @@ serve(async (req) => {
         return sendRes.ok;
       } catch (e) {
         console.error('[create-payment-link] auto-email failed', String(e));
+        return false;
+      }
+    }
+
+    // HK Jun 9 2026: SMS auto-send. When delivery is 'sms' and the
+    // therapist has Twilio configured, text the link to the client
+    // using the therapist's own practice number, the same way email
+    // delivery auto-sends via Resend. Before this, choosing SMS created
+    // the link but never sent it (the success screen only offered a
+    // manual 'Open SMS' button), so the client received nothing. This
+    // sends server-side so the Twilio auth token never reaches the
+    // browser. Best-effort: a send failure never blocks link creation.
+    function toE164(raw: string): string {
+      const cleaned = String(raw || '').replace(/\D/g, '');
+      if (!cleaned) return '';
+      if (cleaned.startsWith('1')) return `+${cleaned}`;
+      if (String(raw).trim().startsWith('+')) return String(raw).trim();
+      return `+1${cleaned}`;
+    }
+    async function maybeSmsLink(linkUrl: string): Promise<boolean> {
+      if (delivery !== 'sms' || !client_phone) return false;
+      const sid = (therapist as any).twilio_account_sid;
+      const token = (therapist as any).twilio_auth_token;
+      const fromNum = (therapist as any).twilio_phone_number;
+      if (!sid || !token || !fromNum) return false;
+      try {
+        const dollars = (amount_cents + (tip_cents || 0)) / 100;
+        const amountStr = Number.isInteger(dollars) ? `$${dollars}` : `$${dollars.toFixed(2)}`;
+        const to = toE164(client_phone);
+        const from = toE164(fromNum);
+        if (!to || !from) return false;
+        const greetingName = (client_name && String(client_name).trim().split(' ')[0]) || 'there';
+        const body = `Hi ${greetingName}, this is ${therapistDisplayName}. Here is your secure payment link for ${amountStr} (${service_name}): ${linkUrl}`;
+        const res = await fetch(
+          `https://api.twilio.com/2010-04-01/Accounts/${sid}/Messages.json`,
+          {
+            method: 'POST',
+            headers: {
+              'Authorization': `Basic ${btoa(`${sid}:${token}`)}`,
+              'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: new URLSearchParams({ To: to, From: from, Body: body }),
+          },
+        );
+        if (!res.ok) {
+          const errBody = await res.text();
+          console.error('[create-payment-link] auto-sms failed', res.status, errBody);
+          return false;
+        }
+        return true;
+      } catch (e) {
+        console.error('[create-payment-link] auto-sms threw', String(e));
         return false;
       }
     }
@@ -279,6 +336,7 @@ serve(async (req) => {
           .eq('id', paymentRow.id);
 
         const emailedSquare = await maybeEmailLink(checkoutResult.url);
+        const textedSquare = await maybeSmsLink(checkoutResult.url);
         return respond({
           success: true,
           payment_link_url: checkoutResult.url,
@@ -287,6 +345,8 @@ serve(async (req) => {
           provider: 'square',
           emailed: emailedSquare,
           emailed_to: emailedSquare ? client_email : null,
+          texted: textedSquare,
+          texted_to: textedSquare ? client_phone : null,
         });
       } catch (squareErr: any) {
         console.error('[create-payment-link] Square error', squareErr?.code, squareErr?.message);
@@ -381,6 +441,7 @@ serve(async (req) => {
       .eq('id', paymentRow.id);
 
     const emailedStripe = await maybeEmailLink(stripeData.url);
+    const textedStripe = await maybeSmsLink(stripeData.url);
     return respond({
       success: true,
       payment_link_url: stripeData.url,
@@ -388,6 +449,8 @@ serve(async (req) => {
       session_payment_id: paymentRow.id,
       emailed: emailedStripe,
       emailed_to: emailedStripe ? client_email : null,
+      texted: textedStripe,
+      texted_to: textedStripe ? client_phone : null,
     });
 
   } catch (e) {
