@@ -131,6 +131,8 @@ const RIBBONS = [
     layout: "demo-right",
     subFeatures: [
       "Three-dot document system: Intake, Pre-Session, Post-Session",
+      "Reads your paper forms: photograph an old intake and the fields fill themselves",
+      "Remembers the whole client: a dated history that updates itself and surfaces in your brief",
       "Longitudinal heatmaps across all sessions",
       "Full session history, instantly searchable",
       "PracticeIQ: chat with your client data",

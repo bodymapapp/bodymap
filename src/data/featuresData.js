@@ -294,6 +294,26 @@ export const RIBBONS = [
         ],
         meta: "Daily 6am local time · Skip weekends",
       },
+      {
+        id: "3.7",
+        name: "Reads your paper forms",
+        automated: true,
+        body: [
+          "Have a stack of paper intakes, an old client binder, a PDF a client emailed you? Photograph it or upload it, and MyBodyMap reads it and fills the client's fields for you: allergies, medications, conditions, the areas to avoid. You review and tap to apply. No retyping.",
+          "This is the part the clinical tools still make you do by hand. Jane App and Noterro give you excellent forms to type into, and Noterro's Scribe will even dictate a brand-new note for you, but none of them read the paper you already have and turn it into a structured client record. MyBodyMap does.",
+        ],
+        meta: "Upload or camera · AI fills the fields · You review before it saves",
+      },
+      {
+        id: "3.8",
+        name: "Remembers the whole client",
+        automated: true,
+        body: [
+          "Every visit, MyBodyMap quietly updates a dated memory of each client: what changed, what you flagged, what they told you. It is not a pile of notes you have to reread. It is a running history that surfaces the relevant parts in your pre-session brief before she walks in.",
+          "Booking-first tools (Vagaro, GlossGenius, Acuity) keep only basic notes. Clinical tools like Jane App and Noterro keep a proper chart, but you are the one who has to remember to open it and read back through it. MyBodyMap remembers for you and brings it forward at the right moment.",
+        ],
+        meta: "Auto-built timeline · Surfaced in the brief · Yours forever",
+      },
     ],
   },
   {

@@ -53,6 +53,8 @@ const PRINTABLE_ROWS = [
   { f: "Visual body map intake (front & back, tap-to-mark)",       bm:"yes",     mb:"yes",  vg:"no",     gg:"no",    ac:"no",    mi:"no",    no:"yes",   star: true },
   { f: "Pattern intelligence (heatmap of recurring areas)",        bm:"yes",     mb:"no",   vg:"no",     gg:"no",    ac:"no",    mi:"no",    no:"no",    star: true },
   { f: "pre-session brief from history",                        bm:"yes",     mb:"no",   vg:"no",     gg:"no",    ac:"no",    mi:"no",    no:"no",    star: true },
+  { f: "Reads your paper intake forms (AI fills fields)",          bm:"yes",     mb:"no",   vg:"no",     gg:"no",    ac:"no",    mi:"no",    no:"no",    star: true },
+  { f: "Remembers the whole client (history + memory)",            bm:"yes",     mb:"no",   vg:"no",     gg:"no",    ac:"no",    mi:"yes",   no:"yes",   star: true },
   { f: "Personalized campaign emails (per-recipient)",             bm:"yes",     mb:"no",   vg:"yes",    gg:"yes",   ac:"no",    mi:"yes",   no:"yes",   star: true },
   { f: "Campaign starter (one-tap drafts)",                     bm:"yes",     mb:"no",   vg:"no",     gg:"no",    ac:"no",    mi:"no",    no:"no",    star: true },
   { f: "Daily evening pulse digest",                               bm:"yes",     mb:"no",   vg:"no",     gg:"no",    ac:"no",    mi:"no",    no:"no",    star: true },
