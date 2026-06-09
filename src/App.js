@@ -43,6 +43,7 @@ import Comparison from './pages/Comparison';
 import ComparisonPrintable from './pages/ComparisonPrintable';
 import BookingPage from './pages/BookingPage';
 import BookingManage from './pages/BookingManage';
+import MyVisits from './pages/MyVisits';
 import GiftLandingPage from './pages/GiftLandingPage';
 import DepositSuccess from './pages/DepositSuccess';
 import PayThanks from './pages/PayThanks';
@@ -162,6 +163,7 @@ function App() {
           <Route path="/admin" element={<ProtectedRoute><FounderDashboard /></ProtectedRoute>} />
           <Route path="/admin/emails" element={<ProtectedRoute><EmailReview /></ProtectedRoute>} />
           <Route path="/unsubscribe" element={<Unsubscribe />} />
+          <Route path="/my-visits" element={<MyVisits />} />
           <Route path="/:customUrl" element={<ClientIntake />} />
         </Routes>
         <Analytics />
