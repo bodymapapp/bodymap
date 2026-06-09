@@ -2358,6 +2358,7 @@ function ActionRow({ onBack, onConfirm, processing, confirmLabel, disabled }) {
 
 function SuccessView({ detail, onClose, linkUrl, linkDelivery, clientPhone, clientEmail, therapistName, isSubscription, isPackage, contextName, contextDetail }) {
   const isLink = detail?.method === 'Payment link';
+  const [copied, setCopied] = useState(false);
   const smsBody = `Hi from ${therapistName || 'your therapist'}. Here's your payment link for $${detail?.total}: ${linkUrl}`;
   const emailSubject = `Payment for your session with ${therapistName || 'your therapist'}`;
   const emailBody = `Hi,%0D%0A%0D%0AHere's your payment link for $${detail?.total}:%0D%0A%0D%0A${linkUrl}%0D%0A%0D%0AThank you!`;
@@ -2444,9 +2445,34 @@ function SuccessView({ detail, onClose, linkUrl, linkDelivery, clientPhone, clie
         </div>
         <button
           type="button"
-          onClick={() => { navigator.clipboard.writeText(linkUrl); }}
-          style={{ marginTop: 10, background: 'transparent', border: 'none', color: C.sage, fontSize: 12, fontWeight: 600, cursor: 'pointer', fontStyle: 'italic', fontFamily: 'Georgia, serif', textDecoration: 'underline' }}>
-          Copy link instead
+          onClick={async () => {
+            let ok = false;
+            try {
+              if (navigator.clipboard && navigator.clipboard.writeText) {
+                await navigator.clipboard.writeText(linkUrl);
+                ok = true;
+              }
+            } catch (e) { ok = false; }
+            if (!ok) {
+              // Fallback for browsers/contexts where the async clipboard
+              // API is blocked: select a temporary textarea and execCommand.
+              try {
+                const ta = document.createElement('textarea');
+                ta.value = linkUrl;
+                ta.style.position = 'fixed';
+                ta.style.opacity = '0';
+                document.body.appendChild(ta);
+                ta.focus();
+                ta.select();
+                ok = document.execCommand('copy');
+                document.body.removeChild(ta);
+              } catch (e2) { ok = false; }
+            }
+            setCopied(true);
+            setTimeout(() => setCopied(false), 2000);
+          }}
+          style={{ marginTop: 10, background: 'transparent', border: 'none', color: copied ? '#15803D' : C.sage, fontSize: 12, fontWeight: 700, cursor: 'pointer', fontStyle: 'italic', fontFamily: 'Georgia, serif', textDecoration: 'underline' }}>
+          {copied ? 'Link copied' : 'Copy link instead'}
         </button>
       </ResultScreen>
     );
