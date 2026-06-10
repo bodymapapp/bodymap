@@ -30,6 +30,7 @@ import DisclosureRow from '../components/DisclosureRow';
 import WeeklyHoursEditor from '../components/WeeklyHoursEditor';
 import CollapsibleSection from '../components/CollapsibleSection';
 import SettingsGroup from '../components/SettingsGroup';
+import CouponManager from '../components/CouponManager';
 import StatsStrip from '../components/StatsStrip';
 import SeedDefaults from '../components/SeedDefaults';
 import InlineEditField from '../components/InlineEditField';
@@ -4658,6 +4659,19 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
         isOpen={openRow === 'yearly-planner'}
         onToggle={toggleRow}
       ><div className="bm-section-bare"><YearlyPlanner therapist={therapist} /></div></CollapsibleSection>
+      </>)}
+      {matchesSearch('Coupon codes', 'Discount codes clients enter when booking, percent or dollars off, first-time clients only, expiry, usage limit', '2.7') && (<>
+      <CollapsibleSection
+        id="coupons"
+        taxonomy="2.7"
+        timeBadge="~2m"
+        label="Coupon codes"
+        summary="Discounts clients enter at booking"
+        status="todo"
+        icon={<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"><path d="M4 9V6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v3a2 2 0 0 0 0 6v3a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-3a2 2 0 0 0 0-6Z"/><path d="M13 7v10"/></svg>}
+        isOpen={openRow === 'coupons'}
+        onToggle={toggleRow}
+      ><div className="bm-section-bare"><CouponManager therapist={therapist} /></div></CollapsibleSection>
       </>)}
       {/* Waiver text moved into the consolidated "Client agreements"
           section at 4.3 below. HK May 14 2026: Alison G. asked for a

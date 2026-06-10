@@ -742,6 +742,14 @@ export default function BookingPage() {
   const [giftCert,setGiftCert]=useState(null);
   const [giftError,setGiftError]=useState('');
   const [giftChecking,setGiftChecking]=useState(false);
+  // Coupon codes (HK Jun 9 2026): a discount the client enters at booking.
+  // Separate from gift certificates (prepaid balance). The discount comes
+  // off the service price; the deposit functions re-validate and recompute
+  // the charge server-side, so this is display + passthrough only.
+  const [couponCode,setCouponCode]=useState('');
+  const [appliedCoupon,setAppliedCoupon]=useState(null);
+  const [couponError,setCouponError]=useState('');
+  const [couponChecking,setCouponChecking]=useState(false);
   const [depositClientSecret,setDepositClientSecret]=useState(null);
   const [depositAccountId,setDepositAccountId]=useState(null);
   // PaymentIntent id and resolved client id captured from the
@@ -818,16 +826,24 @@ export default function BookingPage() {
     const addonPrice = (selectedAddonIds || []).reduce(
       (s, id) => s + Number(availableAddons.find(a => a.id === id)?.price || 0), 0);
     const fullPrice = Number(svc.price) + addonPrice;
+    // Apply an entered coupon so the deposit and pay-in-full amounts shown
+    // match what the server will charge (the server recomputes this too).
+    const couponOff = appliedCoupon
+      ? (appliedCoupon.discount_type === 'percent'
+          ? Math.round(fullPrice * Number(appliedCoupon.discount_value)) / 100
+          : Math.min(fullPrice, Number(appliedCoupon.discount_value)))
+      : 0;
+    const priced = Math.max(0, fullPrice - couponOff);
     if (paymentMode === 'full') {
-      const fullCents = Math.round(fullPrice * 100);
+      const fullCents = Math.round(priced * 100);
       setDepositAmount(fullCents + (tipCents || 0));
     } else if (depositRequired) {
-      // Deposit-only: percent of full price (base service + add-ons)
-      const depositCents = Math.round((fullPrice * (therapist.deposit_percent || 20) / 100) * 100);
+      // Deposit-only: percent of the (discounted) full price
+      const depositCents = Math.round((priced * (therapist.deposit_percent || 20) / 100) * 100);
       setDepositAmount(depositCents);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [paymentMode, tipCents, svc?.price, therapist?.deposit_percent, depositRequired, requiresApproval, selectedAddonIds, availableAddons]);
+  }, [paymentMode, tipCents, svc?.price, therapist?.deposit_percent, depositRequired, requiresApproval, selectedAddonIds, availableAddons, appliedCoupon]);
 
   // Allow forcing a hard service-worker reset via ?fresh=1 in the URL.
   // For therapists who installed the PWA at v3 and are stuck seeing
@@ -1134,6 +1150,16 @@ export default function BookingPage() {
   const effectivePrice = svc
     ? Number(svc.price) + selectedAddonIds.reduce((sum,id)=>sum+Number(availableAddons.find(a=>a.id===id)?.price||0), 0)
     : 0;
+
+  // Coupon discount applied to the service price (HK Jun 9 2026). The
+  // server recomputes this authoritatively at charge time; this is for
+  // display and for the deposit amount shown on the Pay button.
+  const couponDiscountDollars = appliedCoupon
+    ? (appliedCoupon.discount_type === 'percent'
+        ? Math.round(effectivePrice * Number(appliedCoupon.discount_value)) / 100
+        : Math.min(effectivePrice, Number(appliedCoupon.discount_value)))
+    : 0;
+  const netPrice = Math.max(0, Math.round((effectivePrice - couponDiscountDollars) * 100) / 100);
 
   useEffect(()=>{if(date&&svc)loadSlots();},[date,svc,effectiveDuration]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -2214,6 +2240,9 @@ export default function BookingPage() {
             // attach them to PaymentIntent metadata for accounting.
             payment_mode: paymentMode,
             tip_cents: paymentMode === 'full' ? tipCents : 0,
+            // HK Jun 9 2026: coupon entered at booking. The function
+            // re-validates and recomputes the discounted charge.
+            coupon_code: appliedCoupon?.code || null,
           }),
         }
       );
@@ -2330,6 +2359,8 @@ export default function BookingPage() {
             // Pay-in-full + tip metadata (Lindsey #2)
             payment_mode: paymentMode,
             tip_cents: paymentMode === 'full' ? tipCents : 0,
+            // HK Jun 9 2026: coupon entered at booking (re-validated server-side)
+            coupon_code: appliedCoupon?.code || null,
           }),
         }
       );
@@ -2420,6 +2451,38 @@ export default function BookingPage() {
     setGiftChecking(false);
     if (!data) { setGiftError('Code not found or already used.'); return; }
     setGiftCert(data);
+  }
+
+  // Validate a coupon code via the server (validate-coupon). The server
+  // checks the code, the new-clients rule, expiry, and limit, and returns
+  // the discount. The deposit functions re-validate and recompute the
+  // real charge when the client pays, so this is preview + passthrough.
+  async function applyCoupon() {
+    const code = couponCode.trim();
+    if (!code) return;
+    setCouponChecking(true); setCouponError(''); setAppliedCoupon(null);
+    try {
+      const res = await fetch(`${process.env.REACT_APP_SUPABASE_URL}/functions/v1/validate-coupon`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${process.env.REACT_APP_SUPABASE_ANON_KEY}`,
+        },
+        body: JSON.stringify({
+          therapist_id: therapist.id,
+          code,
+          client_email: form.email?.trim().toLowerCase() || null,
+          base_price_cents: Math.round(effectivePrice * 100),
+        }),
+      });
+      const data = await res.json();
+      setCouponChecking(false);
+      if (!data.valid) { setCouponError(data.message || 'That code could not be applied.'); return; }
+      setAppliedCoupon(data);
+    } catch (e) {
+      setCouponChecking(false);
+      setCouponError('Could not check that code. Please try again.');
+    }
   }
 
   async function onDepositSuccess() {
@@ -3723,7 +3786,7 @@ export default function BookingPage() {
               // it here too because the gate fires after this block.
               const _approvalDepositMaybe = !!therapist.require_approval && !isRepeat && therapist.deposit_enabled && !giftCert;
               if(needsDeposit || _approvalDepositMaybe){
-                const amt=Math.round((effectivePrice*(therapist.deposit_percent||20)/100)*100);
+                const amt=Math.round((netPrice*(therapist.deposit_percent||20)/100)*100);
                 setDepositAmount(amt);
               }
 
@@ -3821,6 +3884,38 @@ export default function BookingPage() {
                 </div>
               )}
             </div>
+            {/* Coupon code (HK Jun 9 2026): a discount the client enters at
+                booking. Shown only when no gift certificate is applied. */}
+            {!giftCert && (
+            <div style={{marginTop:12}}>
+              {!appliedCoupon ? (
+                <div>
+                  <div style={{display:'flex',gap:8,marginTop:4}}>
+                    <input
+                      type="text"
+                      value={couponCode}
+                      onChange={e=>{setCouponCode(e.target.value.toUpperCase());setCouponError('');}}
+                      placeholder="Have a coupon code? Enter it here"
+                      style={{flex:1,padding:'10px 12px',border:`1.5px solid ${couponError?C.danger:C.light}`,borderRadius:10,fontSize:14,boxSizing:'border-box',outline:'none',fontFamily:'system-ui',letterSpacing:'0.05em'}}
+                    />
+                    <button onClick={applyCoupon} disabled={couponChecking||!couponCode.trim()}
+                      style={{background:C.sage,color:'#fff',border:'none',borderRadius:10,padding:'10px 16px',fontSize:13,fontWeight:700,cursor:'pointer',flexShrink:0,whiteSpace:'nowrap'}}>
+                      {couponChecking?'…':'Apply'}
+                    </button>
+                  </div>
+                  {couponError && <div style={{fontSize:12,color:C.danger,marginTop:4}}>{couponError}</div>}
+                </div>
+              ) : (
+                <div style={{background:'#F0FDF4',border:'1.5px solid #86EFAC',borderRadius:10,padding:'10px 14px',display:'flex',alignItems:'center',justifyContent:'space-between',gap:8}}>
+                  <div>
+                    <div style={{fontSize:13,fontWeight:700,color:'#16A34A'}}>Coupon applied: {appliedCoupon.code}</div>
+                    <div style={{fontSize:12,color:'#374151'}}>{appliedCoupon.discount_type==='percent'?`${Number(appliedCoupon.discount_value)}% off`:`$${Number(appliedCoupon.discount_value).toFixed(2)} off`}{couponDiscountDollars>0?` · you save $${couponDiscountDollars.toFixed(2)}`:''}</div>
+                  </div>
+                  <button onClick={()=>{setAppliedCoupon(null);setCouponCode('');setCouponError('');}} aria-label="Remove coupon" style={{background:'transparent',border:'1px solid transparent',color:C.gray,cursor:'pointer',fontSize:11,fontWeight:700,padding:'4px 10px',borderRadius:999}}>Remove</button>
+                </div>
+              )}
+            </div>
+            )}
           </div>
         )}
 
@@ -3834,7 +3929,7 @@ export default function BookingPage() {
               {[
                 ['Service',svc.name],['Duration',`${svc.duration} min`],['Date',fmtDate(date)],
                 ['Time',slot.display],['Therapist',therapist.business_name||therapist.full_name],
-                ['Price', redeemContext ? 'Redeemed from your package ($0)' : `$${effectivePrice}, pay at session`],['Name',form.name],['Email',form.email],
+                ['Price', redeemContext ? 'Redeemed from your package ($0)' : `$${netPrice}, pay at session`],['Name',form.name],['Email',form.email],
                 ...(form.phone?[['Phone',form.phone]]:[]),
               ].map(([l,v],i,arr)=>(
                 <div key={l} style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',gap:16,padding:'10px 0',borderBottom:i<arr.length-1?`1px solid ${C.light}`:'none'}}>
@@ -3872,7 +3967,7 @@ export default function BookingPage() {
                 <div>
                   <div style={{fontSize:14,fontWeight:700,color:'#92400E',marginBottom:4}}>A deposit of ${(depositAmount/100).toFixed(0)} is required to confirm your spot</div>
                   <div style={{fontSize:12,color:'#92400E',lineHeight:1.5}}>
-                    As a new client, {therapist.deposit_percent||20}% of the ${effectivePrice} session fee is collected now to reserve your appointment. The remaining ${effectivePrice - Math.round(effectivePrice*(therapist.deposit_percent||20)/100)} is paid directly to your therapist at the session.
+                    As a new client, {therapist.deposit_percent||20}% of the ${netPrice} session fee is collected now to reserve your appointment. The remaining ${netPrice - Math.round(netPrice*(therapist.deposit_percent||20)/100)} is paid directly to your therapist at the session.
                   </div>
                 </div>
               </div>
@@ -4001,7 +4096,7 @@ export default function BookingPage() {
                     }}>
                       <span style={{ fontSize: 12, color: '#166534', fontWeight: 600 }}>You'll be charged today</span>
                       <span style={{ fontSize: 16, color: '#166534', fontWeight: 700 }}>
-                        ${((effectivePrice * 100 + tipCents) / 100).toFixed(2)}
+                        ${((netPrice * 100 + tipCents) / 100).toFixed(2)}
                       </span>
                     </div>
                   </div>
@@ -4498,7 +4593,7 @@ export default function BookingPage() {
                     : (requiresApproval
                         ? 'Send Request'
                         : (paymentMode === 'full'
-                            ? `✓ Confirm & Pay $${((effectivePrice*100 + tipCents)/100).toFixed(0)}`
+                            ? `✓ Confirm & Pay $${((netPrice*100 + tipCents)/100).toFixed(0)}`
                             : (depositRequired
                                 ? `✓ Confirm & Pay $${(depositAmount/100).toFixed(0)} Deposit`
                                 : '✓ Confirm Booking'))))}
@@ -4549,7 +4644,7 @@ export default function BookingPage() {
                 </div>
               </div>
               <p style={{fontSize:12,color:C.gray,margin:'0 0 4px',lineHeight:1.5}}>
-                This secures your appointment. The remaining ${effectivePrice - (depositAmount/100)} session fee is paid directly to your therapist when you arrive.
+                This secures your appointment. The remaining ${netPrice - (depositAmount/100)} session fee is paid directly to your therapist when you arrive.
               </p>
             </div>
             {paymentError&&(
