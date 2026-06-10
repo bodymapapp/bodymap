@@ -1106,19 +1106,29 @@ How money moves when the therapist sends a pay link for a session, a package, or
 
 **Known dependency (the thing that bites).** Step 4 is the hinge. Stripe pay links use a hosted confirmation and do not return the payer to our site, so completed Stripe payments reach us only through the Stripe webhook (checkout.session.completed, which for connected accounts requires the platform webhook to listen to Connect events). Square reaches us through its payment.updated webhook or through the client landing back on the thank-you page. If none of those fire, the payment row stays pending forever, the package shows active but unpaid, and steps 5 and 6 never happen. When debugging "no payment notification," check the payment row status first: pending means step 4 never completed, which is a webhook or return-url problem, not a notification problem.
 
-### Notification events: who is told, and how
+### Notification events: who is told, how, and what is confirmed
 
-Defaults: in-app bell and email are ON by default; SMS and push are OFF by default and only send when the therapist explicitly turns them on (SMS is gated on A2P 10DLC approval). Each therapist can override per event in Settings. This table is the money and pay-link subset, not the full list.
+**Design principle (added Jun 10, 2026).** Every time we add or change a notification on either the therapist or the client side, update this table in the same change. Track three things separately: the target (which channels it should hit), the build status (planned or shipped), and whether HK has confirmed actually receiving it in a live test. Aspiration and reality are tracked apart on purpose. A shipped notification is not "done" until HK confirms receipt, because shipped-but-silent is the exact failure we keep hitting.
 
-| Event | Therapist gets | Client gets | Fires when |
-|---|---|---|---|
-| Pay link sent | Bell + Email | nothing | Therapist sends any pay link (session, package, membership) |
-| Payment received | Bell + Email + SMS\* | Email + SMS\* | A payment row is marked paid (step 4 of Flow D, or any completed charge) |
-| Intake filled | Bell + Email | nothing | Client submits their intake |
+Defaults: in-app bell and email are ON by default; SMS and push are OFF by default and send only when the therapist explicitly turns them on (SMS is gated on A2P 10DLC). Each therapist can override per event in Settings.
+
+| Event | Audience | Target channels | Build status | HK confirmed receiving |
+|---|---|---|---|---|
+| Pay link sent | Therapist | Bell + Email | Shipped Jun 10 | Not yet, re-test pending |
+| Pay link delivery | Client | Email | Shipped; content upgraded to standard template Jun 10 | Yes, Jun 9 (screenshot); new content re-test pending |
+| Payment received | Therapist | Bell + Email + SMS\* | Shipped; was silently blocked by a gateway 401, fixed Jun 10 | No on the blocked test; re-test pending after fix |
+| Payment received (receipt) | Client | Email + SMS\* | Shipped; same 401 block, fixed Jun 10 | Not yet |
+| New booking | Therapist | Bell + Email | Shipped | Yes, Jun 10 (send logged) |
+| Booking confirmation | Client | Email | Shipped | Yes, Jun 10 (send logged) |
+| Intake filled | Therapist | Bell + Email | Shipped | Yes, Jun 8 (bell seen) |
 
 \* SMS only if the therapist has turned SMS on for that event. Off by default.
 
-The "Pay link sent" event is the new one (Jun 10, 2026). It is a record for the therapist, not a customer-facing message, so the client is never notified at send time; the client only hears from us when they actually pay (receipt) or via the link delivery itself.
+Two gotchas worth remembering when verifying receipt:
+1. The therapist "payment received" email goes to the therapist account email (the demo is bodymapdemo@gmail.com), not the client inbox (bodymap01@gmail.com) where pay-link delivery and receipts land. Check the right inbox.
+2. "Payment received" and the client receipt both ride on notify-payment-event. Until Jun 10 that function was not in the deploy no-JWT allowlist, so the pay-link webhooks called it and got a 401: the payment was marked paid but no one was told. Fixed by adding it to NO_JWT_FUNCTIONS. If payment notifications go quiet again, check that allowlist first.
+
+The "Pay link sent" event (Jun 10) is a therapist record, not a customer message, so the client is never notified at send time; the client hears from us only via the link delivery and, after paying, the receipt.
 
 ### When to send each diagram
 
