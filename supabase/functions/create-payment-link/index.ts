@@ -24,6 +24,7 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { notifyTherapist } from "../_shared/notifications.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -90,7 +91,7 @@ serve(async (req) => {
     // flow.
     const { data: therapist, error: tErr } = await supabase
       .from('therapists')
-      .select('id, stripe_account_id, stripe_account_connected, square_access_token, square_location_id, square_merchant_id, square_connected, full_name, business_name, custom_url, email, twilio_account_sid, twilio_auth_token, twilio_phone_number')
+      .select('id, stripe_account_id, stripe_account_connected, square_access_token, square_location_id, square_merchant_id, square_connected, full_name, business_name, custom_url, email, notification_prefs, twilio_account_sid, twilio_auth_token, twilio_phone_number')
       .eq('id', therapist_id)
       .single();
     if (tErr || !therapist) return respond({ error: 'therapist_not_found' }, 404);
@@ -221,23 +222,45 @@ serve(async (req) => {
     }
 
     // HK Jun 10 2026: give the therapist a record the moment they send a
-    // pay link, not only when the client pays. In-app bell only (no email
-    // or SMS) since the therapist just took this action themselves and an
-    // email to oneself is noise. The pending session_payments row is the
-    // source of truth; this is the human-visible trace that the link went
-    // out, and it flips to a real "paid" notification later on completion.
+    // pay link, not only when the client pays. Routes through notifyTherapist
+    // so the therapist gets an in-app bell entry AND an email for their
+    // records. eventType payment_link_sent defaults email + bell ON and SMS
+    // OFF, so there is no text to self. The pending session_payments row is
+    // the source of truth; this is the human-visible trace, and a separate
+    // paid notification fires later on completion.
     const sentClientLabel = (client_name && String(client_name).trim()) || 'your client';
     const sentTotalCents = amount_cents + (tip_cents || 0);
     const sentDollars = (sentTotalCents / 100).toFixed(2);
     async function recordPayLinkSent() {
       try {
-        await supabase.from('in_app_notifications').insert({
-          therapist_id,
-          event_type: 'payment_link_sent',
+        const safeClient = escapeHtml(sentClientLabel);
+        const safeFor = escapeHtml(chargeContextLabel);
+        const recordEmailHtml = `<!DOCTYPE html>
+<html><head><meta charset="utf-8"></head>
+<body style="margin:0;padding:0;background:#F5F0E8;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;color:#0D1F17;">
+  <div style="max-width:520px;margin:0 auto;padding:32px 16px;">
+    <div style="background:#fff;border-radius:16px;padding:32px 28px;box-shadow:0 4px 20px rgba(0,0,0,0.06);">
+      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#2A5741;margin-bottom:8px;">🔗 Payment link sent</div>
+      <h1 style="font-family:Georgia,serif;font-size:24px;font-weight:700;color:#2A5741;margin:0 0 6px;line-height:1.25;">$${sentDollars} link sent to ${safeClient}</h1>
+      <p style="font-size:14px;color:#6B7280;margin:0 0 4px;line-height:1.6;">This is your record. We will notify you again when it is paid.</p>
+      <table style="width:100%;border-collapse:collapse;margin:16px 0;background:#FAFAF7;border:1px solid #ECE7DC;border-radius:10px;overflow:hidden;">
+        <tr style="border-bottom:1px solid #ECE7DC;"><td style="padding:9px 14px;font-size:12px;font-weight:700;color:#6B7280;text-transform:uppercase;letter-spacing:0.04em;">Client</td><td style="padding:9px 14px;font-size:14px;color:#1A2E22;text-align:right;">${safeClient}</td></tr>
+        <tr style="border-bottom:1px solid #ECE7DC;"><td style="padding:9px 14px;font-size:12px;font-weight:700;color:#6B7280;text-transform:uppercase;letter-spacing:0.04em;">For</td><td style="padding:9px 14px;font-size:14px;color:#1A2E22;text-align:right;">${safeFor}</td></tr>
+        <tr style="border-bottom:1px solid #ECE7DC;"><td style="padding:9px 14px;font-size:12px;font-weight:700;color:#6B7280;text-transform:uppercase;letter-spacing:0.04em;">Amount</td><td style="padding:9px 14px;font-size:14px;color:#1A2E22;text-align:right;font-weight:700;">$${sentDollars}</td></tr>
+        <tr><td style="padding:9px 14px;font-size:12px;font-weight:700;color:#6B7280;text-transform:uppercase;letter-spacing:0.04em;">Status</td><td style="padding:9px 14px;font-size:14px;color:#B45309;text-align:right;font-weight:700;">Awaiting payment</td></tr>
+      </table>
+      <a href="https://mybodymap.app/dashboard/billing" style="display:inline-block;background:#2A5741;color:#fff;text-decoration:none;padding:11px 20px;border-radius:8px;font-size:13px;font-weight:700;">Open Billing</a>
+      <div style="font-size:11px;color:#9CA3AF;margin-top:24px;line-height:1.6;">You are getting this because you sent a payment link from MyBodyMap. Manage alerts in your notification settings.</div>
+    </div>
+  </div>
+</body></html>`;
+        await notifyTherapist({
+          supabase, therapist,
+          eventType: 'payment_link_sent',
           title: `Pay link sent to ${sentClientLabel}`,
           body: `$${sentDollars} for ${chargeContextLabel}. Awaiting payment.`,
           icon: '🔗',
-          link_url: '/dashboard/billing',
+          linkUrl: '/dashboard/billing',
           payload: {
             session_payment_id: paymentRow.id,
             booking_id: booking_id || null,
@@ -245,9 +268,14 @@ serve(async (req) => {
             package_purchase_id: package_purchase_id || null,
             amount_cents: sentTotalCents,
           },
+          emailSubject: `Pay link sent: $${sentDollars} to ${sentClientLabel}`,
+          emailHtml: recordEmailHtml,
+          smsText: null,
+          bookingId: booking_id || null,
+          clientId: clientId || null,
         });
       } catch (e) {
-        console.error('[create-payment-link] pay-link-sent bell insert failed', String(e));
+        console.error('[create-payment-link] pay-link-sent notify failed', String(e));
       }
     }
 
