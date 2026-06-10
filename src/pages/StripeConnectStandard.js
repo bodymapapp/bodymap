@@ -45,7 +45,7 @@ export default function StripeConnectStandard() {
   const [status, setStatus] = useState('connecting');
   const [statusReason, setStatusReason] = useState(null);
   const [missingRequirements, setMissingRequirements] = useState([]);
-  const { therapist } = useAuth();
+  const { therapist, refreshTherapist } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -84,6 +84,11 @@ export default function StripeConnectStandard() {
       });
       const data = await res.json();
       if (data.success) {
+        // Refresh the in-context therapist so Settings and the rest of
+        // the app reflect the connected state right away, instead of
+        // staying stale until a full reload (the reason Payments kept
+        // showing disconnected after a successful link).
+        try { await refreshTherapist(); } catch (e) {}
         setStatus('success');
         return;
       }
@@ -212,7 +217,7 @@ function SuccessState({ navigate }) {
       </div>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-        <button onClick={() => navigate('/dashboard')} style={{
+        <button onClick={() => navigate('/dashboard/settings#payments')} style={{
           background: C.forest,
           color: '#fff',
           border: 'none',
@@ -222,7 +227,7 @@ function SuccessState({ navigate }) {
           fontWeight: 700,
           cursor: 'pointer',
         }}>
-          Continue setup →
+          Go to payment settings →
         </button>
         <button onClick={() => navigate('/dashboard/billing')} style={{
           background: 'transparent',
@@ -234,7 +239,7 @@ function SuccessState({ navigate }) {
           fontWeight: 600,
           cursor: 'pointer',
         }}>
-          Go straight to billing dashboard
+          Go to billing dashboard
         </button>
       </div>
     </div>
