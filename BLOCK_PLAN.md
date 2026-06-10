@@ -1191,6 +1191,7 @@ Estimated: 1-2 weeks. Differentiator-focused. Saves these for after parity is cl
 - Bidirectional calendar sync (deeper version of item 43)
 - Discord/community (item 55)
 - 3D-printed stands (item 56)
+- Global Practice IQ search (item 57): move the settings search into the Practice IQ floating circle that stays on every screen, so a search run from anywhere in the app (not just Settings) navigates the user straight to that setting or place. Today the search only lives inside Settings; this makes it an app-wide jump-to. Needs a route/anchor registry mapping each searchable item to where it lives.
 - Anything new that surfaces from continued customer feedback
 
 ### Decisions still pending HK input
