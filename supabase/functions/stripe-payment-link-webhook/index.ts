@@ -24,6 +24,11 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { notifyTherapist } from "../_shared/notifications.ts";
+
+function escapeHtmlLocal(s: any): string {
+  return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -224,6 +229,76 @@ serve(async (req) => {
       }
     } catch (pkgErr) {
       console.warn('[stripe-payment-link-webhook] package stamp failed (non-blocking):', pkgErr);
+    }
+
+    // HK Jun 10 2026: notify the THERAPIST that a pay-link payment came
+    // in. Pay-link completions (a package or membership the therapist
+    // sent a link for, or a texted deposit/balance) previously notified
+    // nobody on the therapist side, so selling a package by link was
+    // silent for the therapist even though the client got their receipt.
+    // We fire the existing payment_received event so it lands in the same
+    // notification cell as other money events and respects the therapist's
+    // settings. Fire-and-forget; never block the webhook response.
+    try {
+      const { data: sp } = await supabase
+        .from('session_payments')
+        .select('amount_cents, therapist_id, client_id, package_purchase_id, member_subscription_id, booking_id')
+        .eq('id', sessionPaymentId)
+        .maybeSingle();
+      if (sp?.therapist_id) {
+        const { data: therapist } = await supabase
+          .from('therapists').select('*').eq('id', sp.therapist_id).maybeSingle();
+        if (therapist) {
+          let who = 'A client';
+          if (sp.client_id) {
+            const { data: cl } = await supabase
+              .from('clients').select('name, email').eq('id', sp.client_id).maybeSingle();
+            who = cl?.name || cl?.email || who;
+          }
+          let what = 'a payment';
+          if (sp.package_purchase_id) {
+            let pname = 'package';
+            const { data: pp } = await supabase
+              .from('package_purchases').select('package_id').eq('id', sp.package_purchase_id).maybeSingle();
+            if (pp?.package_id) {
+              const { data: pk } = await supabase.from('packages').select('name').eq('id', pp.package_id).maybeSingle();
+              pname = pk?.name || 'package';
+            }
+            what = `the ${pname} package`;
+          } else if (sp.member_subscription_id) {
+            what = 'a membership';
+          } else if (sp.booking_id) {
+            what = 'a session';
+          }
+          const dollars = ((Number(sp.amount_cents) || 0) / 100).toFixed(0);
+          const subject = `Payment received: ${who} paid $${dollars}`;
+          const bodyText = `${who} paid $${dollars} for ${what}.`;
+          const html = `<!DOCTYPE html><html><body style="margin:0;background:#FAFAF7;font-family:-apple-system,Segoe UI,Roboto,sans-serif;">
+  <div style="max-width:520px;margin:0 auto;padding:28px 22px;">
+    <div style="background:#fff;border:1px solid #ECE7DC;border-radius:16px;padding:24px;">
+      <h2 style="font-family:Georgia,serif;color:#1A2E22;margin:0 0 6px;font-size:21px;">Payment received: $${dollars}</h2>
+      <p style="font-size:14px;color:#6B7280;margin:0 0 16px;line-height:1.6;">${escapeHtmlLocal(who)} paid <strong>$${dollars}</strong> for ${escapeHtmlLocal(what)}.</p>
+      <a href="https://mybodymap.app/dashboard/billing" style="display:inline-block;background:#2A5741;color:#fff;text-decoration:none;padding:11px 20px;border-radius:8px;font-size:13px;font-weight:700;">Open billing</a>
+      <div style="font-size:11px;color:#6B7280;margin-top:22px;line-height:1.6;">You are getting this because "Payment received" is on in your notification settings.</div>
+    </div>
+  </div>
+</body></html>`;
+          await notifyTherapist({
+            supabase, therapist,
+            eventType: 'payment_received',
+            title: subject,
+            body: bodyText,
+            linkUrl: '/dashboard/billing',
+            emailSubject: subject,
+            emailHtml: html,
+            smsText: null,
+            clientId: sp.client_id || null,
+            bookingId: sp.booking_id || null,
+          });
+        }
+      }
+    } catch (notifyErr) {
+      console.warn('[stripe-payment-link-webhook] therapist notify failed (non-blocking):', notifyErr);
     }
 
     return new Response(JSON.stringify({ received: true, marked_paid: sessionPaymentId, booking_id: bookingId }), {

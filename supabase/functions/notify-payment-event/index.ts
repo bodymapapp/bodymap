@@ -58,7 +58,7 @@ serve(async (req) => {
     // Load the payment row + linked booking + linked client + therapist.
     const { data: payment } = await supabase
       .from('session_payments')
-      .select('id, therapist_id, client_id, booking_id, amount_cents, tip_cents, payment_method, payment_method_detail, status, paid_at')
+      .select('id, therapist_id, client_id, booking_id, amount_cents, tip_cents, payment_method, payment_method_detail, status, paid_at, package_purchase_id, member_subscription_id')
       .eq('id', session_payment_id)
       .maybeSingle();
 
@@ -88,6 +88,24 @@ serve(async (req) => {
         .eq('id', payment.booking_id)
         .maybeSingle();
       booking = data;
+    }
+
+    // HK Jun 10 2026: pay-link payments for a package or membership have
+    // no booking, so receipts and the therapist alert should name what
+    // was actually bought instead of defaulting to "Session". Resolve
+    // that context here and feed it into both fan-outs below.
+    let purchaseLabel: string | null = null;
+    if (payment.package_purchase_id) {
+      let pname = 'package';
+      const { data: pp } = await supabase
+        .from('package_purchases').select('package_id').eq('id', payment.package_purchase_id).maybeSingle();
+      if (pp?.package_id) {
+        const { data: pk } = await supabase.from('packages').select('name').eq('id', pp.package_id).maybeSingle();
+        pname = pk?.name ? `${pk.name} package` : 'package';
+      }
+      purchaseLabel = pname;
+    } else if (payment.member_subscription_id) {
+      purchaseLabel = 'membership';
     }
 
     // Format what + when + how much
@@ -128,11 +146,11 @@ serve(async (req) => {
 
     // ─── Therapist fan-out ─────────────────────────────────────────
     const title = `${firstName} paid $${dollars}`;
-    const summary = `${methodLabel}${whenStr ? ' for ' + whenStr : ''}${hasTip ? ` (includes $${tipDollars} tip)` : ''}.`;
+    const summary = `${methodLabel}${whenStr ? ' for ' + whenStr : (purchaseLabel ? ' for ' + purchaseLabel : '')}${hasTip ? ` (includes $${tipDollars} tip)` : ''}.`;
 
     // HK May 29 2026: therapist payment receipt was bland (one line).
     // Build a real detail box with service, when, method, tip, total.
-    const serviceName = booking?.services?.name || 'Session';
+    const serviceName = purchaseLabel || booking?.services?.name || 'Session';
     const therapistDetailRows: Array<[string, string]> = [];
     therapistDetailRows.push(['From', clientName]);
     therapistDetailRows.push(['Service', serviceName]);
@@ -191,7 +209,7 @@ serve(async (req) => {
     // ─── Client fan-out (receipt-style) ────────────────────────────
     let clientResult = null;
     if (client) {
-      const serviceName = booking?.services?.name || 'your session';
+      const serviceName = purchaseLabel || booking?.services?.name || 'your session';
       const clientFirst = resolveClientFirstName(booking, client, 'there');
       const therapistFirst = (therapist?.full_name || businessName).split(' ')[0];
 
