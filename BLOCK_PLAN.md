@@ -14,6 +14,13 @@ Last refreshed: 2026-05-02 — after Tier A0 smart defaults shipped + Comparison
 - New CampaignsDemo wired into Relationships ribbon as carousel partner with AutomationHub.
 - AutomationHub overflow + Schedule/Billing top-bar fixes shipped with Pattern-style animations.
 - 4 Facebook marketing graphics built (1080x1350) for Bo Ma persona Facebook + Instagram posting.
+- **Shipped Jun 9-10 2026 (pay-link + coupons thread):**
+  - Coupon codes Phase 1: therapists create percent or dollar discount codes (Settings > Coupon codes), clients enter them on the booking page, the discount lowers both deposit and balance, server-validated and re-priced, with first-time-only, expiry, and usage caps. Ashley's ask (Jun 9). Referral codes remain Phase 2, not built.
+  - Package pay-link confirmation bug fixed: a parent `if (loading) return` was unmounting the modal on the post-send refetch; the shared-data hook now refetches in the background so the success screen persists.
+  - Pay link send-time record: the therapist gets a bell entry and an email the moment they send any session, package, or membership link. SMS stays off for this self-action.
+  - Client pay-link email rebuilt on the standard branded template (names the service, shows amount due, Pay button) instead of the bare version.
+  - Payment-received notifications restored: `notify-payment-event` was being 401-blocked because it was missing from the deploy no-JWT allowlist, so completed pay-link payments flipped to paid but notified no one. Fixed. Therapist bell/email and client receipt now fire on completion.
+  - Stripe Connect Standard landing fixed: refreshes the therapist record on success and lands on Settings > Payments, so it shows connected instead of stale-disconnected.
 
 ## Active fires
 
@@ -159,6 +166,16 @@ Last refreshed: 2026-05-02 — after Tier A0 smart defaults shipped + Comparison
     e. Move all schedule data fetches to a single RPC that returns shaped data so the client makes one round trip instead of 4.
 
     Out of scope today. HK to confirm whether the perceived "minutes" still happens after deploy or whether 2.7s matches reality.
+
+## Carry-forward from pay-link + coupons thread (Jun 10 2026)
+
+Pending items surfaced this thread. Owner HK unless noted.
+
+1. **Verify payment notifications end to end (HK to confirm).** The 401 fix and the new pay-link-sent record deployed Jun 10. HK to send a fresh pay link, complete the $1, and confirm: client gets the branded link email + a receipt; the demo therapist inbox (bodymapdemo@gmail.com, NOT bodymap01) gets the bell + payment-received email; the "pay link sent" record arrives on send. Then mark confirmed in FOUNDER_RUNBOOK section 17 matrix and NOTIFICATION_MAP implementation status.
+2. **Stripe pay-link completion depends on a Connect webhook.** Stripe pay links use hosted confirmation (no return to our site), so completed Stripe payments reach us only via `stripe-payment-link-webhook` (checkout.session.completed). For connected accounts the platform webhook endpoint must listen to Connect events. Confirm the Stripe Dashboard webhook is configured for Connect events, or Stripe package/membership pay-links will sit pending forever. Square is covered (payment.updated webhook + /pay-thanks return, both verified firing Jun 10).
+3. **Coupon codes Phase 2: referral codes.** Phase 1 (manual discount codes) shipped. Referral codes (unique per-client links, reward config) are still unbuilt and overlap with A6 Referral rewards system. Decide whether to fold coupon-referral into A6.
+4. **Coupon feature: marketing image.** Feature card 5.8 reuses feature-5-5.jpg as a stand-in. Generate a themed coupon image in the next marketing image batch (same as the 1.2 placeholder).
+5. **Ashley (Puro Glow / earlier asks):** coupon codes delivered Jun 10 (email sent via Joy). Her embedded-deposit and client-login asks remain tracked elsewhere in this plan.
 
 ## TIER S — DISTRIBUTION (do this week, not products)
 

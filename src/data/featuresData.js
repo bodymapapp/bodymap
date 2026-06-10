@@ -470,6 +470,19 @@ export const RIBBONS = [
         ],
         meta: "Pick any clients · Write anything · Same machinery as templates",
       },
+      {
+        id: "5.8",
+        name: "Coupon codes",
+        // Image: reusing feature-5-5.jpg as a stand-in until a themed
+        // coupon image is generated (same placeholder pattern as 1.2,
+        // tracked in BLOCK_PLAN).
+        image: "/images/feature-5-5.jpg",
+        body: [
+          "Create your own discount codes and let clients enter them right on your booking page. Set a code for a percentage off or a flat dollar amount. It applies to the service price, so both the deposit and the balance come down, and the client sees the savings before they confirm.",
+          "You stay in control of every code. Make it first-time clients only, give it an expiry date, cap how many times it can be used, or switch it off whenever you like. Each code is checked and re-priced on our server at checkout, so a discount can never be faked or stretched past the limits you set.",
+        ],
+        meta: "Percent or dollar off · First-time-only, expiry, usage caps · Server-validated",
+      },
     ],
   },
   {

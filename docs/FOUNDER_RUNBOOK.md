@@ -35,7 +35,7 @@ This is a LIVING document. Updated at the end of any session that introduces new
 ### Mission
 Help solo licensed massage therapists retain and grow their client base by automating the practice-management work they currently do manually or through expensive, clunky competitors (Vagaro, MassageBook, ClinicSense). The northstar: make it impossible for a client not to return.
 
-### Current state (as of Jun 1, 2026)
+### Current state (as of Jun 10, 2026)
 - **Stage:** Pre-revenue beta with first real customers actively using the platform.
 - **Users:** Single-digit founding therapists onboarded for testing. Active real customers and contacts:
   - **Candice Peek (Grounded Grace)**: signed up May 15. Real testimonial customer. Multiple bugs reported and fixed May 19-25. May 23 incident: comprehensive wipe ran against her therapist_id believing it was Jackie's; recovery took 7 hours via Supabase Pro daily backup. May 25 surfaced approve+deposit silent revenue bug (her config triggered the discovery); Phase 25a warning banner shipped, Phase 25b auto-charge fix queued.
@@ -44,6 +44,7 @@ Help solo licensed massage therapists retain and grow their client base by autom
 - **Business form:** BodyMap LLC (Wyoming, Texas operator HK). May 25: ToS + Privacy hardened additively (commit `bb2c0494`). E&O insurance + TX attorney consult queued as Priority 0.
 - **Engineering:** Solo build via Claude. No human engineers retained. The schedule slide-over is now the single primary work surface for the therapist between sessions (24 commits across Phases 20-25a delivered May 24-25). Jun 1: 10 commits, mostly Jacquie-incident response + crash-prevention infrastructure.
 - **Funding:** Self-funded by HK from IBM income.
+- **Jun 9-10 2026 (pay-link + coupons thread):** Coupon codes Phase 1 shipped (client-facing discount codes, server-validated, Ashley's ask). Pay-link path hardened: package confirmation modal bug fixed, therapist now gets a send-time record (bell + email) and a paid notification, and the client pay-link email moved to the standard branded template. Root-caused and fixed a silent 401 that had stopped all payment-completion notifications (`notify-payment-event` was missing from the deploy no-JWT allowlist). Stripe Connect Standard landing fixed to refresh state and land on Payments. Still open: confirming the notifications land in a live test, and the Stripe Connect webhook config for pay-link completion.
 
 ### What's working
 - Stripe payment integration end to end (deposits, packages, memberships, card-on-file, refunds)
@@ -440,6 +441,14 @@ Full competitive analysis: `research/competitive-analysis-2026-04.md` and `resea
 
 Major decisions made and the reasoning behind them. Append to this rather than overwriting.
 
+### Jun 10, 2026 (pay-link notifications + coupons thread)
+
+- **Coupon codes shipped as Phase 1 only; referral codes deferred to Phase 2.** HK chose to ship manual discount codes now (percent or dollar, first-time-only, expiry, usage caps) and hold referral codes for later. Discounts apply to the service price and are re-validated and re-priced server-side in both deposit functions, so a code can never be faked or over-redeemed. Never trust a browser-supplied price on a money flow.
+- **Therapist gets a record at pay-link send time, not only on payment.** HK: "shouldn't the therapist get a notification once they send the payment link, for their records?" Added event `payment_link_sent` (bell + email, SMS off because it is a self-action). Routed through `notifyTherapist` so it respects prefs and logs like every other notification, rather than a bespoke insert.
+- **Root cause of "I paid and got no email": a silent gateway 401, not a notification bug.** The Square webhook flipped the booking payment to paid, then called `notify-payment-event`, which returned 401 because it was missing from the deploy `NO_JWT_FUNCTIONS` allowlist. The payment looked complete, the deploy was green, and nobody was told. Fixed by adding it to the allowlist. Generalized into design principle 36 (confirmation is a tracked column, not an assumption) and an incident under principle 2.
+- **Notification matrix is now a living confirmation tracker.** Per HK, the matrix records target channels, build status, and whether HK has confirmed live receipt, with aspiration and reality tracked separately. Lives in NOTIFICATION_MAP.md (catalog) and runbook section 17 (matrix).
+- **Stripe Connect Standard landing now refreshes state and lands on Payments.** It was writing the connection to the DB but leaving the in-context therapist stale and dropping the user on Clients, so Settings showed disconnected after a real connection. Direct application of principle 30.
+
 ### Jun 1, 2026 (Jacquie incident + crash-prevention trio)
 
 - **Jacquie Bodkin's "blocks keep disappearing" complaint root-caused to a Timeline visual bug, not a data bug.** Her three duplicate 2:45-4 PM "Facial" block rows came from her recreating the block each time she saw "Open · 2h available" overlaid on the amber-striped block. Timeline `gaps` computation considered bookings only, not partial blocks. The booking-page slot generator DID respect blocks correctly, so no client ever booked into her blocked window. Fix in commit `525eac1f`: gap-calc subtracts blocks, sub-segments under 90 min suppressed. **Duplicates retained as evidence per HK explicit instruction**, not deleted. UNIQUE constraint on blocked_days queued as Risk Register item #6.
@@ -596,6 +605,25 @@ Mark such rows as `paused` so they don't roll up into the monthly subtotal (sinc
 3. Check therapist's `square_connected` and `square_access_token` fields
 4. Check Square dashboard for the OAuth scope list — must include all 11 scopes (most recently added Apr 18, 2026)
 5. Check `supabase/functions/_shared/providers/square/v1.ts` for recent diffs
+
+### "A payment completed but no one was notified (therapist or client)"
+
+The payment row flipped to `succeeded` but no bell, no therapist email, no client receipt.
+
+1. **Check the inbox you are looking at.** Therapist emails go to the therapist account email (the demo is bodymapdemo@gmail.com), not the client inbox. Wrong inbox is the most common false alarm.
+2. **Check `notification_log` for the payment.** No `payment_received` row at all means the fan-out never ran.
+3. **Check edge-function logs for `notify-payment-event`.** A `401` is the known failure: that function fans out T8 (therapist) and the client receipt, and is called server-to-server by `stripe-payment-link-webhook`, `square-payment-link-webhook`, and `verify-payment-link`. If it 401s, it must be on the `NO_JWT_FUNCTIONS` list in `.github/workflows/deploy-edge-functions.yml`. It was added Jun 10 2026 after exactly this incident. Confirm it is still there and redeploy.
+4. **Check the therapist's `notification_prefs`.** `payment_received` email/bell default ON; only an explicit `false` turns them off.
+5. The bell insert is the first thing `notify-payment-event` does, so a missing bell with a 401 in logs points squarely at the gateway, not the prefs.
+
+### "A pay-link payment is stuck pending / package shows active but unpaid"
+
+The therapist sent a pay link, the client paid, but the `session_payments` row stays `pending` and carries no Stripe/Square payment id.
+
+1. **Confirm the client actually completed the hosted checkout** (entered card, tapped Pay, saw the processor success screen). Opening the link is not paying.
+2. **Square:** completion comes from `square-payment-link-webhook` (payment.updated) or the client returning to `/pay-thanks` (which calls `verify-payment-link`). Check both fired in the logs. Square webhook needs its subscription + signature key configured in the Square Dashboard.
+3. **Stripe:** Stripe pay links use hosted confirmation with no return to our site, so completion comes ONLY from `stripe-payment-link-webhook` (checkout.session.completed). For connected accounts the platform webhook endpoint must be configured to listen to Connect events, or the event never arrives and the row sits pending forever. This is the first thing to check for Stripe pay-links.
+4. A package created `active` with a `pending` payment and no payment id is the signature of this: the package is activated up front, the money side never closed.
 
 ### "Vercel build is failing"
 1. Most common: someone wrote `React.useState(...)` instead of `useState(...)`. Vercel CRA build silently strips this. Search the diff for `React.use` and replace.

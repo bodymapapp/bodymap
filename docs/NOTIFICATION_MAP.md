@@ -348,6 +348,7 @@ receives, channels, default state, retention rationale if applicable.
 - **Channels:** Bell + email. SMS optional.
 - **Default:** ON
 - **Already wired:** Yes (Phase 3)
+- **Jun 10 2026 fix:** `notify-payment-event` (which fans both T8 and the client receipt C-series) was returning 401 to the pay-link webhooks and `verify-payment-link` because it was missing from the deploy no-JWT allowlist. Payments flipped to paid but no one was notified. Fixed by adding `notify-payment-event` to `NO_JWT_FUNCTIONS`. This is a "shipped but silent" case: it was marked wired since Phase 3 but had stopped delivering. See FOUNDER_RUNBOOK recovery procedures.
 
 #### T9. Cancellation fee charged
 - **Trigger:** `charge-cancellation-fee` succeeded
@@ -407,6 +408,19 @@ receives, channels, default state, retention rationale if applicable.
 - **Channels:** Email only
 - **Default:** ON, no opt-out
 
+#### T16. Pay link sent (therapist record)
+- **Trigger:** Therapist sends a pay link for a session, package, or
+  membership (`create-payment-link` succeeds)
+- **Receives:** Therapist
+- **Channels:** Bell + email. SMS off (self-action, no text to self).
+- **Default:** ON for bell + email
+- **Already wired:** Yes (Jun 10 2026). Routes through `notifyTherapist`
+  with eventType `payment_link_sent`.
+- **Why:** HK Jun 10 2026 wanted a record the moment a link goes out,
+  not only when it is paid. It is a record, not a customer message; the
+  client is not notified at send time (they get the link delivery email,
+  and a receipt once they pay).
+
 ### Exception rules (E-series)
 
 #### E1. SMS undeliverable (carrier rejected, phone invalid)
@@ -443,6 +457,7 @@ receives, channels, default state, retention rationale if applicable.
 |---|---|---|
 | 3 (May 16 2026) | T1, T2, T7, T8, T9 (partial), bell drawer | ✓ shipped, not yet verified |
 | 5 (May 16 2026) | Settings UI toggles for the 4 new events | ✓ shipped, not yet verified |
+| Jun 10 2026 | T16 (pay link sent), T8 fix (401 no-JWT), client pay-link email on standard template | ✓ shipped Jun 10; T8 + receipt re-test pending, T16 confirm pending |
 | 6.2 (next) | C7, C8, T5, T6, T10 | not started |
 | 6.3 (later) | T13, T14, coalescing, `notifyClient` helper | not started |
 | 6.4 (later) | C3, C4, C5, C9, C10, C11, C12, C13 | not started |

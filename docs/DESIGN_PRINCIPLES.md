@@ -58,6 +58,19 @@ stop and find the existing template.
 before the code lands.** If a notification is not in
 NOTIFICATION_MAP, it does not exist.
 
+**Incident log.**
+- **Jun 10 2026 (silent 401):** the money path fans out through
+  `notify-payment-event`, called server-to-server by both pay-link
+  webhooks and `verify-payment-link`. That function was not in the
+  deploy `NO_JWT_FUNCTIONS` allowlist, so every call hit the gateway
+  and got a 401. Payments were marked paid, but T8 (therapist) and the
+  client receipt never fired. The webhook returned 200, the row flipped
+  to succeeded, and nothing looked wrong until a live test. Rule that
+  came out of it: any function called by a webhook or another function
+  with the service/anon key must be on the no-JWT allowlist, and a
+  notification is not trusted until a live test confirms receipt
+  (see principle 36).
+
 ---
 
 ## 3. Don't reframe an unstated requirement into a safer one.
@@ -1000,6 +1013,17 @@ with this principle.
 - Does the consumer component read directly from `therapist?.field`
   (correct) or have its own state copy that could drift (risky)?
 
+**Incident log.**
+- **Jun 10 2026 (Stripe connect shows disconnected after connecting):**
+  the Standard OAuth landing page (`StripeConnectStandard.js`) wrote
+  `stripe_account_id` to the DB server-side, then dropped the user on
+  the Clients page without calling `refreshTherapist()`. The in-context
+  therapist stayed stale, so Settings > Payments kept showing
+  "disconnected" even though the connection was real. Fix: `await
+  refreshTherapist()` on OAuth success, and land the user on
+  `/dashboard/settings#payments` so they see the connected state. Same
+  root cause as the Jacquie bug, different surface.
+
 ---
 
 ## 31. Prefer side panels and full pages over modals. Modals are for confirm/cancel only.
@@ -1241,6 +1265,46 @@ This is a process rule, not a code rule. The cost of skipping is a customer-visi
 
 **Incident log.**
 - **Jun 1 2026 (Jacquie incident):** pushed gap-calc + interleave changes after passing build + desktop check. Mobile crashed immediately. Three rounds of revert + fix because the bugs were iOS-specific (rules #33 and #34). The /founder/mobile-preview iframe would have caught both before push.
+
+---
+
+## 36. Shipped is not delivered. Track notification aspiration and confirmed receipt separately.
+
+**Rule.** A notification (or any side-effect the user is supposed to
+receive) is not "done" when the code ships. It is done when a live
+test confirms the user actually received it. The notification catalog
+and the runbook matrix both track two things separately: the target
+(which channels it should hit, build status) and confirmed receipt
+(did HK actually get it, on which date). Never collapse the two. A row
+that says "shipped" with an empty confirmation is an open item, not a
+closed one.
+
+**Why.** "Shipped but silent" is a recurring failure here. A function
+returns 200, a row flips to paid, a deploy goes green, and yet the
+human gets nothing. The only thing that catches it is a real test and
+an honest record of what arrived. HK Jun 10 2026: "as I confirm that I
+got a notification, you should update that in the matrix. Both what we
+are aspiring to do or doing, and then an update on whether I confirmed
+receiving it or not."
+
+**Where it lives.** `docs/NOTIFICATION_MAP.md` (the catalog, with
+Implementation status) and FOUNDER_RUNBOOK section 17 (the matrix with
+target / build status / HK confirmed receiving). Update both in the
+same change that adds or alters a notification.
+
+**Incident log.**
+- **Jun 10 2026:** `payment_received` (T8) and the client receipt were
+  marked wired since Phase 3 but had been silently 401-blocked (see
+  principle 2). The catalog said "shipped"; reality was zero delivery.
+  A single live $1 payment plus the confirmation column exposed it.
+  This principle is the generalization: confirmation is a column, not
+  an assumption.
+
+**Verification gotchas worth keeping in mind.**
+- Therapist emails go to the therapist account email, not the client
+  inbox. For the demo: therapist mail is bodymapdemo@gmail.com, client
+  mail is bodymap01@gmail.com. Check the right inbox before declaring a
+  notification missing.
 
 ---
 
