@@ -1,6 +1,6 @@
 # MyBodyMap Founder Runbook
 
-**Last updated:** May 21, 2026
+**Last updated:** Jun 10, 2026
 **Owner:** HK (founder + sole operator)
 **Purpose:** Operational insurance. If Claude is unavailable tomorrow and HK needs to onboard a human team or vendor to keep MyBodyMap running, this document is the handoff. It contains everything a competent senior engineer + product manager + GTM lead would need to take over with minimal additional context.
 
@@ -805,6 +805,8 @@ The three combinations:
 | OFF | ON | Flow B, book and pay |
 | ON | ON | Flow C, request, approve, auto-charge (Phase 25b) |
 
+Beyond the booking-config flows above, this section also documents money and notification flows: Flow D (pay link, send to paid) and the notification events table. Add a new flow here whenever we ship one, so the catalog stays current.
+
 ### Flow A. Approval ON, Deposit OFF
 
 The client submits a request without any payment. The therapist reviews and approves or declines. On approve, the booking is confirmed and the client gets a confirmation email with an intake link. No card is captured at any point.
@@ -1032,6 +1034,91 @@ Both settings on. The client saves a card when they submit their request, but th
   <text x="300" y="990" text-anchor="middle" font-size="11" fill="#9CA3AF">Card is captured up front so the deposit can be charged without the client needing to come back.</text>
   <text x="300" y="1010" text-anchor="middle" font-size="11" fill="#9CA3AF">If you decline, the saved card is never charged.</text>
 </svg>
+
+### Flow D. Pay link lifecycle (send to paid)
+
+How money moves when the therapist sends a pay link for a session, a package, or a membership. Same path for all three; the only difference is what the link is for. Added Jun 10, 2026 alongside the pay-link send-time notification.
+
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 880" style="max-width:100%;height:auto;background:#F5F0E8;border-radius:14px;font-family:system-ui,-apple-system,sans-serif;">
+  <defs>
+    <marker id="arrowD" markerWidth="10" markerHeight="10" refX="5" refY="5" orient="auto">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#2A5741"/>
+    </marker>
+  </defs>
+  <text x="300" y="38" text-anchor="middle" font-size="20" font-weight="700" fill="#1F2937" font-family="Georgia,serif">Flow D. Pay link, send to paid</text>
+  <text x="300" y="62" text-anchor="middle" font-size="13" fill="#6B7280">Session, package, or membership. Same path for all three.</text>
+
+  <g transform="translate(60,90)">
+    <rect width="480" height="80" rx="14" fill="#fff" stroke="#BFD8C9" stroke-width="1.5"/>
+    <circle cx="32" cy="40" r="18" fill="#2A5741"/>
+    <text x="32" y="46" text-anchor="middle" font-size="16" font-weight="700" fill="#fff">1</text>
+    <text x="70" y="34" font-size="15" font-weight="700" fill="#1F2937">You send a pay link</text>
+    <text x="70" y="55" font-size="13" fill="#6B7280">A payment row is created. It starts as pending.</text>
+  </g>
+  <line x1="300" y1="180" x2="300" y2="210" stroke="#2A5741" stroke-width="2" marker-end="url(#arrowD)"/>
+
+  <g transform="translate(60,220)">
+    <rect width="480" height="80" rx="14" fill="#fff" stroke="#E6CDB0" stroke-width="1.5"/>
+    <circle cx="32" cy="40" r="18" fill="#B87840"/>
+    <text x="32" y="46" text-anchor="middle" font-size="16" font-weight="700" fill="#fff">2</text>
+    <text x="70" y="34" font-size="15" font-weight="700" fill="#1F2937">You get a record instantly</text>
+    <text x="70" y="55" font-size="13" fill="#6B7280">Bell plus email: link sent to client, awaiting payment.</text>
+  </g>
+  <line x1="300" y1="310" x2="300" y2="340" stroke="#2A5741" stroke-width="2" marker-end="url(#arrowD)"/>
+
+  <g transform="translate(60,350)">
+    <rect width="480" height="80" rx="14" fill="#fff" stroke="#BFD8C9" stroke-width="1.5"/>
+    <circle cx="32" cy="40" r="18" fill="#2A5741"/>
+    <text x="32" y="46" text-anchor="middle" font-size="16" font-weight="700" fill="#fff">3</text>
+    <text x="70" y="34" font-size="15" font-weight="700" fill="#1F2937">Client opens the link and pays</text>
+    <text x="70" y="55" font-size="13" fill="#6B7280">Card on the Stripe or Square hosted page.</text>
+  </g>
+  <line x1="300" y1="440" x2="300" y2="470" stroke="#2A5741" stroke-width="2" marker-end="url(#arrowD)"/>
+
+  <g transform="translate(60,480)">
+    <rect width="480" height="80" rx="14" fill="#fff" stroke="#E6CDB0" stroke-width="1.5"/>
+    <circle cx="32" cy="40" r="18" fill="#B87840"/>
+    <text x="32" y="46" text-anchor="middle" font-size="16" font-weight="700" fill="#fff">4</text>
+    <text x="70" y="34" font-size="15" font-weight="700" fill="#1F2937">Payment is confirmed to us</text>
+    <text x="70" y="55" font-size="13" fill="#6B7280">Stripe or Square webhook, or client returns to thank-you page.</text>
+  </g>
+  <line x1="300" y1="570" x2="300" y2="600" stroke="#2A5741" stroke-width="2" marker-end="url(#arrowD)"/>
+
+  <g transform="translate(60,610)">
+    <rect width="480" height="80" rx="14" fill="#fff" stroke="#BFD8C9" stroke-width="1.5"/>
+    <circle cx="32" cy="40" r="18" fill="#2A5741"/>
+    <text x="32" y="46" text-anchor="middle" font-size="16" font-weight="700" fill="#fff">5</text>
+    <text x="70" y="34" font-size="15" font-weight="700" fill="#1F2937">You get a paid notification</text>
+    <text x="70" y="55" font-size="13" fill="#6B7280">Bell, email, and SMS per settings. Names the package or membership.</text>
+  </g>
+  <line x1="300" y1="700" x2="300" y2="730" stroke="#2A5741" stroke-width="2" marker-end="url(#arrowD)"/>
+
+  <g transform="translate(60,740)">
+    <rect width="480" height="80" rx="14" fill="#fff" stroke="#BFD8C9" stroke-width="1.5"/>
+    <circle cx="32" cy="40" r="18" fill="#2A5741"/>
+    <text x="32" y="46" text-anchor="middle" font-size="16" font-weight="700" fill="#fff">6</text>
+    <text x="70" y="34" font-size="15" font-weight="700" fill="#1F2937">Client gets a receipt by email</text>
+    <text x="70" y="55" font-size="13" fill="#6B7280">Itemized payment receipt to their inbox.</text>
+  </g>
+
+  <text x="300" y="855" text-anchor="middle" font-size="11" fill="#9CA3AF">Steps 5 and 6 depend on step 4. No webhook and no return to the thank-you page means the payment stays pending.</text>
+</svg>
+
+**Known dependency (the thing that bites).** Step 4 is the hinge. Stripe pay links use a hosted confirmation and do not return the payer to our site, so completed Stripe payments reach us only through the Stripe webhook (checkout.session.completed, which for connected accounts requires the platform webhook to listen to Connect events). Square reaches us through its payment.updated webhook or through the client landing back on the thank-you page. If none of those fire, the payment row stays pending forever, the package shows active but unpaid, and steps 5 and 6 never happen. When debugging "no payment notification," check the payment row status first: pending means step 4 never completed, which is a webhook or return-url problem, not a notification problem.
+
+### Notification events: who is told, and how
+
+Defaults: in-app bell and email are ON by default; SMS and push are OFF by default and only send when the therapist explicitly turns them on (SMS is gated on A2P 10DLC approval). Each therapist can override per event in Settings. This table is the money and pay-link subset, not the full list.
+
+| Event | Therapist gets | Client gets | Fires when |
+|---|---|---|---|
+| Pay link sent | Bell + Email | nothing | Therapist sends any pay link (session, package, membership) |
+| Payment received | Bell + Email + SMS\* | Email + SMS\* | A payment row is marked paid (step 4 of Flow D, or any completed charge) |
+| Intake filled | Bell + Email | nothing | Client submits their intake |
+
+\* SMS only if the therapist has turned SMS on for that event. Off by default.
+
+The "Pay link sent" event is the new one (Jun 10, 2026). It is a record for the therapist, not a customer-facing message, so the client is never notified at send time; the client only hears from us when they actually pay (receipt) or via the link delivery itself.
 
 ### When to send each diagram
 
