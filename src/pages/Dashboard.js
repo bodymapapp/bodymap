@@ -3640,6 +3640,13 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
     subscription:   ['5.1'],
     price:          ['2.1', '2.2', '2.3', '2.4', '2.5'],
     pricing:        ['2.1', '2.2', '2.3', '2.4', '2.5'],
+    discount:       ['2.7'],
+    discounts:      ['2.7'],
+    coupon:         ['2.7'],
+    coupons:        ['2.7'],
+    promo:          ['2.7'],
+    code:           ['2.7'],
+    referral:       ['2.7'],
     money:          ['4.2', '5.1'],
     pay:            ['4.2', '2.1'],
     stripe:         ['4.2'],
@@ -3721,7 +3728,7 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
     }
     const groups = {
       practice:    [['Your info','','1.1'],['Import existing clients','Bring your list from CSV. Vagaro, MassageBook, Square','1.2'],['Booking & intake links','Share your link or QR codes for clients','1.3'],['Booking page setup','Approval and intake gates, embed','1.4'],['Time off','','1.5']],
-      offer:       [['Services & hours','Your menu, weekly hours, deposits, buffer','2.1'],['Add-ons','Hot stones, aromatherapy, hot towels…','2.2'],['Packages','Multi-session bundles','2.3'],['Memberships','Recurring monthly plans','2.4'],['Classes & events','Workshops, group sessions','2.5'],['Plan your year','Vacations, holidays, time off blocks per month','2.6']],
+      offer:       [['Services & hours','Your menu, weekly hours, deposits, buffer','2.1'],['Add-ons','Hot stones, aromatherapy, hot towels…','2.2'],['Packages','Multi-session bundles','2.3'],['Memberships','Recurring monthly plans','2.4'],['Classes & events','Workshops, group sessions','2.5'],['Plan your year','Vacations, holidays, time off blocks per month','2.6'],['Coupon codes','Discount codes clients enter at booking, percent or dollars off, first-time clients only, expiry, usage limit','2.7']],
       restEasier:  [['Platform features','','3.1'],['Practice Pulse','','3.2'],['Push notifications','On-device alerts for new bookings','3.3'],['Notification preferences','Email alerts for events','3.4'],['Lapsed client threshold','','3.5']],
       plugIn:      [['Cal.com sync','','4.1'],['Google Calendar sync','Two-way sync with Google Calendar','4.1.5'],['Payments','','4.2'],['Custom SMS sender (Twilio)','','4.3'],['Referrals','','4.4']],
       membership:  [['Your plan','','5.1'],['Change password','Set a new password','5.2']],

@@ -3906,12 +3906,15 @@ export default function BookingPage() {
                   {couponError && <div style={{fontSize:12,color:C.danger,marginTop:4}}>{couponError}</div>}
                 </div>
               ) : (
-                <div style={{background:'#F0FDF4',border:'1.5px solid #86EFAC',borderRadius:10,padding:'10px 14px',display:'flex',alignItems:'center',justifyContent:'space-between',gap:8}}>
-                  <div>
-                    <div style={{fontSize:13,fontWeight:700,color:'#16A34A'}}>Coupon applied: {appliedCoupon.code}</div>
-                    <div style={{fontSize:12,color:'#374151'}}>{appliedCoupon.discount_type==='percent'?`${Number(appliedCoupon.discount_value)}% off`:`$${Number(appliedCoupon.discount_value).toFixed(2)} off`}{couponDiscountDollars>0?` · you save $${couponDiscountDollars.toFixed(2)}`:''}</div>
+                <div style={{background:'#ECFDF3',border:'1.5px solid #34D399',borderRadius:10,padding:'12px 14px',display:'flex',alignItems:'center',justifyContent:'space-between',gap:8}}>
+                  <div style={{display:'flex',alignItems:'center',gap:10,minWidth:0}}>
+                    <span aria-hidden="true" style={{flexShrink:0,width:26,height:26,borderRadius:999,background:'#16A34A',color:'#fff',display:'flex',alignItems:'center',justifyContent:'center',fontSize:15,fontWeight:800}}>✓</span>
+                    <div style={{minWidth:0}}>
+                      <div style={{fontSize:14,fontWeight:800,color:'#15803D'}}>Code {appliedCoupon.code} applied{couponDiscountDollars>0?` · you save $${couponDiscountDollars.toFixed(2)}`:''}</div>
+                      <div style={{fontSize:12.5,color:'#374151',marginTop:1}}>{appliedCoupon.discount_type==='percent'?`${Number(appliedCoupon.discount_value)}% off your session`:`$${Number(appliedCoupon.discount_value).toFixed(2)} off your session`}</div>
+                    </div>
                   </div>
-                  <button onClick={()=>{setAppliedCoupon(null);setCouponCode('');setCouponError('');}} aria-label="Remove coupon" style={{background:'transparent',border:'1px solid transparent',color:C.gray,cursor:'pointer',fontSize:11,fontWeight:700,padding:'4px 10px',borderRadius:999}}>Remove</button>
+                  <button onClick={()=>{setAppliedCoupon(null);setCouponCode('');setCouponError('');}} aria-label="Remove coupon" style={{flexShrink:0,background:'transparent',border:'1px solid transparent',color:C.gray,cursor:'pointer',fontSize:11,fontWeight:700,padding:'4px 10px',borderRadius:999}}>Remove</button>
                 </div>
               )}
             </div>
