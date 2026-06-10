@@ -25,6 +25,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { notifyTherapist } from "../_shared/notifications.ts";
+import { renderClientEmailDoc } from "../_shared/clientEmail.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -114,18 +115,29 @@ serve(async (req) => {
     async function maybeEmailLink(linkUrl: string): Promise<boolean> {
       if (delivery !== 'email' || !client_email || !RESEND_API_KEY) return false;
       try {
-        const dollars = (amount_cents + (tip_cents || 0)) / 100;
+        const totalCents = amount_cents + (tip_cents || 0);
+        const dollars = totalCents / 100;
         const amountStr = Number.isInteger(dollars) ? `$${dollars}` : `$${dollars.toFixed(2)}`;
-        const greetingName = (client_name && String(client_name).trim().split(' ')[0]) || 'there';
-        const safeName = escapeHtml(therapistDisplayName);
-        const html = `<!DOCTYPE html><html><body style="margin:0;background:#F5F3EE;font-family:Georgia,serif;">`
-          + `<div style="max-width:520px;margin:0 auto;padding:32px 24px;">`
-          + `<div style="background:#ffffff;border-radius:16px;padding:28px;box-shadow:0 1px 4px rgba(0,0,0,0.06);">`
-          + `<p style="font-size:16px;color:#2B2B2B;margin:0 0 14px;">Hi ${escapeHtml(greetingName)},</p>`
-          + `<p style="font-size:15px;color:#4A4A4A;line-height:1.6;margin:0 0 22px;">Here is your secure payment link for ${escapeHtml(service_name)} with ${safeName}. You can pay by card in a moment.</p>`
-          + `<div style="text-align:center;margin:0 0 22px;"><a href="${linkUrl}" style="display:inline-block;background:#2A5741;color:#ffffff;text-decoration:none;border-radius:12px;padding:14px 28px;font-size:16px;font-weight:700;">Pay ${amountStr}</a></div>`
-          + `<p style="font-size:13px;color:#8A8A8A;line-height:1.6;margin:0;">If the button does not work, paste this link into your browser:<br/><a href="${linkUrl}" style="color:#2A5741;word-break:break-all;">${linkUrl}</a></p>`
-          + `</div><p style="text-align:center;font-size:12px;color:#A8A29E;margin:18px 0 0;">Sent via MyBodyMap</p></div></body></html>`;
+        // Use the standard MyBodyMap client email template so the pay-link
+        // email matches every other client email: branded header, a fact box
+        // that names the service and the amount due, a Pay button, and the
+        // therapist's voice. HK Jun 10 2026: the old bespoke email omitted
+        // the structured service/amount detail.
+        const html = renderClientEmailDoc(
+          `Payment link for ${service_name}`,
+          {
+            therapist,
+            toneEyebrow: 'Payment',
+            toneEyebrowKind: 'sage',
+            title: 'Your payment link',
+            opener: `Here is your secure payment link from ${therapistDisplayName}. Tap below to pay by card whenever you are ready. The details are right here for you.`,
+            serviceName: service_name,
+            extraFactRows: [{ label: 'Amount due', value: amountStr }],
+            primaryCta: { label: `Pay ${amountStr}`, href: linkUrl },
+            closingLine: 'Questions about this charge? Just reply to this email.',
+          },
+          `Your secure payment link from ${therapistDisplayName}`
+        );
         const sendRes = await fetch('https://api.resend.com/emails', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${RESEND_API_KEY}` },
