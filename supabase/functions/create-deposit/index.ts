@@ -39,6 +39,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getStripeSecret } from "../_shared/paymentMode.ts";
+import { validateCoupon, applyDiscountCents } from "../_shared/coupon.ts";
 
 const cors = {
   'Access-Control-Allow-Origin': '*',
@@ -71,6 +72,11 @@ serve(async (req) => {
       // metadata for downstream accounting.
       payment_mode,
       tip_cents,
+      // HK Jun 9 2026: optional coupon entered at booking. When present we
+      // re-validate it and recompute the charge from the real service price
+      // here on the server, so the discount can never be faked from the
+      // browser. The browser-sent amount_cents is ignored for coupon orders.
+      coupon_code,
     } = await req.json();
 
     let STRIPE_SECRET: string;
@@ -86,6 +92,68 @@ serve(async (req) => {
     const supabase = (SUPABASE_URL && SUPABASE_SERVICE_KEY)
       ? createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY)
       : null;
+
+    // ─── Coupon: re-validate and recompute the charge server-side ──
+    //
+    // If a coupon code was entered, we never trust the browser's amount.
+    // We load the coupon, validate it (active, not expired, under its
+    // limit, new-clients rule), recompute the discount against the real
+    // service price on the booking, and charge that. We also stamp the
+    // booking so the therapist sees the code and the redemption trigger
+    // can count it when the deposit is paid.
+    let effectiveAmount = Number(amount_cents);
+    let appliedCoupon: { id: string; code: string; discountCents: number } | null = null;
+    if (coupon_code && String(coupon_code).trim() && supabase && booking_id) {
+      const { data: bk } = await supabase
+        .from('bookings').select('service_id, addon_total_price')
+        .eq('id', booking_id).maybeSingle();
+      const { data: cpn } = await supabase
+        .from('coupons').select('*')
+        .eq('therapist_id', therapist_id)
+        .ilike('code', String(coupon_code).trim())
+        .maybeSingle();
+
+      let isNewClient = true;
+      if (cpn?.new_clients_only && client_email) {
+        const { data: existing } = await supabase
+          .from('clients').select('id')
+          .eq('therapist_id', therapist_id)
+          .ilike('email', String(client_email).trim())
+          .maybeSingle();
+        isNewClient = !existing;
+      }
+      const v = validateCoupon(cpn as any, { isNewClient });
+      if (!v.valid) {
+        return respond({ error: 'coupon_invalid', coupon_reason: v.reason });
+      }
+
+      let svcPrice = 0;
+      if (bk?.service_id) {
+        const { data: svc } = await supabase
+          .from('services').select('price').eq('id', bk.service_id).maybeSingle();
+        svcPrice = Number(svc?.price || 0);
+      }
+      const fullPriceCents = Math.round((svcPrice + Number(bk?.addon_total_price || 0)) * 100);
+      const { discountCents, discountedCents } = applyDiscountCents(fullPriceCents, cpn as any);
+
+      const { data: th } = await supabase
+        .from('therapists').select('deposit_percent').eq('id', therapist_id).maybeSingle();
+      const pct = Number(th?.deposit_percent || 20);
+      const tip = Number(tip_cents || 0);
+      effectiveAmount = (payment_mode === 'full')
+        ? discountedCents + tip
+        : Math.round(discountedCents * pct / 100);
+      // Stripe will not accept a charge under 50 cents. A discount this
+      // deep is unusual for a deposit; floor at 50 so the charge succeeds.
+      if (!Number.isFinite(effectiveAmount) || effectiveAmount < 50) effectiveAmount = Math.max(effectiveAmount, 50);
+
+      appliedCoupon = { id: cpn!.id, code: cpn!.code, discountCents };
+      await supabase.from('bookings').update({
+        coupon_id: cpn!.id,
+        coupon_code: cpn!.code,
+        discount_cents: discountCents,
+      }).eq('id', booking_id);
+    }
 
     // ─── Step 1: find-or-create the Stripe Customer ──────────────
     //
@@ -159,7 +227,7 @@ serve(async (req) => {
 
     const isFullPayment = payment_mode === 'full';
     const piParams: Record<string, string> = {
-      amount: String(amount_cents),
+      amount: String(effectiveAmount),
       currency: 'usd',
       'automatic_payment_methods[enabled]': 'true',
       'automatic_payment_methods[allow_redirects]': 'always',
@@ -173,6 +241,12 @@ serve(async (req) => {
       'metadata[payment_mode]': payment_mode || 'deposit',
       'metadata[tip_cents]': String(tip_cents || 0),
     };
+
+    if (appliedCoupon) {
+      piParams['metadata[coupon_id]'] = appliedCoupon.id;
+      piParams['metadata[coupon_code]'] = appliedCoupon.code;
+      piParams['metadata[discount_cents]'] = String(appliedCoupon.discountCents);
+    }
 
     // If we have a Stripe Customer, attach it AND ask Stripe to save
     // the payment method for off-session reuse (cancellation charges,

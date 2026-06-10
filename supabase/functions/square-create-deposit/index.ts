@@ -20,6 +20,7 @@ import {
   corsHeaders, respond, getSupabaseClient, loadTherapist,
   getProvider, ProviderError,
 } from '../_shared/payment-provider.ts';
+import { validateCoupon, applyDiscountCents } from '../_shared/coupon.ts';
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
@@ -30,6 +31,9 @@ serve(async (req) => {
       service_name, therapist_name, client_email, redirect_url,
       // Pay-in-full + tip metadata (Lindsey #2)
       payment_mode, tip_cents,
+      // HK Jun 9 2026: optional coupon entered at booking. Re-validated
+      // and the charge recomputed server-side from the real service price.
+      coupon_code,
     } = await req.json();
 
     console.log('[square-create-deposit] start', { therapist_id, booking_id, amount_cents });
@@ -39,6 +43,51 @@ serve(async (req) => {
 
     const supabase = getSupabaseClient();
     const therapist = await loadTherapist(supabase, therapist_id);
+
+    // ─── Coupon: re-validate and recompute the charge server-side ──
+    // Never trust the browser amount when a code is applied.
+    let effectiveAmount = Number(amount_cents);
+    if (coupon_code && String(coupon_code).trim() && booking_id) {
+      const { data: bk } = await supabase
+        .from('bookings').select('service_id, addon_total_price')
+        .eq('id', booking_id).maybeSingle();
+      const { data: cpn } = await supabase
+        .from('coupons').select('*')
+        .eq('therapist_id', therapist_id)
+        .ilike('code', String(coupon_code).trim())
+        .maybeSingle();
+
+      let isNewClient = true;
+      if (cpn?.new_clients_only && client_email) {
+        const { data: existing } = await supabase
+          .from('clients').select('id')
+          .eq('therapist_id', therapist_id)
+          .ilike('email', String(client_email).trim())
+          .maybeSingle();
+        isNewClient = !existing;
+      }
+      const v = validateCoupon(cpn as any, { isNewClient });
+      if (!v.valid) return respond({ error: 'coupon_invalid', coupon_reason: v.reason }, 400);
+
+      let svcPrice = 0;
+      if (bk?.service_id) {
+        const { data: svc } = await supabase
+          .from('services').select('price').eq('id', bk.service_id).maybeSingle();
+        svcPrice = Number(svc?.price || 0);
+      }
+      const fullPriceCents = Math.round((svcPrice + Number(bk?.addon_total_price || 0)) * 100);
+      const { discountCents, discountedCents } = applyDiscountCents(fullPriceCents, cpn as any);
+      const pct = Number((therapist as any).deposit_percent || 20);
+      const tip = Number(tip_cents || 0);
+      effectiveAmount = (payment_mode === 'full')
+        ? discountedCents + tip
+        : Math.round(discountedCents * pct / 100);
+      if (!Number.isFinite(effectiveAmount) || effectiveAmount < 50) effectiveAmount = Math.max(effectiveAmount, 50);
+
+      await supabase.from('bookings').update({
+        coupon_id: cpn!.id, coupon_code: cpn!.code, discount_cents: discountCents,
+      }).eq('id', booking_id);
+    }
 
     // Force Square: deposits via this endpoint are Square-only by
     // design. The Stripe path is /create-deposit with a different
@@ -53,15 +102,15 @@ serve(async (req) => {
       const { SquareProvider } = await import('../_shared/providers/square.ts');
       const squareProvider = new SquareProvider();
       return await runSquareDeposit(squareProvider, therapist, {
-        booking_id, amount_cents, service_name, therapist_name, client_email, redirect_url,
+        booking_id, amount_cents: effectiveAmount, service_name, therapist_name, client_email, redirect_url,
         payment_mode, tip_cents,
       }, supabase);
     }
 
     return await runSquareDeposit(provider, therapist, {
-      booking_id, amount_cents, service_name, therapist_name, client_email, redirect_url,
-      payment_mode, tip_cents,
-    }, supabase);
+        booking_id, amount_cents: effectiveAmount, service_name, therapist_name, client_email, redirect_url,
+        payment_mode, tip_cents,
+      }, supabase);
 
   } catch (e) {
     if (e instanceof ProviderError) {
