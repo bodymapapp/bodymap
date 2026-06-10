@@ -3646,7 +3646,6 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
     coupons:        ['2.7'],
     promo:          ['2.7'],
     code:           ['2.7'],
-    referral:       ['2.7'],
     money:          ['4.2', '5.1'],
     pay:            ['4.2', '2.1'],
     stripe:         ['4.2'],
@@ -3701,22 +3700,52 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
     ai:             ['3.1'],
     chat:           ['3.1'],
     push:           ['3.3'],
+    deposit:        ['2.1'],
+    deposits:       ['2.1'],
+    tip:            ['2.1'],
+    tips:           ['2.1'],
+    cost:           ['2.1', '2.2', '2.3', '2.4', '2.5'],
+    buffer:         ['2.1'],
+    availability:   ['2.1', '1.6'],
+    reminder:       ['3.4', '3.3'],
+    reminders:      ['3.4', '3.3'],
+    refund:         ['4.2'],
+    logo:           ['1.1'],
+    brand:          ['1.1'],
+    color:          ['1.1'],
+    colour:         ['1.1'],
+    'first time':   ['2.7'],
+    'first timer':  ['2.7'],
+    'first-timer':  ['2.7'],
+    save:           ['2.7'],
+    sale:           ['2.7'],
+    offer:          ['2.7'],
   }), []);
 
   const matchesSearch = React.useCallback((label, summary, taxonomy) => {
     if (!isSearching) return true;
     const q = settingsQuery.trim().toLowerCase();
+    if (!q) return true;
     const haystack = `${label || ''} ${summary || ''} ${taxonomy || ''}`.toLowerCase();
+    // Fast path: the whole query appears verbatim.
     if (haystack.includes(q)) return true;
-    // Check aliases: if the query matches an alias key (or a key contains
-    // the query as a substring), see if this row's taxonomy is in the
-    // alias's target list.
+    // Whole-query alias match.
     for (const [aliasKey, taxIds] of Object.entries(SEARCH_ALIASES)) {
-      if (aliasKey.includes(q) || q.includes(aliasKey)) {
-        if (taxIds.includes(taxonomy)) return true;
-      }
+      if ((aliasKey.includes(q) || q.includes(aliasKey)) && taxIds.includes(taxonomy)) return true;
     }
-    return false;
+    // Token path: every word in the query must match this row, either in
+    // its text or via an alias for its taxonomy. Handles multi-word and
+    // partial queries like "first time discount" or "deposit percent".
+    const tokens = q.split(/\s+/).filter((t) => t.length >= 2);
+    if (tokens.length === 0) return false;
+    const tokenMatches = (tok) => {
+      if (haystack.includes(tok)) return true;
+      for (const [aliasKey, taxIds] of Object.entries(SEARCH_ALIASES)) {
+        if ((aliasKey.includes(tok) || tok.includes(aliasKey)) && taxIds.includes(taxonomy)) return true;
+      }
+      return false;
+    };
+    return tokens.every(tokenMatches);
   }, [settingsQuery, isSearching, SEARCH_ALIASES]);
 
   // Per-group match maps so we can hide entire group headers when no row

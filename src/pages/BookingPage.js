@@ -3865,10 +3865,10 @@ export default function BookingPage() {
                       value={giftCode}
                       onChange={e=>{setGiftCode(e.target.value.toUpperCase());setGiftError('');}}
                       placeholder="Have a gift certificate? Enter your code here"
-                      style={{flex:1,padding:'10px 12px',border:`1.5px solid ${giftError?C.danger:C.light}`,borderRadius:10,fontSize:14,boxSizing:'border-box',outline:'none',fontFamily:'system-ui',letterSpacing:'0.05em'}}
+                      style={{flex:1,padding:'10px 12px',border:`1.5px solid ${giftError?C.danger:(giftCode.trim()?C.sage:C.light)}`,borderRadius:10,fontSize:14,boxSizing:'border-box',outline:'none',fontFamily:'system-ui',letterSpacing:'0.05em'}}
                     />
                     <button onClick={checkGiftCode} disabled={giftChecking||!giftCode.trim()}
-                      style={{background:C.sage,color:'#fff',border:'none',borderRadius:10,padding:'10px 16px',fontSize:13,fontWeight:700,cursor:'pointer',flexShrink:0,whiteSpace:'nowrap'}}>
+                      style={{background:giftCode.trim()?C.forest:C.light,color:giftCode.trim()?'#fff':C.gray,border:'none',borderRadius:10,padding:'10px 16px',fontSize:13,fontWeight:700,cursor:giftCode.trim()?'pointer':'default',flexShrink:0,whiteSpace:'nowrap',transition:'background 0.15s, color 0.15s'}}>
                       {giftChecking?'…':'Apply'}
                     </button>
                   </div>
@@ -3896,10 +3896,10 @@ export default function BookingPage() {
                       value={couponCode}
                       onChange={e=>{setCouponCode(e.target.value.toUpperCase());setCouponError('');}}
                       placeholder="Have a coupon code? Enter it here"
-                      style={{flex:1,padding:'10px 12px',border:`1.5px solid ${couponError?C.danger:C.light}`,borderRadius:10,fontSize:14,boxSizing:'border-box',outline:'none',fontFamily:'system-ui',letterSpacing:'0.05em'}}
+                      style={{flex:1,padding:'10px 12px',border:`1.5px solid ${couponError?C.danger:(couponCode.trim()?C.sage:C.light)}`,borderRadius:10,fontSize:14,boxSizing:'border-box',outline:'none',fontFamily:'system-ui',letterSpacing:'0.05em'}}
                     />
                     <button onClick={applyCoupon} disabled={couponChecking||!couponCode.trim()}
-                      style={{background:C.sage,color:'#fff',border:'none',borderRadius:10,padding:'10px 16px',fontSize:13,fontWeight:700,cursor:'pointer',flexShrink:0,whiteSpace:'nowrap'}}>
+                      style={{background:couponCode.trim()?C.forest:C.light,color:couponCode.trim()?'#fff':C.gray,border:'none',borderRadius:10,padding:'10px 16px',fontSize:13,fontWeight:700,cursor:couponCode.trim()?'pointer':'default',flexShrink:0,whiteSpace:'nowrap',transition:'background 0.15s, color 0.15s'}}>
                       {couponChecking?'…':'Apply'}
                     </button>
                   </div>
