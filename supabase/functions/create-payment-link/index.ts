@@ -220,6 +220,37 @@ serve(async (req) => {
       return respond({ error: 'failed_to_insert_payment_row' }, 500);
     }
 
+    // HK Jun 10 2026: give the therapist a record the moment they send a
+    // pay link, not only when the client pays. In-app bell only (no email
+    // or SMS) since the therapist just took this action themselves and an
+    // email to oneself is noise. The pending session_payments row is the
+    // source of truth; this is the human-visible trace that the link went
+    // out, and it flips to a real "paid" notification later on completion.
+    const sentClientLabel = (client_name && String(client_name).trim()) || 'your client';
+    const sentTotalCents = amount_cents + (tip_cents || 0);
+    const sentDollars = (sentTotalCents / 100).toFixed(2);
+    async function recordPayLinkSent() {
+      try {
+        await supabase.from('in_app_notifications').insert({
+          therapist_id,
+          event_type: 'payment_link_sent',
+          title: `Pay link sent to ${sentClientLabel}`,
+          body: `$${sentDollars} for ${chargeContextLabel}. Awaiting payment.`,
+          icon: '🔗',
+          link_url: '/dashboard/billing',
+          payload: {
+            session_payment_id: paymentRow.id,
+            booking_id: booking_id || null,
+            member_subscription_id: member_subscription_id || null,
+            package_purchase_id: package_purchase_id || null,
+            amount_cents: sentTotalCents,
+          },
+        });
+      } catch (e) {
+        console.error('[create-payment-link] pay-link-sent bell insert failed', String(e));
+      }
+    }
+
     // ─── Square branch (HK May 31 2026, Square Parity v1) ────────────
     // Square Checkout API. Same shape outcome as Stripe Payment Link:
     // the therapist gets a URL to send to the client; the client pays
@@ -288,6 +319,7 @@ serve(async (req) => {
         // Open SMS button on the success screen, not through Twilio. Never
         // auto-text here; texted stays false so the frontend shows Open SMS.
         const textedSquare = false;
+        await recordPayLinkSent();
         return respond({
           success: true,
           payment_link_url: checkoutResult.url,
@@ -395,6 +427,7 @@ serve(async (req) => {
     // HK Jun 9 2026: SMS goes through the therapist's own phone (Open SMS on
     // the success screen), not Twilio. Never auto-text here.
     const textedStripe = false;
+    await recordPayLinkSent();
     return respond({
       success: true,
       payment_link_url: stripeData.url,
