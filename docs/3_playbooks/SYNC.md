@@ -26,8 +26,9 @@ every change.
 ## Stay out of each other's way
 
 - Each agent owns its own files. Engineering owns the code and the
-  engineering rooms. Support owns the support and incident drafts.
+  engineering rooms. Customer Support owns the support and incident drafts.
   Marketing owns the marketing docs. Strategy owns the strategy docs.
+  Chief of Staff keeps the state room and the cross-agent view current.
   Two agents almost never edit the same file, so git merges them cleanly.
 - The block plan is the one file everyone shares. Append to your own dated
   section. Do not rewrite another agent's lines.
@@ -43,6 +44,7 @@ Set once, right after the clone line, in each agent's project instructions:
     Customer Support:  git config user.name "MyBodyMap Customer Support" && git config user.email "support@mybodymap.app"
     Marketing:    git config user.name "MyBodyMap Marketing" && git config user.email "marketing@mybodymap.app"
     Strategy:     git config user.name "MyBodyMap Strategy" && git config user.email "strategy@mybodymap.app"
+    Chief of Staff:  git config user.name "MyBodyMap Chief of Staff" && git config user.email "chief@mybodymap.app"
     A human:      git config user.name "Your Real Name" && git config user.email "your@email"
 
 Start every commit message with your tag in brackets, then keep the
@@ -52,6 +54,7 @@ existing convention:
     [support] what changed (Shipped but unverified by HK)
     [marketing] what changed (Shipped but unverified by HK)
     [strategy] what changed (Shipped but unverified by HK)
+    [chief] what changed (Shipped but unverified by HK)
 
 ## How HK checks who pushed what
 
