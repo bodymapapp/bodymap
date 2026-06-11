@@ -42,6 +42,7 @@ import useGithubMarkdown from "../components/founder/useGithubMarkdown";
 import { StripeDebugEmbedded } from "./StripeDebug";
 import { RefundReconcileEmbedded } from "./RefundReconcile";
 import { FounderIncomeStatementEmbedded } from "./FounderIncomeStatement";
+import { AgentBoardEmbedded } from "../components/founder/AgentBoard";
 
 const C = {
   forest: "#2A5741",
@@ -61,6 +62,15 @@ const C = {
 // feedback May 7 2026. Each section is either markdown rendered from
 // a repo path, an iframe embed, or a future placeholder.
 const SECTIONS = [
+  {
+    id: "agent-board",
+    number: "★",
+    title: "Agent Board",
+    subtitle: "Your command board for the five agents. Add tasks, reorder, mark done, and drill in. The control surface for the whole system.",
+    status: "live",
+    type: "component",
+    component: "agent-board",
+  },
   {
     id: "therapist-playbook",
     number: 1,
@@ -286,7 +296,7 @@ const BACKUP_PATHS = [
 ];
 
 export default function FounderHub() {
-  const [activeSection, setActiveSection] = useState("runbook");
+  const [activeSection, setActiveSection] = useState("agent-board");
   const currentSection = SECTIONS.find((s) => s.id === activeSection);
 
   return (
@@ -713,6 +723,10 @@ function SectionContent({ section }) {
 
       {section.type === "component" && section.component === "refund-reconcile" && (
         <RefundReconcileEmbedded />
+      )}
+
+      {section.type === "component" && section.component === "agent-board" && (
+        <AgentBoardEmbedded />
       )}
 
       {section.type === "future" && (
