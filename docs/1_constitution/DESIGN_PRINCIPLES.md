@@ -7,6 +7,22 @@ variant.
 
 ---
 
+## ADRR: the shape of every reply to HK
+
+Every reply to HK leads with these four, in this order, before any deep detail:
+
+- **Action**, what I (Claude) did.
+- **Decision**, what HK needs to decide or do next.
+- **Recommendation**, my recommendation, grounded in the "what does world class look like?" principle.
+- **Risk**, green, amber, or red, by impact on the customer and therapist value chain.
+  - **Green**, internal and reversible, no customer or therapist impact. Act alone.
+  - **Amber**, affects their experience indirectly or needs HK judgment. Draft, HK decides.
+  - **Red**, directly touches a customer or therapist, their data, their money, or is irreversible. HK only.
+
+Keep the four short. The deep detail goes below the ADRR block, kept for safety and learning, never in front of the action. HK set this on 2026-06-11 after replies buried the action in too much text.
+
+---
+
 ## 1. The seven ribbons are the taxonomy. Don't invent sections.
 
 **Rule.** Every feature must live inside an existing surface format.
