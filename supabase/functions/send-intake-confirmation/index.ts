@@ -128,5 +128,3 @@ serve(async (req) => {
     return new Response(JSON.stringify({ error: String(e) }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
   }
 });
-EOF
-echo "created send-intake-confirmation. em: $(grep -c $'\u2014' supabase/functions/send-intake-confirmation/index.ts 2>/dev/null)"
