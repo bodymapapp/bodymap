@@ -1,120 +1,77 @@
 // src/pages/MyVisits.jsx
 //
-// Passwordless client portal (Phase 1). A client lands here from a magic
-// link in email (?t=token) or enters their email to be sent one. No
-// password, no account. All data comes from the client-portal edge
-// function (service role, own data only); the client never gets a
-// database session. Designed to match the intake: warm cream, sage
-// accents, soft cards, large friendly type, plain language.
+// Passwordless client portal. The client lands here from a magic link in
+// email (?t=token) or enters their email to be sent one. No password, no
+// DB session. All data comes from the client-portal edge function (service
+// role, own data only, therapist-private fields stripped server-side).
+//
+// Stage 1: read-only. The page reuses the real therapist client-page
+// components (ProfileSection chrome, PatternsCard body map, PreferencesCard)
+// so it is the same design system, not a lookalike. Edit + verify is Stage 2.
 
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
-
-const C = {
-  bg: '#F0EAD9',
-  cardBg: '#FDFAF3',
-  green: '#2A5741',
-  sage: '#6B9E80',
-  sagePale: '#D0E8D8',
-  sageMid: '#A8CDBA',
-  text: '#1C3024',
-  textMid: '#4A6154',
-  textLight: '#7A9485',
-  border: '#DDD5C0',
-  shadow: 'rgba(42,87,65,0.10)',
-  formsBg: '#FBEFD6',
-  formsInk: '#8A5A1E',
-  white: '#FFFFFF',
-};
-const F = {
-  display: "'Cormorant Garamond', Georgia, serif",
-  body: "'Nunito', 'Helvetica Neue', sans-serif",
-};
+import ProfileSection from '../components/ClientProfile/ProfileSection';
+import PatternsCard from '../components/ClientProfile/PatternsCard';
+import PreferencesCard from '../components/ClientProfile/PreferencesCard';
+import { C, F, initials, avatarColor } from '../components/ClientProfile/tokens';
 
 const TOKEN_KEY = 'mbm_portal_token';
 
-// Presentational pieces at module scope so their identity is stable across
-// renders. Defining them inside the component remounts the subtree on every
-// keystroke, which dropped the email field's focus and closed the keyboard.
-const Shell = ({ children }) => (
-  <div style={{ minHeight: '100vh', background: C.bg, fontFamily: F.body, color: C.text }}>
-    <div style={{ maxWidth: 560, margin: '0 auto', padding: '26px 18px 64px' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 24 }}>
-        <span style={{ fontSize: 24 }}>🌿</span>
-        <span style={{ fontFamily: F.display, fontSize: 26, fontWeight: 700, color: C.green }}>MyBodyMap</span>
-      </div>
-      {children}
+const page = { minHeight: '100vh', background: C.cream, fontFamily: F.sans, color: C.ink };
+const wrap = { maxWidth: 620, margin: '0 auto', padding: '22px 16px 80px' };
+
+function fmtDate(iso) {
+  if (!iso) return '';
+  const d = iso.length === 10 ? new Date(iso + 'T12:00:00') : new Date(iso);
+  if (isNaN(d.getTime())) return '';
+  return d.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+}
+function fmtMonthYear(iso) {
+  if (!iso) return '';
+  const d = iso.length === 10 ? new Date(iso + 'T12:00:00') : new Date(iso);
+  if (isNaN(d.getTime())) return '';
+  return d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+}
+function composeAddress(c) {
+  const l = [c.address_line1, c.address_line2].filter(Boolean).join(', ');
+  const cityLine = [c.city, c.state].filter(Boolean).join(', ');
+  const tail = [cityLine, c.zip].filter(Boolean).join(' ');
+  return [l, tail].filter(Boolean).join(' · ');
+}
+
+// Read-only field row, matching the PreferencesCard Row style: tiny
+// uppercase muted label, value below in forest sans.
+const Row = ({ label, children }) => (
+  <div style={{ padding: '11px 0', borderBottom: `1px solid ${C.lineSoft}` }}>
+    <div style={{ fontSize: 10.5, fontWeight: 700, color: C.muted, letterSpacing: '0.12em', textTransform: 'uppercase', fontFamily: F.sans, marginBottom: 4 }}>{label}</div>
+    <div style={{ fontSize: 14, color: C.forest, fontFamily: F.sans, fontWeight: 500 }}>
+      {children || <span style={{ color: C.muted, fontWeight: 400, fontStyle: 'italic' }}>Not set</span>}
     </div>
   </div>
 );
 
-const bookUrl = (b) => (b.therapist_url ? `/book/${b.therapist_url}` : null);
-const manageUrl = (b) => (b.therapist_url ? `/book/${b.therapist_url}/manage?b=${b.id}` : null);
-
-const Btn = ({ href, onClick, children, variant = 'outline', disabled }) => {
-  const base = {
-    display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-    textDecoration: 'none', fontFamily: F.body, fontSize: 14.5, fontWeight: 700,
-    borderRadius: 11, padding: '10px 16px', cursor: disabled ? 'default' : 'pointer',
-    border: '1.5px solid', whiteSpace: 'nowrap',
-  };
-  const tone = variant === 'solid'
-    ? { color: '#fff', background: C.green, borderColor: C.green }
-    : variant === 'sage'
-      ? { color: '#fff', background: C.sage, borderColor: C.sage }
-      : { color: C.green, background: 'transparent', borderColor: C.sageMid };
-  const style = { ...base, ...tone, ...(disabled ? { opacity: 0.55 } : null) };
-  if (href) return <a href={href} style={style}>{children}</a>;
-  return <button onClick={onClick} disabled={disabled} style={style}>{children}</button>;
-};
-
-const VisitCard = ({ b, showActions }) => (
-  <div style={{
-    background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 16,
-    padding: '16px 18px', marginBottom: 13, boxShadow: `0 2px 10px ${C.shadow}`,
-  }}>
-    <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10 }}>
-      <div>
-        <div style={{ fontFamily: F.display, fontSize: 23, fontWeight: 700, color: C.text, lineHeight: 1.15 }}>{b.date}</div>
-        {b.time && <div style={{ fontFamily: F.body, fontSize: 15, color: C.green, fontWeight: 800, marginTop: 1 }}>{b.time}</div>}
-        <div style={{ fontFamily: F.body, fontSize: 14, color: C.textMid, marginTop: 5 }}>{b.service} with {b.therapist_name}</div>
-      </div>
-      {showActions && b.needs_forms && (
-        <span style={{
-          display: 'inline-block', fontSize: 12, fontWeight: 800, color: C.formsInk,
-          background: C.formsBg, borderRadius: 999, padding: '3px 11px', whiteSpace: 'nowrap',
-        }}>Forms to sign</span>
-      )}
-    </div>
-    {showActions && (
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 9, marginTop: 14 }}>
-        {b.needs_forms && manageUrl(b) && <Btn href={manageUrl(b)} variant="sage">Review and sign</Btn>}
-        {bookUrl(b) && <Btn href={bookUrl(b)} variant="solid">Book again</Btn>}
-        {!b.needs_forms && manageUrl(b) && <Btn href={manageUrl(b)} variant="outline">Reschedule</Btn>}
-      </div>
-    )}
-  </div>
-);
+const linkStyle = { fontSize: 12.5, fontWeight: 600, color: C.sage, cursor: 'pointer', textDecoration: 'none' };
 
 export default function MyVisits() {
-  const [token, setToken] = useState('');
-  const [mode, setMode] = useState('loading'); // loading | email | sent | visits
+  const [mode, setMode] = useState('loading'); // loading | email | sent | portal
   const [data, setData] = useState(null);
   const [email, setEmail] = useState('');
   const [busy, setBusy] = useState(false);
+  const [open, setOpen] = useState({ visits: true, about: true, medical: false, preferences: false, agreement: false, membership: false });
+  const toggle = (k) => setOpen((o) => ({ ...o, [k]: !o[k] }));
 
   const load = useCallback(async (t) => {
     setMode('loading');
     try {
-      const res = await supabase.functions.invoke('client-portal', { body: { op: 'load', token: t } });
+      const res = await supabase.functions.invoke('client-portal', { body: { op: 'profile', token: t } });
       if (res?.data?.ok) {
         localStorage.setItem(TOKEN_KEY, t);
         setData(res.data);
-        setToken(t);
-        setMode('visits');
+        setMode('portal');
         return;
       }
-    } catch (_e) { /* fall through to email */ }
+    } catch (_e) { /* fall through */ }
     localStorage.removeItem(TOKEN_KEY);
     setMode('email');
   }, []);
@@ -122,8 +79,7 @@ export default function MyVisits() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const urlToken = params.get('t');
-    const saved = localStorage.getItem(TOKEN_KEY);
-    const t = urlToken || saved;
+    const t = urlToken || localStorage.getItem(TOKEN_KEY);
     if (t) {
       if (urlToken) window.history.replaceState({}, '', '/my-visits');
       load(t);
@@ -135,113 +91,196 @@ export default function MyVisits() {
   const requestLink = async () => {
     if (!email.includes('@')) return;
     setBusy(true);
-    try {
-      await supabase.functions.invoke('client-portal', { body: { op: 'request-link', email } });
-    } catch (_e) { /* always show the same confirmation */ }
+    try { await supabase.functions.invoke('client-portal', { body: { op: 'request-link', email } }); }
+    catch (_e) { /* always same confirmation */ }
     setBusy(false);
     setMode('sent');
   };
 
-  const signOut = () => {
-    localStorage.removeItem(TOKEN_KEY);
-    setData(null);
-    setToken('');
-    setEmail('');
-    setMode('email');
-  };
+  const signOut = () => { localStorage.removeItem(TOKEN_KEY); setData(null); setEmail(''); setMode('email'); };
 
   if (mode === 'loading') {
-    return <Shell><p style={{ fontSize: 17, color: C.textMid }}>One moment, loading your visits.</p></Shell>;
+    return <div style={page}><div style={wrap}><p style={{ fontSize: 16, color: C.inkSoft }}>One moment, loading your account.</p></div></div>;
   }
 
-  if (mode === 'email') {
-    const ready = email.includes('@');
+  if (mode === 'email' || mode === 'sent') {
     return (
-      <Shell>
-        <h1 style={{ fontFamily: F.display, fontSize: 34, lineHeight: 1.15, margin: '0 0 10px', color: C.text }}>Your visits</h1>
-        <p style={{ fontSize: 16, color: C.textMid, margin: '0 0 22px', lineHeight: 1.55 }}>
-          Enter the email you use with your therapist and we will send you a private link. No password to remember.
-        </p>
-        <div style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 16, padding: 18, boxShadow: `0 2px 10px ${C.shadow}` }}>
-          <input
-            type="email" inputMode="email" autoComplete="email" value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            onKeyDown={(e) => { if (e.key === 'Enter') requestLink(); }}
-            placeholder="you@example.com"
-            style={{
-              width: '100%', boxSizing: 'border-box', fontSize: 18, padding: '14px 16px',
-              border: `1.5px solid ${C.sageMid}`, borderRadius: 12, marginBottom: 12,
-              fontFamily: F.body, color: C.text, background: C.white, outline: 'none',
-            }}
-          />
-          <button onClick={requestLink} disabled={busy || !ready}
-            style={{
-              width: '100%', fontSize: 17, fontWeight: 800, color: '#fff', fontFamily: F.body,
-              background: busy || !ready ? C.sageMid : C.green,
-              border: 'none', borderRadius: 12, padding: '14px 16px', cursor: busy || !ready ? 'default' : 'pointer',
-            }}>
-            {busy ? 'Sending...' : 'Email me my link'}
-          </button>
-        </div>
-      </Shell>
-    );
-  }
-
-  if (mode === 'sent') {
-    return (
-      <Shell>
-        <div style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 16, padding: '22px 20px', boxShadow: `0 2px 10px ${C.shadow}` }}>
-          <div style={{ fontSize: 30, marginBottom: 6 }}>📬</div>
-          <h1 style={{ fontFamily: F.display, fontSize: 28, lineHeight: 1.15, margin: '0 0 10px', color: C.text }}>Check your email</h1>
-          <p style={{ fontSize: 16, color: C.textMid, margin: '0 0 10px', lineHeight: 1.55 }}>
-            If that email is on file with your therapist, a link to your visits is on its way. It can take a minute or two to arrive.
-          </p>
-          <p style={{ fontSize: 14.5, color: C.textLight, margin: 0, lineHeight: 1.55 }}>
-            You can close this page and open the link from your email whenever you are ready.
-          </p>
-        </div>
-      </Shell>
-    );
-  }
-
-  // mode === 'visits'
-  const { name, upcoming = [], past = [] } = data || {};
-  const formsCount = upcoming.filter((b) => b.needs_forms && b.therapist_url).length;
-
-  return (
-    <Shell>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 12, marginBottom: 18 }}>
-        <h1 style={{ fontFamily: F.display, fontSize: 32, lineHeight: 1.1, margin: 0, color: C.text }}>
-          {name ? `Hello, ${name}` : 'Your visits'}
-        </h1>
-        <button onClick={signOut} style={{ background: 'none', border: 'none', color: C.textLight, fontSize: 14, cursor: 'pointer', fontFamily: F.body, textDecoration: 'underline', flexShrink: 0 }}>Sign out</button>
-      </div>
-
-      {formsCount > 0 && (
-        <div style={{ background: C.formsBg, border: '1px solid #EAD4A6', borderRadius: 14, padding: '13px 16px', marginBottom: 20 }}>
-          <p style={{ fontSize: 15, color: C.formsInk, margin: 0, lineHeight: 1.5, fontWeight: 600 }}>
-            {formsCount === 1
-              ? 'One upcoming visit still needs your forms. Tap Review and sign on it below.'
-              : `${formsCount} upcoming visits still need your forms. Tap Review and sign on each one below.`}
-          </p>
-        </div>
-      )}
-
-      <h2 style={{ fontFamily: F.body, fontSize: 14, letterSpacing: 1, textTransform: 'uppercase', color: C.textLight, fontWeight: 800, margin: '0 0 12px' }}>Upcoming</h2>
-      {upcoming.length === 0
-        ? (
-          <div style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 16, padding: '18px 18px', marginBottom: 24, boxShadow: `0 2px 10px ${C.shadow}` }}>
-            <p style={{ fontSize: 15.5, color: C.textMid, margin: 0, lineHeight: 1.55 }}>You have no upcoming visits booked yet. When you are ready, use Book again on a past visit below to schedule your next one.</p>
+      <div style={page}><div style={wrap}>
+        <h1 style={{ fontFamily: F.serif, fontSize: 34, fontWeight: 600, color: C.forest, margin: '6px 0 12px' }}>Your account</h1>
+        {mode === 'email' ? (
+          <>
+            <p style={{ fontSize: 15.5, color: C.inkSoft, margin: '0 0 20px', lineHeight: 1.55 }}>
+              Enter the email you use with your therapist and we will send you a private link. No password to remember.
+            </p>
+            <div style={{ background: C.paper, border: `1px solid ${C.lineFaint}`, borderRadius: 12, padding: 18, boxShadow: '0 1px 2px rgba(31,58,44,0.04)' }}>
+              <input type="email" inputMode="email" autoComplete="email" value={email}
+                onChange={(e) => setEmail(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') requestLink(); }}
+                placeholder="you@example.com"
+                style={{ width: '100%', boxSizing: 'border-box', fontSize: 17, padding: '13px 15px', border: `1px solid ${C.lineFaint}`, borderRadius: 10, marginBottom: 12, fontFamily: F.sans, color: C.forest, outline: 'none' }} />
+              <button onClick={requestLink} disabled={busy || !email.includes('@')}
+                style={{ width: '100%', fontSize: 16, fontWeight: 700, color: '#fff', fontFamily: F.sans, background: busy || !email.includes('@') ? C.muted : C.sage, border: 'none', borderRadius: 10, padding: '13px', cursor: busy ? 'default' : 'pointer' }}>
+                {busy ? 'Sending...' : 'Email me my link'}
+              </button>
+            </div>
+          </>
+        ) : (
+          <div style={{ background: C.paper, border: `1px solid ${C.lineFaint}`, borderRadius: 12, padding: 20, boxShadow: '0 1px 2px rgba(31,58,44,0.04)' }}>
+            <h2 style={{ fontFamily: F.serif, fontSize: 24, fontWeight: 600, color: C.forest, margin: '0 0 8px' }}>Check your email</h2>
+            <p style={{ fontSize: 15, color: C.inkSoft, margin: 0, lineHeight: 1.55 }}>
+              If that email is on file with your therapist, a link to your account is on its way. It can take a minute or two to arrive.
+            </p>
           </div>
-        )
-        : upcoming.map((b) => <VisitCard key={b.id} b={b} showActions />)}
+        )}
+      </div></div>
+    );
+  }
 
-      {past.length > 0 && (
-        <>
-          <h2 style={{ fontFamily: F.body, fontSize: 14, letterSpacing: 1, textTransform: 'uppercase', color: C.textLight, fontWeight: 800, margin: '28px 0 12px' }}>Past visits</h2>
-          {past.map((b) => <VisitCard key={b.id} b={b} showActions={false} />)}
-        </>
-      )}
-    </Shell>
+  // mode === 'portal'
+  const { client = {}, visits = {}, patterns, totalSessions = 0, preferences, memberships = [], packages = [] } = data || {};
+  const upcoming = visits.upcoming || [];
+  const past = visits.past || [];
+  const needForms = upcoming.some((b) => b.needs_forms);
+  const name = client.name || 'Your account';
+  const manageUrl = (b) => (b.therapist_url ? `/book/${b.therapist_url}/manage?b=${b.id}` : null);
+  const bookUrl = (b) => (b.therapist_url ? `/book/${b.therapist_url}` : null);
+  const hasPatterns = !!patterns && ((patterns.topFrontZones || []).length || (patterns.topBackZones || []).length || (patterns.topAvoidZones || []).length);
+
+  const VisitRow = ({ b, isUpcoming }) => (
+    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, padding: '13px 0', borderBottom: `1px solid ${C.lineSoft}` }}>
+      <div>
+        <div style={{ fontSize: 14.5, fontWeight: 700, color: C.forest }}>{b.date}</div>
+        <div style={{ fontSize: 12.5, color: C.muted, marginTop: 2 }}>{b.time ? b.time + ' \u00b7 ' : ''}{b.service} with {b.therapist_name}</div>
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 5, alignItems: 'flex-end' }}>
+        {isUpcoming && b.needs_forms && manageUrl(b) && <a href={manageUrl(b)} style={{ ...linkStyle, color: C.amber }}>Review and sign</a>}
+        {bookUrl(b) && <a href={bookUrl(b)} style={linkStyle}>Book again</a>}
+      </div>
+    </div>
+  );
+
+  const tiles = [
+    { label: 'Visits', value: (client.total_sessions != null ? client.total_sessions : (upcoming.length + past.length)) || 0 },
+    client.customer_since ? { label: 'Client since', value: fmtMonthYear(client.customer_since) } : null,
+    upcoming[0] ? { label: 'Next visit', value: upcoming[0].date } : null,
+    (client.loyalty_points ? { label: 'Loyalty points', value: client.loyalty_points }
+      : (packages[0] ? { label: 'Package', value: `${packages[0].remaining} of ${packages[0].purchased} left` } : null)),
+  ].filter(Boolean);
+
+  let ord = 0;
+  return (
+    <div style={page}>
+      <style>{`
+        .pwrap{max-width:1060px;margin:0 auto;padding:24px 18px 80px}
+        .pstats{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:18px}
+        .pcols{display:block}
+        .ptile{background:${C.paper};border:1px solid ${C.lineFaint};border-radius:12px;padding:13px 15px;box-shadow:0 1px 2px rgba(31,58,44,0.04)}
+        @media(min-width:880px){
+          .pstats{grid-template-columns:repeat(4,1fr)}
+          .pcols{display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:start}
+        }
+      `}</style>
+      <div className="pwrap">
+        <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 8 }}>
+          <div style={{ width: 58, height: 58, borderRadius: '50%', background: avatarColor(name), color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 21, flexShrink: 0, fontFamily: F.sans }}>{initials(name)}</div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <h1 style={{ fontFamily: F.serif, fontSize: 30, fontWeight: 600, color: C.forest, margin: 0, lineHeight: 1.05 }}>{name}</h1>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, marginTop: 5, fontSize: 11, fontWeight: 600, color: C.sage, background: C.sageBg, border: '1px solid #DCEBE1', borderRadius: 999, padding: '3px 9px' }}>Your private page</span>
+          </div>
+          <button onClick={signOut} style={{ fontSize: 13, color: C.muted, background: 'none', border: 'none', textDecoration: 'underline', cursor: 'pointer', fontFamily: F.sans, flexShrink: 0 }}>Sign out</button>
+        </div>
+        <div style={{ height: 1, background: C.lineFaint, margin: '16px 0 18px' }} />
+
+        {tiles.length > 0 && (
+          <div className="pstats">
+            {tiles.map((t, i) => (
+              <div className="ptile" key={i}>
+                <div style={{ fontSize: 10.5, fontWeight: 700, color: C.muted, letterSpacing: '0.12em', textTransform: 'uppercase' }}>{t.label}</div>
+                <div style={{ fontFamily: F.serif, fontSize: 22, fontWeight: 600, color: C.forest, marginTop: 3, lineHeight: 1.1 }}>{t.value}</div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {needForms && (
+          <div style={{ background: C.amberBg, border: '1px solid #F1DCA0', borderRadius: 10, padding: '12px 14px', marginBottom: 16 }}>
+            <span style={{ fontSize: 13.5, color: '#92660E', lineHeight: 1.45 }}>Some upcoming visits still need your forms. Open a visit below to review and sign.</span>
+          </div>
+        )}
+
+        {/* Body patterns: the signature, featured and always open */}
+        <ProfileSection accent="patterns" title="Your body, over time" order={ord++} isOpen={true}>
+          {hasPatterns
+            ? <PatternsCard patterns={patterns} totalSessions={totalSessions} />
+            : <p style={{ fontSize: 14, color: C.inkSoft, margin: '6px 0', lineHeight: 1.55 }}>Your body map fills in as your therapist records your sessions. After a couple of visits, the areas they focus on most will show here.</p>}
+        </ProfileSection>
+
+        <div className="pcols">
+          <div>
+            <ProfileSection accent="visits" title="Upcoming and past" trailingLabel={`${upcoming.length} upcoming`} order={ord++} isOpen={open.visits} onToggle={() => toggle('visits')}>
+              {upcoming.length === 0 && past.length === 0
+                ? <p style={{ fontSize: 14, color: C.inkSoft, margin: '6px 0' }}>No visits yet.</p>
+                : (
+                  <>
+                    {upcoming.length > 0 && <div style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: C.muted, margin: '4px 0 2px' }}>Upcoming</div>}
+                    {upcoming.map((b) => <VisitRow key={b.id} b={b} isUpcoming />)}
+                    {past.length > 0 && <div style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: C.muted, margin: '14px 0 2px' }}>Past</div>}
+                    {past.map((b) => <VisitRow key={b.id} b={b} isUpcoming={false} />)}
+                  </>
+                )}
+            </ProfileSection>
+
+            <ProfileSection accent="medical" title="Your health" order={ord++} isOpen={open.medical} onToggle={() => toggle('medical')}>
+              <Row label="Health conditions">{client.health_conditions}</Row>
+              <Row label="Allergies">{client.allergies}</Row>
+              <Row label="Medications">{client.medications}</Row>
+              <Row label="Areas to avoid">{client.areas_to_avoid}</Row>
+            </ProfileSection>
+
+            {(memberships.length > 0 || packages.length > 0) && (
+              <ProfileSection accent="membership" title="What you have" order={ord++} isOpen={open.membership} onToggle={() => toggle('membership')}>
+                {packages.map((p, i) => (
+                  <Row key={'p' + i} label={p.name}>{p.remaining} of {p.purchased} sessions remaining{p.purchased_at ? ` \u00b7 since ${fmtMonthYear(p.purchased_at)}` : ''}</Row>
+                ))}
+                {memberships.map((m, i) => (
+                  <Row key={'m' + i} label={m.name}>{m.status}{typeof m.credits === 'number' ? ` \u00b7 ${m.credits} credits` : ''}</Row>
+                ))}
+              </ProfileSection>
+            )}
+          </div>
+
+          <div>
+            <ProfileSection accent="about" title="Your details" order={ord++} isOpen={open.about} onToggle={() => toggle('about')}>
+              <Row label="Name">{client.name}</Row>
+              <Row label="Email">{client.email}</Row>
+              <Row label="Phone">{client.phone}</Row>
+              <Row label="Alternate phone">{client.alt_phone}</Row>
+              <Row label="Birthday">{fmtDate(client.birthday)}</Row>
+              <Row label="Gender">{client.gender}</Row>
+              <Row label="Address">{composeAddress(client)}</Row>
+              <Row label="Emergency contact">{client.emergency_contact}</Row>
+              <Row label="How you found us">{client.referral_source}</Row>
+              <Row label="Client since">{fmtMonthYear(client.customer_since)}</Row>
+            </ProfileSection>
+
+            <ProfileSection accent="preferences" title="Your preferences" order={ord++} isOpen={open.preferences} onToggle={() => toggle('preferences')}>
+              <PreferencesCard preferences={preferences} />
+            </ProfileSection>
+
+            <ProfileSection accent="agreement" title="Your forms" order={ord++} isOpen={open.agreement} onToggle={() => toggle('agreement')}>
+              <Row label="Client agreement and consent">
+                {client.agreement_signed_at
+                  ? <span style={{ color: C.sage }}>Signed {fmtDate(client.agreement_signed_at)}</span>
+                  : <span style={{ color: C.amber }}>Needs your signature</span>}
+              </Row>
+              {!client.agreement_signed_at && upcoming[0] && manageUrl(upcoming[0]) && (
+                <div style={{ marginTop: 12 }}>
+                  <a href={manageUrl(upcoming[0])} style={{ display: 'inline-flex', color: '#fff', background: C.sage, borderRadius: 9, padding: '9px 15px', fontSize: 13.5, fontWeight: 600, textDecoration: 'none' }}>Review and sign</a>
+                </div>
+              )}
+            </ProfileSection>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }

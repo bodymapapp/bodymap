@@ -42,6 +42,7 @@ const F = {
 // section's color. Helps the eye distinguish sections at a glance.
 const ACCENTS = {
   about:       { bar: C.muted,      label: 'CLIENT INFO'  },
+  visits:      { bar: C.forest,     label: 'YOUR VISITS'  },
   soap:        { bar: C.sage,       label: 'SOAP NOTES'   },
   patterns:    { bar: C.gold,       label: 'BODY PATTERNS' },
   preferences: { bar: C.sageBright, label: 'SETTINGS'      },
