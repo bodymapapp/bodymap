@@ -203,6 +203,23 @@ export default function ClientIntake() {
               client_name: intakeData.clientName || null,
             }),
           }).catch(() => {});
+
+          // HK Jun 11 2026: client confirmation email (same summary +
+          // body map, warm voice). Gated server-side to the test cohort,
+          // so this call is safe to always make. Fire-and-forget.
+          fetch(`${supabaseUrl}/functions/v1/send-intake-confirmation`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${anonKey}`,
+            },
+            body: JSON.stringify({
+              therapist_id: therapist.id,
+              booking_id: resolvedBookingId || null,
+              session_id: newSession?.id || null,
+              client_name: intakeData.clientName || null,
+            }),
+          }).catch(() => {});
         }
       } catch (_e) { /* never block intake on a missing notification */ }
 

@@ -64,15 +64,25 @@ function silhouette(isFront: boolean): string {
 function regionShapes(regions: any[], focus: string[], avoid: string[]): string {
   const f = new Set(focus || []);
   const a = new Set(avoid || []);
-  return regions.map((r) => {
+  let halos = '';
+  let shapes = '';
+  for (const r of regions) {
     const state = f.has(r.id) ? 'focus' : a.has(r.id) ? 'avoid' : null;
     const fill = state === 'focus' ? FOCUS : state === 'avoid' ? AVOID : NEUTRAL;
     const op = state ? '0.9' : '0.32';
-    if (r.type === 'ellipse') {
-      return `<ellipse cx="${r.cx}" cy="${r.cy}" rx="${r.rx}" ry="${r.ry}" fill="${fill}" opacity="${op}"/>`;
+    if (state) {
+      const cx = r.type === 'ellipse' ? r.cx : r.x + r.w / 2;
+      const cy = r.type === 'ellipse' ? r.cy : r.y + r.h / 2;
+      const rad = (r.type === 'ellipse' ? Math.max(r.rx, r.ry) : Math.max(r.w, r.h) / 2) + 7;
+      halos += `<circle cx="${cx}" cy="${cy}" r="${rad}" fill="${fill}" opacity="0.13"/>`;
     }
-    return `<rect x="${r.x}" y="${r.y}" width="${r.w}" height="${r.h}" rx="${r.rx || 0}" fill="${fill}" opacity="${op}"/>`;
-  }).join('');
+    if (r.type === 'ellipse') {
+      shapes += `<ellipse cx="${r.cx}" cy="${r.cy}" rx="${r.rx}" ry="${r.ry}" fill="${fill}" opacity="${op}"/>`;
+    } else {
+      shapes += `<rect x="${r.x}" y="${r.y}" width="${r.w}" height="${r.h}" rx="${r.rx || 0}" fill="${fill}" opacity="${op}"/>`;
+    }
+  }
+  return halos + shapes;
 }
 
 function panel(isFront: boolean, focus: string[], avoid: string[], offsetX: number): string {
