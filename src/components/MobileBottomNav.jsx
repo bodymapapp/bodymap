@@ -1,5 +1,8 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { planTier, planPrice } from '../lib/plan';
+import { useAuth } from '../contexts/AuthContext';
+import { FOUNDER_EMAILS } from './FounderRoute';
 
 const C = { forest: '#2A5741', sage: '#6B9E80', gray: '#9CA3AF', beige: '#F5F0E8' };
 
@@ -18,6 +21,9 @@ const MORE_ITEMS = [
 ];
 
 export default function MobileBottomNav({ active, onChange, unreadCount, onSignOut, therapist }) {
+  const navigate = useNavigate();
+  const { user } = useAuth();
+  const isFounder = !!(user?.email && FOUNDER_EMAILS.includes(user.email.toLowerCase().trim()));
   const [showMore, setShowMore] = useState(false);
   const [kbOpen, setKbOpen] = useState(false);
   const activeTab = ['ai','gifts','settings'].includes(active) ? 'more' : active;
@@ -26,7 +32,10 @@ export default function MobileBottomNav({ active, onChange, unreadCount, onSignO
   // in Settings. Other items stay visible. Defaults to visible when the
   // flag is undefined (existing therapists not yet migrated).
   const aiOff = therapist?.ai_enabled === false;
-  const moreItems = MORE_ITEMS.filter(item => !(aiOff && item.id === 'ai'));
+  const baseItems = MORE_ITEMS.filter(item => !(aiOff && item.id === 'ai'));
+  const moreItems = isFounder
+    ? [...baseItems, { id: 'founder', label: 'Founder', sub: 'Your operating system', emoji: '🛠️', gradient: 'linear-gradient(135deg,#FEF9E7,#FCEFC7)', border: '#F3D78B' }]
+    : baseItems;
 
   // Close drawer on back navigation
   useEffect(() => {
@@ -154,7 +163,7 @@ export default function MobileBottomNav({ active, onChange, unreadCount, onSignO
             {moreItems.map(item => {
               const isActive = active === item.id;
               return (
-                <button key={item.id} onClick={() => { onChange(item.id); setShowMore(false); }}
+                <button key={item.id} onClick={() => { setShowMore(false); if (item.id === 'founder') { navigate('/founder'); } else { onChange(item.id); } }}
                   style={{
                     display: 'flex', alignItems: 'center', gap: 14,
                     width: '100%', padding: '14px 16px',
