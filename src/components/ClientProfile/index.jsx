@@ -40,7 +40,7 @@ const F = {
   sans: '-apple-system, BlinkMacSystemFont, "Inter", system-ui, sans-serif',
 };
 
-export default function ClientProfile({ client, therapistId, therapist, onBack, onSelectSession, previewProfile = null }) {
+export default function ClientProfile({ client, therapistId, therapist, onBack, onSelectSession, previewProfile = null, clientView = false }) {
   const [profile, setProfile] = useState(previewProfile);
   const [loading, setLoading] = useState(!previewProfile);
 
@@ -224,13 +224,13 @@ export default function ClientProfile({ client, therapistId, therapist, onBack, 
         client={profile?.client || client}
         stats={profile?.stats}
         profile={profile}
-        onBack={onBack}
+        onBack={clientView ? undefined : onBack}
         onEdit={() => setAboutPulse(n => n + 1)}
-        onEditClick={() => setEditTrigger(true)}
-        onBookClick={() => setRebookTrigger(true)}
-        onMergeClick={() => setMergeTrigger(true)}
-        onArchiveConfirm={archiveClient}
-        onRestoreConfirm={restoreClient}
+        onEditClick={clientView ? undefined : () => setEditTrigger(true)}
+        onBookClick={clientView ? undefined : () => setRebookTrigger(true)}
+        onMergeClick={clientView ? undefined : () => setMergeTrigger(true)}
+        onArchiveConfirm={clientView ? undefined : archiveClient}
+        onRestoreConfirm={clientView ? undefined : restoreClient}
         archiveSaving={archiveSaving}
       />
 
@@ -252,6 +252,7 @@ export default function ClientProfile({ client, therapistId, therapist, onBack, 
       {profile && <StatusStrip
         profile={profile}
         docSummary={docSummary}
+        clientView={clientView}
         onDocumentsTap={() => {
           setOpenSections(s => ({ ...s, documents: true }));
           setTimeout(() => {
@@ -320,14 +321,53 @@ export default function ClientProfile({ client, therapistId, therapist, onBack, 
             <AboutCard
               client={profile.client}
               pulse={aboutPulse}
+              readOnly={clientView}
               onUpdated={(payload) => {
                 setProfile(p => p ? ({ ...p, client: { ...p.client, ...payload } }) : p);
               }}
             />
           </ProfileSection>
 
+          {/* Client view only: visit history. The therapist sees visits
+              inside the SOAP section (hidden from clients), so the client
+              gets a plain dated list of their upcoming and past visits. */}
+          {clientView && (() => {
+            const today = new Date().toISOString().slice(0, 10);
+            const all = (profile.bookings || []).slice().sort((a, b) => (b.booking_date || '').localeCompare(a.booking_date || ''));
+            const up = all.filter(b => (b.booking_date || '') >= today).reverse();
+            const pastV = all.filter(b => (b.booking_date || '') < today).slice(0, 12);
+            const fmtV = (b) => {
+              let d = b.booking_date || '';
+              try { d = new Date(b.booking_date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' }); } catch (e) {}
+              return d;
+            };
+            const svc = (b) => b.service?.name || b.service_name || 'Session';
+            const VRow = ({ b }) => (
+              <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, padding: '11px 0', borderBottom: '1px solid #EFE7D2' }}>
+                <span style={{ fontSize: 14, fontWeight: 700, color: '#1C2B22' }}>{fmtV(b)}</span>
+                <span style={{ fontSize: 13, color: '#8A9C90' }}>{svc(b)}</span>
+              </div>
+            );
+            return (
+              <ProfileSection accent="visits" order={0} title="Your visits"
+                trailingLabel={up.length ? `${up.length} upcoming` : 'Past visits'}
+                isOpen={openSections.visits !== false} onToggle={() => toggle('visits')}>
+                {(up.length === 0 && pastV.length === 0)
+                  ? <p style={{ fontSize: 14, color: '#6B7F72', margin: '6px 0' }}>No visits yet.</p>
+                  : (<>
+                      {up.length > 0 && <div style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#8A9C90', margin: '2px 0 2px' }}>Upcoming</div>}
+                      {up.map(b => <VRow key={b.id} b={b} />)}
+                      {pastV.length > 0 && <div style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#8A9C90', margin: '14px 0 2px' }}>Past</div>}
+                      {pastV.map(b => <VRow key={b.id} b={b} />)}
+                    </>)}
+              </ProfileSection>
+            );
+          })()}
+
           {/* Sessions and SOAP notes: moved to the top per HK request.
-              This is the primary work surface for the therapist. */}
+              This is the primary work surface for the therapist.
+              Therapist-only: never rendered in the client view. */}
+          {!clientView && (
           <ProfileSection
             accent="soap"
             order={1}
@@ -356,6 +396,7 @@ export default function ClientProfile({ client, therapistId, therapist, onBack, 
               onEditClient={() => setAboutPulse(n => n + 1)}
             />
           </ProfileSection>
+          )}
 
           <ProfileSection
             accent="patterns"
@@ -401,6 +442,7 @@ export default function ClientProfile({ client, therapistId, therapist, onBack, 
             <MedicalCard medicalFlags={profile.medicalFlags} />
           </ProfileSection>
 
+          {!clientView && (
           <ProfileSection
             accent="membership"
             order={5}
@@ -412,21 +454,23 @@ export default function ClientProfile({ client, therapistId, therapist, onBack, 
           >
             <MembershipCard client={client} therapist={therapist} />
           </ProfileSection>
+          )}
 
           <ProfileSection
             accent="agreement"
             order={6}
             title="Client agreement"
             dataSectionId="agreement"
-            trailingLabel={client?.practice_agreement_signed_at
-              ? `Signed ${new Date(client.practice_agreement_signed_at).toLocaleDateString()}`
+            trailingLabel={(clientView ? profile.client : client)?.practice_agreement_signed_at
+              ? `Signed ${new Date((clientView ? profile.client : client).practice_agreement_signed_at).toLocaleDateString()}`
               : 'No signature on file'}
             isOpen={openSections.agreement}
             onToggle={() => toggle('agreement')}
           >
-            <AgreementCard client={client} therapist={therapist} />
+            <AgreementCard client={clientView ? profile.client : client} therapist={therapist} clientView={clientView} />
           </ProfileSection>
 
+          {!clientView && (
           <ProfileSection
             accent="documents"
             order={7}
@@ -452,6 +496,9 @@ export default function ClientProfile({ client, therapistId, therapist, onBack, 
             />
           </ProfileSection>
 
+          )}
+
+          {!clientView && (
           <ProfileSection
             accent="timeline"
             order={8}
@@ -468,6 +515,7 @@ export default function ClientProfile({ client, therapistId, therapist, onBack, 
               onSelectSession={onSelectSession}
             />
           </ProfileSection>
+          )}
 
         </div>
       )}

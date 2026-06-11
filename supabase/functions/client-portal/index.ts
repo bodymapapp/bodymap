@@ -194,21 +194,22 @@ serve(async (req) => {
 
       const [{ data: sessions }, { data: bookings }, { data: pkgs }, { data: subs }, { data: ther }] = await Promise.all([
         admin.from("sessions")
-          .select("id, completed, completed_at, created_at, front_focus, back_focus, front_avoid, back_avoid, front_focus_therapist, back_focus_therapist, pressure, goal, table_temp, room_temp, music, lighting, conversation, draping, oil_pref")
+          .select("id, client_id, completed, completed_at, created_at, front_focus, back_focus, front_avoid, back_avoid, front_focus_therapist, back_focus_therapist, pressure, goal, table_temp, room_temp, music, lighting, conversation, draping, oil_pref, medical_conditions")
           .eq("therapist_id", therapistId).eq("client_id", client.id).order("created_at", { ascending: false }),
         admin.from("bookings")
-          .select("id, booking_date, start_time, status, service_name, services(name), practice_agreement_signed_at")
-          .ilike("client_email", em).neq("status", "cancelled").order("booking_date", { ascending: true }).limit(200),
+          .select("id, client_id, client_email, client_phone, booking_date, start_time, end_time, status, service_name, service:services(name, price, duration)")
+          .ilike("client_email", em).neq("status", "cancelled").order("booking_date", { ascending: false }).limit(200),
         admin.from("package_purchases")
-          .select("id, sessions_remaining, sessions_purchased, status, purchased_at, package:packages(name)")
+          .select("id, client_id, sessions_remaining, sessions_purchased, price_paid, status, expires_at, purchased_at, package:packages(name)")
           .eq("therapist_id", therapistId).eq("client_id", client.id).order("purchased_at", { ascending: false }),
         admin.from("member_subscriptions")
-          .select("id, status, monthly_price, current_credits, started_at, membership:memberships(name)")
+          .select("id, client_id, status, current_period_start, current_period_end, monthly_price, monthly_session_credits, current_credits, started_at, membership:memberships(name, monthly_session_credits)")
           .eq("therapist_id", therapistId).eq("client_id", client.id).order("started_at", { ascending: false }),
-        admin.from("therapists").select("business_name, full_name, custom_url").eq("id", therapistId).maybeSingle(),
+        admin.from("therapists").select("id, business_name, full_name, custom_url").eq("id", therapistId).maybeSingle(),
       ]);
 
       const ss = sessions || [];
+      const bk = bookings || [];
       const topN = (field: string, n = 3) => {
         const counts = new Map<string, number>();
         for (const s of ss) {
@@ -226,40 +227,63 @@ serve(async (req) => {
         music: latest.music, lighting: latest.lighting, conversation: latest.conversation, draping: latest.draping, oil_pref: latest.oil_pref,
       } : null;
 
+      // Medical flags from client-entered conditions only (therapist med_flag
+      // / med_note are clinical and never leave the therapist).
+      const medicalFlags: any[] = [];
+      const seen = new Set<string>();
+      for (const s of ss) {
+        const conds = Array.isArray((s as any).medical_conditions) ? (s as any).medical_conditions : [];
+        for (const c2 of conds) { if (c2 && !seen.has(c2)) { seen.add(c2); medicalFlags.push({ type: "condition", text: c2 }); } }
+      }
+
       const today = todayISO();
-      const tName = ther?.business_name || ther?.full_name || "Your therapist";
-      const shapeBk = (b: any) => {
-        const when = fmtWhen(b.booking_date, b.start_time);
-        return { id: b.id, date: when.date, time: when.time, raw_date: b.booking_date, status: b.status,
-          service: b.service_name || b.services?.name || "Session", therapist_name: tName,
-          therapist_url: ther?.custom_url || null, needs_forms: !b.practice_agreement_signed_at };
-      };
-      const allBk = (bookings || []).map(shapeBk);
-      const upcoming = allBk.filter((b: any) => b.raw_date >= today);
-      const past = allBk.filter((b: any) => b.raw_date < today).reverse().slice(0, 12);
+      const counted = bk.filter((b: any) => !b.status || ["confirmed", "completed"].includes(b.status));
+      const completed = bk.filter((b: any) => b.status === "completed");
+      const lifetimeEarnings = counted.reduce((sum: number, b: any) => sum + (b.service?.price || 0), 0);
+      const sortedByDate = [...counted].sort((a: any, b: any) => (b.booking_date || "").localeCompare(a.booking_date || ""));
+      const lastVisitDate = sortedByDate[0]?.booking_date || null;
+      const future = bk.filter((b: any) => b.booking_date >= today && (!b.status || b.status === "confirmed")).sort((a: any, b: any) => (a.booking_date || "").localeCompare(b.booking_date || ""));
+      const nextBooking = future[0] || null;
 
       const c = client;
       const safeClient = {
-        name: c.name, email: c.email, phone: c.phone, alt_phone: c.alt_phone,
+        id: c.id, name: c.name, email: c.email, phone: c.phone, alt_phone: c.alt_phone,
         birthday: c.birthday, gender: c.gender, referral_source: c.referral_source, customer_since: c.customer_since,
         address_line1: c.address_line1, address_line2: c.address_line2, city: c.city, state: c.state, zip: c.zip, country: c.country,
         allergies: c.allergies, health_conditions: c.health_conditions, medications: c.medications,
         areas_to_avoid: c.areas_to_avoid, emergency_contact: c.emergency_contact,
         total_sessions: c.total_sessions, loyalty_points: c.loyalty_points,
         card_brand: c.card_brand, card_last4: c.card_last4,
-        agreement_signed_at: c.practice_agreement_signed_at,
+        practice_agreement_signed_at: c.practice_agreement_signed_at,
+        practice_agreement_signer_name: c.practice_agreement_signer_name,
       };
 
+      // Full ClientProfile profile shape (therapist-private fields removed:
+      // therapist_notes/SOAP, do_not_rebook/dnr_reason, private notes,
+      // processor ids, mandate/signature ip).
       return json({
         ok: true,
-        client: safeClient,
-        therapist: { name: tName, url: ther?.custom_url || null },
-        visits: { upcoming, past },
-        patterns: { topFrontZones, topBackZones, topAvoidZones },
-        totalSessions: ss.length,
-        preferences,
-        memberships: (subs || []).map((m: any) => ({ name: m.membership?.name || "Membership", status: m.status, credits: m.current_credits, price: m.monthly_price })),
-        packages: (pkgs || []).map((p: any) => ({ name: p.package?.name || "Package", remaining: p.sessions_remaining, purchased: p.sessions_purchased, status: p.status, purchased_at: p.purchased_at })),
+        profile: {
+          client: safeClient,
+          bookings: bk,
+          sessions: ss,
+          packagePurchases: pkgs || [],
+          memberSubscriptions: subs || [],
+          giftCertificates: [],
+          stats: {
+            lifetimeSessions: counted.length,
+            lifetimeCompletedSessions: completed.length,
+            lifetimeEarnings,
+            lastVisitDate,
+            daysSinceVisit: null,
+            nextBooking,
+            pendingIntake: null,
+          },
+          patterns: { topFrontZones, topBackZones, topAvoidZones },
+          preferences,
+          medicalFlags,
+        },
+        therapist: { id: ther?.id, name: ther?.business_name || ther?.full_name || "Your therapist", custom_url: ther?.custom_url || null },
       });
     }
 

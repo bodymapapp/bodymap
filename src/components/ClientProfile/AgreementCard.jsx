@@ -42,7 +42,7 @@ const C = {
   paper:     '#FFFFFF',
 };
 
-export default function AgreementCard({ client, therapist }) {
+export default function AgreementCard({ client, therapist, clientView = false }) {
   const [pendingSend, setPendingSend] = useState(null);
   const [loadingPending, setLoadingPending] = useState(true);
   const [showSignedText, setShowSignedText] = useState(false);
@@ -84,7 +84,7 @@ export default function AgreementCard({ client, therapist }) {
     // Look up the most recent pending send_request for this client
     // so we can show 'sent but unsigned' state with a resend option.
     // Only loads when not already signed (no point checking).
-    if (isSigned || !client?.id) {
+    if (isSigned || !client?.id || clientView) {
       setLoadingPending(false);
       return;
     }
@@ -313,6 +313,18 @@ export default function AgreementCard({ client, therapist }) {
             We have a signature record but no snapshot of the agreement text. This can happen for early signatures captured before snapshotting was wired in. The signer name and timestamp above are still valid.
           </div>
         )}
+      </div>
+    );
+  }
+
+  // Client view: never show the therapist send / pending controls.
+  // If they reach here the agreement is unsigned; show a quiet line.
+  if (clientView) {
+    return (
+      <div style={{ padding: '4px 4px 6px' }}>
+        <p style={{ fontSize: 14, color: C.gray, margin: '6px 0', lineHeight: 1.55 }}>
+          No signed agreement on file yet. Your therapist will have you review and sign it before your visit.
+        </p>
       </div>
     );
   }

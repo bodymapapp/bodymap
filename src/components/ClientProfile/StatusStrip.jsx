@@ -20,7 +20,7 @@
 import React from 'react';
 import { C, F, S, formatShortDate, formatCurrency } from './tokens';
 
-export default function StatusStrip({ profile, onNextBooking, onAgreementTap, onDocumentsTap, docSummary }) {
+export default function StatusStrip({ profile, onNextBooking, onAgreementTap, onDocumentsTap, docSummary, clientView = false }) {
   if (!profile) return null;
   const { stats, packagePurchases = [], memberSubscriptions = [], client } = profile;
 
@@ -127,7 +127,7 @@ export default function StatusStrip({ profile, onNextBooking, onAgreementTap, on
             value={stats?.lifetimeSessions || 0}
             suffix={`session${stats?.lifetimeSessions === 1 ? '' : 's'}`}
             color={C.forest}
-            subtitle={`${formatCurrency(stats?.lifetimeEarnings || 0)} estimated`}
+            subtitle={clientView ? undefined : `${formatCurrency(stats?.lifetimeEarnings || 0)} estimated`}
           />
         </Tile>
 
@@ -150,7 +150,7 @@ export default function StatusStrip({ profile, onNextBooking, onAgreementTap, on
             <>
               <BigText>Not on file</BigText>
               <Detail>
-                <span style={{ fontStyle: 'italic' }}>Tap to send</span>
+                <span style={{ fontStyle: 'italic' }}>{clientView ? 'Tap to review and sign' : 'Tap to send'}</span>
               </Detail>
             </>
           )}
@@ -160,7 +160,9 @@ export default function StatusStrip({ profile, onNextBooking, onAgreementTap, on
             Was previously buried at the bottom of AboutCard inside the
             collapsed 'Client info' section. Promoted up to StatusStrip
             so therapists can see at a glance whether a returning client
-            has a card saved without expanding any section. */}
+            has a card saved without expanding any section. Therapist-only
+            (card management is not exposed in the client view). */}
+        {!clientView && (
         <Tile
           icon="💳"
           label="Card on file"
@@ -183,10 +185,12 @@ export default function StatusStrip({ profile, onNextBooking, onAgreementTap, on
             </>
           )}
         </Tile>
+        )}
 
         {/* Documents (HK Jun 7 2026). Sixth tile. Surfaces consent /
             document status at a glance; taps open the Forms and
-            documents section. */}
+            documents section. Therapist-only in the client view. */}
+        {!clientView && (
         <Tile
           icon="📄"
           label="Documents"
@@ -213,6 +217,7 @@ export default function StatusStrip({ profile, onNextBooking, onAgreementTap, on
             </>
           )}
         </Tile>
+        )}
       </div>
     </div>
   );

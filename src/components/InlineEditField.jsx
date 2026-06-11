@@ -30,6 +30,7 @@ export default function InlineEditField({
   ariaLabel = 'Edit',
   formatValue,   // (v) => string for display
   parseValue,    // (s) => raw value for save
+  readOnly = false, // client view: render the value as static text, no editing
 }) {
   const [editing, setEditing] = React.useState(false);
   const [draft, setDraft] = React.useState(String(value ?? ''));
@@ -78,6 +79,10 @@ export default function InlineEditField({
   const display = formatValue ? formatValue(value) : (
     `${prefix || ''}${value ?? ''}${suffix ? ' ' + suffix : ''}`
   );
+
+  if (readOnly) {
+    return <span style={{ fontSize, fontWeight, color }}>{display}</span>;
+  }
 
   if (editing) {
     return (
