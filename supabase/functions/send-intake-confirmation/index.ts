@@ -5,10 +5,9 @@
 // therapist notice (built in _shared/intakeSummary.ts), but in the
 // client's warm voice: "your time on the table is all about you."
 //
-// Gated to the rich-email test cohort (Joy therapist) for now, so only
-// Joy's clients receive it during the test run. Flip to all by changing
-// the allowlist check to `true`. Fire-and-forget from ClientIntake;
-// never blocks intake. Auto-deploys via GitHub Actions.
+// On for all customers: every client receives this confirmation after
+// they submit their intake. Fire-and-forget from ClientIntake; never
+// blocks intake. Auto-deploys via GitHub Actions.
 //
 // Input: { booking_id?, session_id, therapist_id, client_name? }
 
@@ -16,8 +15,6 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { notifyClient } from "../_shared/notifications.ts";
 import { buildIntakeSummary, summaryRowsHtml, mapBlockHtml } from "../_shared/intakeSummary.ts";
-
-const RICH_EMAIL_THERAPISTS = ['2a2886c3-00f2-4c6f-aaec-4b8150c61fcf'];
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -42,11 +39,6 @@ serve(async (req) => {
     const { booking_id, session_id, therapist_id } = await req.json();
     if (!therapist_id || !session_id) {
       return new Response(JSON.stringify({ error: 'therapist_id and session_id required' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
-    }
-
-    // Gate: only the test cohort sends during the run.
-    if (!RICH_EMAIL_THERAPISTS.includes(therapist_id)) {
-      return new Response(JSON.stringify({ ok: true, skipped: 'not_in_test_cohort' }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
     const { data: therapist } = await supabase.from('therapists').select('*').eq('id', therapist_id).single();
