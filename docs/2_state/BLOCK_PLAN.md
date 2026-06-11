@@ -1,7 +1,13 @@
 # MyBodyMap Block Plan
 **Living document. Survives compaction. Update freely.**
 
-Last refreshed: 2026-05-02 — after Tier A0 smart defaults shipped + Comparison v7 + 4 switcher CTAs + AI/Claude→MyBodyMap Platform brand swap + AutomationHub overflow fixes + new CampaignsDemo + Tier S items added from FB Massage Therapists Community thread (May 1-2).
+Last refreshed: 2026-06-11, after the brain cleanup and Founder Hub mobile access. See "Shipped 2026-06-11" below.
+
+## Shipped 2026-06-11 (this session)
+- Brain cleanup merged to main: docs reorganized into one front door plus five numbered rooms (1 constitution, 2 state, 3 playbooks, 4 incidents, 5 reference) plus an archive. New files: README front door, GLOSSARY, WRAP_UP, IMAGE_SPEC, INCIDENTS. Two drifted BLOCK_PLAN copies collapsed into this one canonical file. Founder Hub doc paths repointed to the new rooms. Shipped but unverified by HK.
+- Priority 0 legal and data-safeguards content carried into this canonical plan (it had lived only in the now-archived June 1 copy). Statuses in that block are as of June 1, confirm anything that shipped since.
+- Founder Hub reachable on mobile and in the PWA: a founder-only link added to the marketing nav (desktop bar and phone menu) and to the dashboard bottom-nav More sheet, gated to the founder account. Shipped but unverified by HK.
+- Pending small items: update the startup-ritual read-list to the new room paths (HK paste), PWA manifest still names the installed app "BodyMap" not "MyBodyMap", optional polish (seed remaining incidents into the incident log, stamp headers on older docs).
 
 ## Current state
 - 28 therapists signed up. ~5 active. Most never returned after signup.
