@@ -2,6 +2,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { effectiveSchema, effectiveMedicalConditions } from "../lib/intakeSchema";
 import FocusDistribution from "../components/FocusDistribution";
+import { computeDistributionFromZones } from "../lib/focusDistribution";
 import { AgreementRenderer } from "../components/PracticeAgreement";
 
 const C = {
@@ -2652,6 +2653,7 @@ const PrefScreen = ({
   setCustomAnswers = () => {},
   bodyMap = {},
   therapist = null,
+  focusDist = null,
 }) => {
   const [showWaiver, setShowWaiver] = useState(false);
   const upd = (k, v) => setPrefs((p) => ({ ...p, [k]: v }));
@@ -2896,8 +2898,14 @@ const PrefScreen = ({
         const uniq = (arr) => Array.from(new Set(arr));
         const focusLabels = uniq(focusRegions.map(baseLabel));
         const avoidLabels = uniq(avoidRegions.map(baseLabel));
-        const pressureTxt = PLABELS[prefs.pressure] || "";
+        const pNum = parseInt(prefs.pressure, 10);
+        let pressureTxt = "";
+        if (!isNaN(pNum) && pNum >= 1 && pNum <= 5) pressureTxt = PLABELS[pNum];
+        else if (typeof prefs.pressure === "string" && prefs.pressure) pressureTxt = prefs.pressure.charAt(0).toUpperCase() + prefs.pressure.slice(1);
         const goalTxt = GOAL_LABELS[prefs.goal] || "";
+        const pg = [pressureTxt ? pressureTxt + " pressure" : "", goalTxt ? "for " + goalTxt.toLowerCase() : ""].filter(Boolean).join(", ");
+        const dist = focusDist || computeDistributionFromZones(focusRegions.map((r) => r.id));
+        const hasDist = !!dist && typeof dist.front_pct === "number" && focusRegions.length > 0;
         return (
           <Card style={{ marginTop: 8 }}>
             <p style={{ fontFamily: F.display, fontSize: 17, fontWeight: 700, color: C.green, marginBottom: 2 }}>
@@ -2915,15 +2923,34 @@ const PrefScreen = ({
                 <strong style={{ color: C.green }}>Focus:</strong> {focusLabels.join(", ")}
               </p>
             )}
-            {(pressureTxt || goalTxt) && (
+            {pg && (
               <p style={{ fontFamily: F.body, fontSize: 13, color: C.textMid, margin: "5px 0" }}>
-                <strong style={{ color: C.green }}>Pressure and goal:</strong> {[pressureTxt, goalTxt].filter(Boolean).join(", ")}
+                <strong style={{ color: C.green }}>Pressure and goal:</strong> {pg.charAt(0).toUpperCase() + pg.slice(1)}
               </p>
             )}
             {avoidLabels.length > 0 && (
               <p style={{ fontFamily: F.body, fontSize: 13, color: C.textMid, margin: "5px 0" }}>
                 <strong style={{ color: C.avoid }}>Please avoid:</strong> {avoidLabels.join(", ")}
               </p>
+            )}
+            {hasDist && (
+              <div style={{ marginTop: 12 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", fontFamily: F.body, fontSize: 11, color: C.textLight, marginBottom: 3 }}>
+                  <span>Front {dist.front_pct}%</span><span>Back {100 - dist.front_pct}%</span>
+                </div>
+                <div style={{ display: "flex", height: 8, borderRadius: 5, overflow: "hidden", marginBottom: 10 }}>
+                  <div style={{ width: dist.front_pct + "%", background: "#2A5741" }} />
+                  <div style={{ width: (100 - dist.front_pct) + "%", background: "#CDE0D3" }} />
+                </div>
+                <div style={{ display: "flex", justifyContent: "space-between", fontFamily: F.body, fontSize: 11, color: C.textLight, marginBottom: 3 }}>
+                  <span>Top {dist.top_pct || 0}%</span><span>Mid {dist.middle_pct || 0}%</span><span>Bottom {dist.bottom_pct || 0}%</span>
+                </div>
+                <div style={{ display: "flex", height: 8, borderRadius: 5, overflow: "hidden" }}>
+                  {(dist.top_pct || 0) > 0 && <div style={{ flex: dist.top_pct, background: "#4B8A6A" }} />}
+                  {(dist.middle_pct || 0) > 0 && <div style={{ flex: dist.middle_pct, background: "#2A5741" }} />}
+                  {(dist.bottom_pct || 0) > 0 && <div style={{ flex: dist.bottom_pct, background: "#1F4030" }} />}
+                </div>
+              </div>
             )}
           </Card>
         );
@@ -5117,6 +5144,7 @@ export default function BodyMapApp({ therapist = null, therapistName = "Your The
           setCustomAnswers={setCustomAnswers}
           bodyMap={bodyMap}
           therapist={therapist}
+          focusDist={focusDist}
         />
       </div>
     ),
