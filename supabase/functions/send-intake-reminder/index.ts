@@ -123,7 +123,7 @@ async function sendForBooking(supabase: any, RESEND_KEY: string, bookingId: stri
   const therapistFirst = (therapist?.full_name || therapist?.business_name || 'Your therapist').split(' ')[0];
   const clientFirstName = resolveClientFirstName(booking, client, 'there');
   const apptWhen = formatApptDateTime(booking.booking_date, booking.start_time);
-  const intakeUrl = `https://mybodymap.app/intake/${therapist.custom_url}?b=${booking.id}`;
+  const intakeUrl = `https://mybodymap.app/${therapist.custom_url}?name=${encodeURIComponent(booking.client_name || '')}&email=${encodeURIComponent(booking.client_email || '')}&booking_id=${booking.id}`;
   const serviceName = booking.services?.name || 'session';
 
   // HK May 29 2026: per EMAIL_COPY_SPEC C3. Soft, low-friction.

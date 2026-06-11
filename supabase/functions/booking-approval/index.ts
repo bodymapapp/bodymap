@@ -133,7 +133,7 @@ serve(async (req) => {
     const therapistFirst = (therapist?.full_name || '').split(' ')[0] || 'your therapist';
     const firstName = (booking.client_name || '').split(' ')[0] || 'there';
     const { dateStr, timeStr } = formatDateAndTime(booking);
-    const intakeUrl = `https://www.mybodymap.app/${therapist?.custom_url}`;
+    const intakeUrl = `https://mybodymap.app/${therapist?.custom_url}?name=${encodeURIComponent(booking.client_name || '')}&email=${encodeURIComponent(booking.client_email || '')}&booking_id=${booking.id}`;
     const bookAgainUrl = `https://www.mybodymap.app/book/${therapist?.custom_url}`;
 
     // ─── Phase 25b: detect approve+deposit case ───────────────────

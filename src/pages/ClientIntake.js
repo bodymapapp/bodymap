@@ -226,7 +226,7 @@ export default function ClientIntake() {
       });
     } catch (err) {
       console.error('Error saving intake:', err);
-      setSubmitError('There was an error sending your intake. Please try again.');
+      setSubmitError('This is on us, not you. Your answers are safe on this screen. Please try again.');
     }
   };
 
@@ -426,10 +426,10 @@ export default function ClientIntake() {
         fontFamily: 'system-ui, sans-serif',
       }}>
         <div style={{ fontSize: 15, fontWeight: 700, color: '#2A5741', marginBottom: 4 }}>
-          One quick step left
+          We could not send that just now
         </div>
         <div style={{ fontSize: 13.5, color: '#4b5563', lineHeight: 1.5, marginBottom: 12 }}>
-          {submitError} Your answers are still here, nothing was lost.
+          {submitError}
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
           <button

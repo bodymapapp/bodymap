@@ -1,24 +1,29 @@
 // supabase/functions/submit-intake/index.ts
 //
-// Handles the critical writes for a client intake submission: upsert
-// the client, resolve the upcoming booking, and insert the session
-// (body map + preferences).
+// Handles the critical writes for a client intake submission: resolve
+// the appointment, resolve the client, and insert the session (body
+// map + preferences).
 //
 // WHY THIS EXISTS (Jun 11 2026)
 //
-// The public intake page runs as the anon role. The anon role
-// intentionally has no SELECT on the clients and sessions tables
-// (the "Public can read clients" policy is unrestricted, so granting
-// anon SELECT would expose every client's name, email, phone, and
-// medical flags). An in-browser insert().select() is an
-// INSERT ... RETURNING, which needs SELECT to hand the row back, so
-// it was denied with "permission denied for table clients" and the
-// client saw "error saving your preferences" on the final step.
+// The public intake page runs as the anon role, which intentionally
+// has no SELECT on the clients/sessions tables (the "Public can read
+// clients" policy is unrestricted, so granting anon SELECT would
+// expose every client's PII). An in-browser insert().select() is an
+// INSERT ... RETURNING that needs SELECT to return the row, so it was
+// denied and the client saw "error saving your preferences" on the
+// final step. Routing the writes through this function (service role)
+// removes the dependency on the visitor's role entirely.
 //
-// Routing the writes through this function (service role) removes the
-// dependency on the visitor's role entirely: it works for anonymous
-// clients and for logged-in users, and never needs to widen anon
-// privileges. RLS still protects every in-browser read elsewhere.
+// IDENTITY RULE (Jun 11 2026)
+//
+// The appointment is the source of truth for identity. When the link
+// carries a booking (every booking email now passes booking_id), the
+// session attaches to that booking's existing client, so a typed-over
+// name or email still lands on the right person and the body map
+// history stays unified for pattern intelligence. Typed values never
+// overwrite an existing client's name or email. Only when there is no
+// booking at all do we fall back to matching/creating by typed values.
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -46,35 +51,70 @@ serve(async (req) => {
     if (!SUPABASE_URL || !SERVICE_KEY) return respond({ error: 'server_config' });
     const supabase = createClient(SUPABASE_URL, SERVICE_KEY);
 
-    // 1. Upsert client. Match an existing row by phone first (the same
-    //    rule the app used before), then by email, so returning clients
-    //    do not get duplicated. Insert only if neither matches.
-    let clientId: string | null = null;
     const phone = (client.phone || '').trim();
-    const email = (client.email || '').trim();
+    const typedEmail = (client.email || '').trim();
 
-    if (phone) {
-      const { data } = await supabase.from('clients')
-        .select('id').eq('therapist_id', therapist_id).eq('phone', phone).maybeSingle();
-      if (data?.id) clientId = data.id;
+    // 1. Resolve the booking. Trust the id the email link carried; if
+    //    none, find the next upcoming non-cancelled booking by the
+    //    typed email.
+    let bookingId: string | null = booking_id_from_url || null;
+    let booking: any = null;
+    if (bookingId) {
+      const { data } = await supabase.from('bookings')
+        .select('id, client_id, client_email, client_name, client_phone')
+        .eq('id', bookingId).maybeSingle();
+      booking = data || null;
+      if (!booking) bookingId = null; // stale id; fall back to email match
     }
-    if (!clientId && email) {
-      const { data } = await supabase.from('clients')
-        .select('id').eq('therapist_id', therapist_id).ilike('email', email).maybeSingle();
-      if (data?.id) clientId = data.id;
+    if (!bookingId && typedEmail) {
+      const today = new Date().toISOString().split('T')[0];
+      const { data: nb } = await supabase.from('bookings')
+        .select('id, client_id, client_email, client_name, client_phone')
+        .eq('therapist_id', therapist_id)
+        .ilike('client_email', typedEmail)
+        .neq('status', 'cancelled')
+        .gte('booking_date', today)
+        .order('booking_date', { ascending: true })
+        .limit(1)
+        .maybeSingle();
+      if (nb) { booking = nb; bookingId = nb.id; }
     }
+
+    // 2. Resolve the client. The booking wins: if it already names a
+    //    client, use that client id regardless of what was typed.
+    let clientId: string | null = booking?.client_id || null;
     if (!clientId) {
-      const { data, error } = await supabase.from('clients')
-        .insert([{ therapist_id, name: client.name || null, phone: client.phone || null, email: client.email || null }])
-        .select('id').single();
-      if (error || !data) {
-        console.error('[submit-intake] client insert failed', error);
-        return respond({ error: 'client_save_failed' });
+      const matchEmail = (booking?.client_email || typedEmail || '').trim();
+      if (phone) {
+        const { data } = await supabase.from('clients')
+          .select('id').eq('therapist_id', therapist_id).eq('phone', phone).maybeSingle();
+        if (data?.id) clientId = data.id;
       }
-      clientId = data.id;
+      if (!clientId && matchEmail) {
+        const { data } = await supabase.from('clients')
+          .select('id').eq('therapist_id', therapist_id).ilike('email', matchEmail).maybeSingle();
+        if (data?.id) clientId = data.id;
+      }
+      if (!clientId) {
+        // Brand new client. Prefer the booking's own details when present
+        // so the record is clean even if the form was typed over.
+        const { data, error } = await supabase.from('clients')
+          .insert([{
+            therapist_id,
+            name: booking?.client_name || client.name || null,
+            phone: booking?.client_phone || client.phone || null,
+            email: booking?.client_email || client.email || null,
+          }])
+          .select('id').single();
+        if (error || !data) {
+          console.error('[submit-intake] client insert failed', error);
+          return respond({ error: 'client_save_failed' });
+        }
+        clientId = data.id;
+      }
     }
 
-    // 2. SMS opt-in: only ever flip to true.
+    // 3. SMS opt-in: only ever flip to true. Never touches name/email.
     if (sms_opt_in && clientId) {
       try {
         await supabase.from('clients')
@@ -83,25 +123,8 @@ serve(async (req) => {
       } catch (_e) { /* non-blocking */ }
     }
 
-    // 3. Resolve booking_id: trust the URL value if present, else find
-    //    the client's next upcoming non-cancelled booking by email.
-    let bookingId = booking_id_from_url || null;
-    if (!bookingId && email) {
-      const today = new Date().toISOString().split('T')[0];
-      const { data: nb } = await supabase.from('bookings')
-        .select('id')
-        .eq('therapist_id', therapist_id)
-        .ilike('client_email', email)
-        .neq('status', 'cancelled')
-        .gte('booking_date', today)
-        .order('booking_date', { ascending: true })
-        .limit(1)
-        .maybeSingle();
-      bookingId = nb?.id || null;
-    }
-
-    // 4. Insert the session. therapist_id, client_id, booking_id are
-    //    set here so the browser cannot spoof them.
+    // 4. Insert the session. therapist_id, client_id, booking_id are set
+    //    here so the browser cannot spoof them.
     const sessionRow = { ...(session || {}), therapist_id, client_id: clientId, booking_id: bookingId };
     const { data: sess, error: sErr } = await supabase.from('sessions')
       .insert([sessionRow]).select('id').single();

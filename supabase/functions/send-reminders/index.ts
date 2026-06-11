@@ -58,7 +58,7 @@ serve(async (req) => {
     const service = booking.services;
     const firstName = booking.client_name?.split(' ')[0] || 'there';
     const therapistName = therapist?.business_name || therapist?.full_name || 'Your therapist';
-    const intakeUrl = `https://www.mybodymap.app/${therapist?.custom_url}`;
+    const intakeUrl = `https://mybodymap.app/${therapist?.custom_url}?name=${encodeURIComponent(booking.client_name || '')}&email=${encodeURIComponent(booking.client_email || '')}&booking_id=${booking.id}`;
     const bookingDate = new Date(booking.booking_date + 'T12:00:00');
     const dateStr = bookingDate.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
     const [h, m] = booking.start_time.split(':').map(Number);
