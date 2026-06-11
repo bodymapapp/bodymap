@@ -47,4 +47,4 @@ The full version lives in `docs/1_constitution/`.
 
 ## How this brain stays true
 
-The wrap-up ritual in `docs/3_playbooks/WRAP_UP.md` is the maintenance engine. At the end of a working session it updates the state, appends any incident, refreshes the playbooks, and sweeps for anything that has gone stale. Because maintenance rides on a ritual we already run, the brain stays current as a byproduct of the work.
+The wrap-up ritual in `docs/3_playbooks/WRAP_UP.md` is the maintenance engine. At the end of a working session it updates the state, appends any incident, refreshes the playbooks, and sweeps for anything that has gone stale. Because maintenance rides on a ritual we already run, the brain stays current as a byproduct of the work. When more than one agent or person works the brain, `docs/3_playbooks/SYNC.md` is the rule that keeps everyone current and signs every change to the agent that made it.
