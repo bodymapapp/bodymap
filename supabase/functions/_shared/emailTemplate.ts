@@ -111,7 +111,7 @@ ${opts.preheader ? `<div style="display:none;font-size:1px;color:${EMAIL_COLORS.
   <div class="card">
     ${opts.bodyHtml}
   </div>
-  <p class="footer">Sent by MyBodyMap · <a href="https://mybodymap.app" style="color:${EMAIL_COLORS.inkMute};text-decoration:none;">mybodymap.app</a></p>
+  <p class="footer">Sent by MyBodyMap · mybodymap.app</p>
 </div>
 </body>
 </html>`;

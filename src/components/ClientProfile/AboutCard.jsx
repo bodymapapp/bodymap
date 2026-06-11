@@ -46,7 +46,7 @@ const F = {
   serif: 'Georgia, "Times New Roman", serif',
 };
 
-export default function AboutCard({ client, onUpdated, pulse = false }) {
+export default function AboutCard({ client, onUpdated, pulse = false, readOnly = false }) {
   // Local mirror of the values shown. Updates after save so the
   // cell shows the new value without a re-fetch.
   const [name, setName] = useState(client?.name || '');
@@ -274,7 +274,7 @@ export default function AboutCard({ client, onUpdated, pulse = false }) {
         transition: 'box-shadow 0.25s ease, outline-color 0.25s ease',
       }}
     >
-      <Row
+      <Row readOnly={readOnly}
         label="Name"
         value={name}
         setValue={setName}
@@ -283,7 +283,7 @@ export default function AboutCard({ client, onUpdated, pulse = false }) {
         error={errorOn === 'name' ? errorMsg : ''}
         required
       />
-      <Row
+      <Row readOnly={readOnly}
         label="Email"
         value={email}
         setValue={setEmail}
@@ -293,7 +293,7 @@ export default function AboutCard({ client, onUpdated, pulse = false }) {
         type="email"
         placeholder="Add email"
       />
-      <Row
+      <Row readOnly={readOnly}
         label="Phone"
         value={phone}
         setValue={setPhone}
@@ -303,7 +303,7 @@ export default function AboutCard({ client, onUpdated, pulse = false }) {
         type="tel"
         placeholder="Add phone"
       />
-      <Row
+      <Row readOnly={readOnly}
         label="Alternate phone"
         value={altPhone}
         setValue={setAltPhone}
@@ -313,7 +313,7 @@ export default function AboutCard({ client, onUpdated, pulse = false }) {
         type="tel"
         placeholder="Add a second phone"
       />
-      <Row
+      <Row readOnly={readOnly}
         label="Birthday"
         value={birthday}
         setValue={setBirthday}
@@ -323,7 +323,7 @@ export default function AboutCard({ client, onUpdated, pulse = false }) {
         type="date"
         placeholder="Add birthday"
       />
-      <Row
+      <Row readOnly={readOnly}
         label="Customer since"
         value={customerSince}
         setValue={setCustomerSince}
@@ -350,6 +350,7 @@ export default function AboutCard({ client, onUpdated, pulse = false }) {
           therapists don't need to see it at a glance for every client.
           Tap "Address" header to expand; tap a field to edit. */}
       <AddressBlock
+        readOnly={readOnly}
         line1={addressLine1}
         setLine1={setAddressLine1}
         line2={addressLine2}
@@ -407,7 +408,7 @@ export default function AboutCard({ client, onUpdated, pulse = false }) {
         error={errorOn === 'areas_to_avoid' ? errorMsg : ''}
         placeholder="Left shoulder, low back"
       />
-      <Row
+      <Row readOnly={readOnly}
         label="Emergency contact"
         value={emergencyContact}
         setValue={setEmergencyContact}
@@ -455,15 +456,17 @@ export default function AboutCard({ client, onUpdated, pulse = false }) {
           )}
         </div>
       )}
-      <RowMultiline
-        label="Notes"
-        value={notes}
-        setValue={setNotes}
-        onSave={(v) => saveField('notes', v)}
-        justSaved={justSaved === 'notes'}
-        error={errorOn === 'notes' ? errorMsg : ''}
-        placeholder="Internal notes about this client"
-      />
+      {!readOnly && (
+        <RowMultiline
+          label="Notes"
+          value={notes}
+          setValue={setNotes}
+          onSave={(v) => saveField('notes', v)}
+          justSaved={justSaved === 'notes'}
+          error={errorOn === 'notes' ? errorMsg : ''}
+          placeholder="Internal notes about this client"
+        />
+      )}
     </div>
   );
 }
@@ -483,7 +486,7 @@ function prettyHistoryDate(d) {
 
 // Single-line tap-to-edit row. Click anywhere on the row body to
 // enter edit mode. Blur or Enter saves. Esc cancels.
-function Row({ label, value, setValue, onSave, justSaved, error, required, type = 'text', placeholder = 'Add value' }) {
+function Row({ label, value, setValue, onSave, justSaved, error, required, type = 'text', placeholder = 'Add value', readOnly = false }) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(value);
   const inputRef = useRef(null);
@@ -527,7 +530,7 @@ function Row({ label, value, setValue, onSave, justSaved, error, required, type 
         {label}{required && <span style={{ color: C.error, marginLeft: 2 }}>*</span>}
       </div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
-        {editing ? (
+        {(editing && !readOnly) ? (
           <input
             ref={inputRef}
             value={draft}
@@ -556,6 +559,21 @@ function Row({ label, value, setValue, onSave, justSaved, error, required, type 
             autoCapitalize={type === 'email' ? 'none' : 'sentences'}
             autoCorrect={type === 'email' ? 'off' : 'on'}
           />
+        ) : readOnly ? (
+          <div style={{
+            flex: 1,
+            minWidth: 0,
+            padding: '6px 8px',
+            fontSize: 14,
+            fontFamily: 'inherit',
+            color: value ? C.ink : C.muted,
+            fontStyle: value ? 'normal' : 'italic',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+          }}>
+            {value || 'Not set'}
+          </div>
         ) : (
           <button
             onClick={() => setEditing(true)}
@@ -830,6 +848,7 @@ function AddressBlock({
   state, setState,
   zip, setZip,
   saveField, justSaved, errorOn, errorMsg,
+  readOnly = false,
 }) {
   const [open, setOpen] = useState(false);
   const hasAny = !!(line1 || line2 || city || state || zip);
@@ -889,7 +908,7 @@ function AddressBlock({
       </button>
       {open && (
         <div style={{ padding: '4px 8px 10px 8px' }}>
-          <Row
+          <Row readOnly={readOnly}
             label="Street address"
             value={line1}
             setValue={setLine1}
@@ -898,7 +917,7 @@ function AddressBlock({
             error={errorOn === 'address_line1' ? errorMsg : ''}
             placeholder="123 Main St"
           />
-          <Row
+          <Row readOnly={readOnly}
             label="Apt / Suite"
             value={line2}
             setValue={setLine2}
@@ -907,7 +926,7 @@ function AddressBlock({
             error={errorOn === 'address_line2' ? errorMsg : ''}
             placeholder="Apt 4B (optional)"
           />
-          <Row
+          <Row readOnly={readOnly}
             label="City"
             value={city}
             setValue={setCity}
@@ -916,7 +935,7 @@ function AddressBlock({
             error={errorOn === 'city' ? errorMsg : ''}
             placeholder="Nashville"
           />
-          <Row
+          <Row readOnly={readOnly}
             label="State"
             value={state}
             setValue={setState}
@@ -925,7 +944,7 @@ function AddressBlock({
             error={errorOn === 'state' ? errorMsg : ''}
             placeholder="TN"
           />
-          <Row
+          <Row readOnly={readOnly}
             label="Zip"
             value={zip}
             setValue={setZip}

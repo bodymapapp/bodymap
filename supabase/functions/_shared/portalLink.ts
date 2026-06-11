@@ -17,14 +17,19 @@ function newToken() {
   return (crypto.randomUUID() + crypto.randomUUID()).replace(/-/g, "");
 }
 
-export async function portalLinkForEmail(admin: any, email: string): Promise<string | null> {
+export async function portalLinkForEmail(admin: any, email: string, therapistId: string | null = null): Promise<string | null> {
   const em = (email || "").toLowerCase().trim();
   if (!em || !em.includes("@")) return null;
   try {
     let tok = "";
-    const { data: existing } = await admin.from("client_portal_tokens")
+    let reuse = admin.from("client_portal_tokens")
       .select("token, expires_at").ilike("email", em)
-      .gt("expires_at", new Date(Date.now() + 24 * 3600 * 1000).toISOString())
+      .gt("expires_at", new Date(Date.now() + 24 * 3600 * 1000).toISOString());
+    // A token minted by a therapist is scoped to that therapist so a client
+    // of several therapists lands on the right portal. Self-requested links
+    // (no therapist context) reuse/mint the email-only token.
+    reuse = therapistId ? reuse.eq("therapist_id", therapistId) : reuse.is("therapist_id", null);
+    const { data: existing } = await reuse
       .order("created_at", { ascending: false }).limit(1).maybeSingle();
     if (existing?.token) {
       tok = existing.token;
@@ -33,6 +38,7 @@ export async function portalLinkForEmail(admin: any, email: string): Promise<str
       const { error } = await admin.from("client_portal_tokens").insert({
         email: em,
         token: tok,
+        therapist_id: therapistId || null,
         expires_at: new Date(Date.now() + TOKEN_TTL_DAYS * 24 * 3600 * 1000).toISOString(),
       });
       if (error) return null;
