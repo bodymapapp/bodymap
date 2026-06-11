@@ -15,6 +15,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { notifyClient } from "../_shared/notifications.ts";
 import { buildIntakeSummary, summaryRowsHtml, mapBlockHtml } from "../_shared/intakeSummary.ts";
+import { portalLinkForEmail } from "../_shared/portalLink.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -88,6 +89,10 @@ serve(async (req) => {
       : `${esc(biz)} will read this before your next session, so your time on the table is all about you.`;
     const customUrl = (therapist as any).custom_url;
     const cta = customUrl ? `https://mybodymap.app/${encodeURIComponent(customUrl)}` : 'https://mybodymap.app';
+    // Magic link into the client's own My visits page (upcoming appointment,
+    // past sessions, their forms). Falls back to the booking page if a token
+    // cannot be minted, so the button is never broken.
+    const portalLink = (await portalLinkForEmail(supabase, (client as any).email)) || cta;
 
     const html = `<!DOCTYPE html><html><body style="margin:0;background:#F0EEE6;font-family:-apple-system,Segoe UI,Roboto,sans-serif;">
       <div style="max-width:520px;margin:0 auto;padding:28px 22px;">
@@ -96,7 +101,7 @@ serve(async (req) => {
           <p style="font-size:13px;color:#6B7280;margin:0 0 14px;line-height:1.55;">${whenLine}</p>
           ${summaryRowsHtml(summary)}
           ${mapBlockHtml(summary, SUPABASE_URL)}
-          <a href="${cta}" style="display:inline-block;background:#2A5741;color:#fff;text-decoration:none;padding:11px 20px;border-radius:8px;font-size:13px;font-weight:600;margin-top:14px;">View your appointment</a>
+          <a href="${portalLink}" style="display:inline-block;background:#2A5741;color:#fff;text-decoration:none;padding:11px 20px;border-radius:8px;font-size:13px;font-weight:600;margin-top:14px;">View your appointment</a>
           <div style="font-size:11px;color:#9A9A90;margin-top:20px;line-height:1.6;border-top:1px solid #F1EEE6;padding-top:12px;">Made with MyBodyMap. Need to change something? Just reply and a real person will help.</div>
         </div>
       </div>
