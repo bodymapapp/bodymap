@@ -68,7 +68,7 @@ const SECTIONS = [
     subtitle: "Seven strategies therapists use to market themselves to their clients, plus other income sources.",
     status: "live",
     type: "markdown",
-    path: "docs/MARKETING_THERAPIST_PLAYBOOK.md",
+    path: "docs/5_reference/MARKETING_THERAPIST_PLAYBOOK.md",
     backupKey: "01-therapist-playbook",
   },
   {
@@ -78,7 +78,7 @@ const SECTIONS = [
     subtitle: "How we market ourselves. Strategy, voice, competitive positioning, all in one place.",
     status: "live",
     type: "markdown",
-    path: "docs/MARKETING_MYBODYMAP.md",
+    path: "docs/5_reference/MARKETING_MYBODYMAP.md",
     backupKey: "02-marketing-mybodymap",
   },
   {
@@ -88,7 +88,7 @@ const SECTIONS = [
     subtitle: "Payment processors, capability matrix, competitive analysis, liability.",
     status: "live",
     type: "markdown",
-    path: "docs/BILLING_STRATEGY.md",
+    path: "docs/5_reference/BILLING_STRATEGY.md",
     backupKey: "03-billing-strategy",
   },
   {
@@ -108,7 +108,7 @@ const SECTIONS = [
     subtitle: "Single source of truth for every notification MyBodyMap sends. C-series (client), T-series (therapist), E-series (exceptions). With retention math.",
     status: "live",
     type: "markdown",
-    path: "docs/NOTIFICATION_MAP.md",
+    path: "docs/5_reference/NOTIFICATION_MAP.md",
     backupKey: "03c-notification-map",
   },
   {
@@ -128,7 +128,7 @@ const SECTIONS = [
     subtitle: "Rules that exist because we broke them. Seven principles, each with an incident log. Read before adding any new section or template.",
     status: "live",
     type: "markdown",
-    path: "docs/DESIGN_PRINCIPLES.md",
+    path: "docs/1_constitution/DESIGN_PRINCIPLES.md",
     backupKey: "03d-design-principles",
   },
   {
@@ -138,7 +138,7 @@ const SECTIONS = [
     subtitle: "Known risks: broken or scale-fragile spots not yet fixed. Each entry has a trigger, fix estimate, and status. Append-only, closed risks stay for paper trail.",
     status: "live",
     type: "markdown",
-    path: "docs/RISK_REGISTER.md",
+    path: "docs/2_state/RISK_REGISTER.md",
     backupKey: "03f-risk-register",
   },
   {
@@ -148,7 +148,7 @@ const SECTIONS = [
     subtitle: "Deferred refactors and tech debt. Not live bugs: each works today, but the code shape makes a future mistake more likely. Fixed on purpose, later. Append-only, done items keep their commit.",
     status: "live",
     type: "markdown",
-    path: "docs/FUTURE_CODE_CLEANUP.md",
+    path: "docs/2_state/FUTURE_CODE_CLEANUP.md",
     backupKey: "03g-future-code-cleanup",
   },
   {
@@ -158,7 +158,7 @@ const SECTIONS = [
     subtitle: "Tests we still owe before we fully trust a change. Append-only: done tests keep their date and result, so we know what is actually verified versus assumed.",
     status: "live",
     type: "markdown",
-    path: "docs/PENDING_TESTS.md",
+    path: "docs/2_state/PENDING_TESTS.md",
     backupKey: "03h-pending-tests",
   },
   {
@@ -168,7 +168,7 @@ const SECTIONS = [
     subtitle: "Active fires, deferred work, ideas not yet shipped.",
     status: "live",
     type: "markdown",
-    path: "BLOCK_PLAN.md",
+    path: "docs/2_state/BLOCK_PLAN.md",
     backupKey: "04-block-plan",
   },
   {
@@ -178,7 +178,7 @@ const SECTIONS = [
     subtitle: "Seven product categories, their sub-features, and core differentiation flags.",
     status: "live",
     type: "markdown",
-    path: "FEATURES_TAXONOMY.md",
+    path: "docs/1_constitution/FEATURES_TAXONOMY.md",
     backupKey: "05-taxonomy",
   },
   {
@@ -188,7 +188,7 @@ const SECTIONS = [
     subtitle: "Every feature meaningful competitors offer (Vagaro, MassageBook, Acuity, Cal.com, Calendly, GlossGenius, Mindbody, ClinicSense). What we have, what we are missing, what we intentionally are not building. Read before deciding what to build next.",
     status: "live",
     type: "markdown",
-    path: "docs/COMPETITIVE_FEATURES_WATCHLIST.md",
+    path: "docs/5_reference/COMPETITIVE_FEATURES_WATCHLIST.md",
     backupKey: "05a-competitive-watchlist",
   },
   {
@@ -243,7 +243,7 @@ const SECTIONS = [
     subtitle: "Catch-all for anything that does not fit the other ten sections.",
     status: "live",
     type: "markdown",
-    path: "docs/OTHER_NOTES.md",
+    path: "docs/5_reference/OTHER_NOTES.md",
     backupKey: "08-other-notes",
   },
   {
@@ -253,7 +253,7 @@ const SECTIONS = [
     subtitle: "If Claude is unavailable tomorrow, this is the handoff for a human team.",
     status: "live",
     type: "markdown",
-    path: "docs/FOUNDER_RUNBOOK.md",
+    path: "docs/2_state/FOUNDER_RUNBOOK.md",
     backupKey: "09-founder-runbook",
   },
   {
@@ -273,7 +273,7 @@ const SECTIONS = [
 const ADDITIONAL_RESEARCH_PATHS = [
   {
     key: "10-customer-chat-research",
-    path: "docs/CUSTOMER_CHAT_RESEARCH.md",
+    path: "docs/5_reference/CUSTOMER_CHAT_RESEARCH.md",
     title: "Customer Chat Research",
   },
 ];

@@ -1,181 +1,50 @@
-# BodyMap - Phase 2 Complete Package
+# MyBodyMap — START HERE
 
-## 🎉 PHASE 2 AUTHENTICATION IS READY!
-
-This package contains your complete BodyMap application with Phase 2 (Authentication) fully implemented.
-
----
-
-## 📦 WHAT'S INCLUDED:
-
-### Marketing Pages (Already Built):
-- Home page
-- Pricing page  
-- Why BodyMap page
-- Contact page
-- Privacy Policy
-- Terms of Service
-
-### NEW - Phase 2 Authentication:
-- ✅ Signup page (therapist registration)
-- ✅ Login page
-- ✅ Protected routes (dashboard security)
-- ✅ Supabase database integration
-- ✅ Session management
+**Purpose:** the front door to the MyBodyMap brain. Read this first. It orients anyone, human or agent, in about five minutes and points to everything else.
+**Last updated:** 2026-06-11
+**Canonical:** yes
 
 ---
 
-## 🚀 INSTALLATION (5 Minutes):
+## What MyBodyMap is
 
-### Step 1: Extract This Package
-```bash
-cd ~/Downloads
-tar -xzf bodymap-phase2.tar.gz
-cd bodymap-final
-```
+MyBodyMap is a practice-management and scheduling platform for solo licensed massage practitioners. The moat is the visual body map intake plus longitudinal pattern intelligence that builds up across a client's sessions. That moat data lives in the production database (Supabase), not in this repo. This repo is the brain: the knowledge, decisions, procedures, and history that run the business.
 
-### Step 2: Install Dependencies
-```bash
-npm install
-```
+## Where the current state lives
 
-### Step 3: Configure Environment Variables
+Do not look for the current state in this file. It lives in `docs/2_state/BLOCK_PLAN.md`, which is the one canonical plan. The end-of-cycle wrap-up keeps it true. If any other doc disagrees with the block plan about what is happening right now, the block plan wins.
 
-Create a file called `.env` in the project root with:
+## The map: one front door, five rooms, an archive
 
-```env
-REACT_APP_SUPABASE_URL=https://rmnqfrljoknmellbnpiy.supabase.co
-REACT_APP_SUPABASE_ANON_KEY=YOUR_ANON_KEY_HERE
-REACT_APP_BASE_URL=http://localhost:3000
-```
+Read broadly across the rooms. Write only to the room you own.
 
-**Replace `YOUR_ANON_KEY_HERE` with your actual Supabase anon key.**
+- `docs/1_constitution/` — the rules and the voice. Design principles, email and copy voice, the feature taxonomy, and the glossary. Rarely changes.
+- `docs/2_state/` — what is true right now. The block plan, the risk register, pending migrations and tests, the runbook, and the latest handover snapshot.
+- `docs/3_playbooks/` — repeatable procedures, kept alive. The wrap-up ritual, the image spec, the QA and verification checklists.
+- `docs/4_incidents/` — an append-only history of what broke and what we learned. Never edited, only added to.
+- `docs/5_reference/` — analysis and system specs that inform decisions. Billing and marketing strategy, benchmarks, the notification map, the environment reference (where secrets live, never the secrets themselves).
+- `docs/9_archive/` — stale, superseded, and historical files kept for the record. Old handovers, retired duplicates, old phase notes.
 
-To get your anon key:
-1. Go to your Supabase project
-2. Settings → API
-3. Copy the "anon/public" key (starts with `eyJ...`)
+The code is separate and is never reorganized by this structure: `src/` is the website and app, `supabase/` is the backend, with `api/`, `public/`, and `scripts/` alongside.
 
-### Step 4: Start the App
-```bash
-npm start
-```
+## Read order for a newcomer
 
-**Opens at:** http://localhost:3000
+1. This file.
+2. `docs/2_state/BLOCK_PLAN.md` to see where things stand.
+3. `docs/1_constitution/DESIGN_PRINCIPLES.md` for how we build and the voice.
+4. `docs/1_constitution/GLOSSARY.md` for the terms and the people.
+5. Whatever room is relevant to the task in front of you.
 
----
+## The one safety rule, always
 
-## ✅ TESTING PHASE 2:
+Every body that works on MyBodyMap obeys the same blast-radius rule:
 
-### Test 1: Signup
-1. Go to http://localhost:3000/signup
-2. Fill out the registration form
-3. Click "Create Account"
-4. **Expected:** Redirected to dashboard with success message
+- Green: reversible, internal, no customer contact. Act alone.
+- Amber: customer-facing drafts, our own data writes, money below a set threshold. Draft it, queue it for HK to approve.
+- Red: anything sent to a customer, anything irreversible, any money movement, and anything that touches a therapist's own clients. HK only, every time.
 
-### Test 2: Verify in Database
-1. Go to your Supabase project → Table Editor
-2. Click "therapists" table
-3. **Expected:** See your new account
+The full version lives in `docs/1_constitution/`.
 
-### Test 3: Login
-1. Go to http://localhost:3000/login
-2. Enter your email/password
-3. Click "Sign In"
-4. **Expected:** Redirected to dashboard
+## How this brain stays true
 
-### Test 4: Protected Routes
-1. Logout (clear cookies or open incognito window)
-2. Try to access http://localhost:3000/dashboard directly
-3. **Expected:** Automatically redirected to login page
-
----
-
-## 📁 PROJECT STRUCTURE:
-
-```
-bodymap-final/
-├── public/
-│   └── index.html
-├── src/
-│   ├── components/
-│   │   └── ProtectedRoute.js       ← NEW: Route security
-│   ├── contexts/
-│   │   └── AuthContext.js          ← NEW: Authentication logic
-│   ├── lib/
-│   │   └── supabase.js             ← NEW: Database connection
-│   ├── pages/
-│   │   ├── Home.jsx                ← Marketing
-│   │   ├── Pricing.jsx             ← Marketing
-│   │   ├── WhyBodyMap.jsx          ← Marketing
-│   │   ├── Contact.jsx             ← Marketing
-│   │   ├── Privacy.jsx             ← Legal
-│   │   ├── Terms.jsx               ← Legal
-│   │   ├── Signup.js               ← NEW: Registration
-│   │   ├── Login.js                ← NEW: Login
-│   │   └── Demo.jsx                ← Client intake (Phase 3)
-│   ├── App.js                      ← NEW: Routing
-│   ├── index.js
-│   └── index.css
-├── .env                             ← YOU CREATE THIS
-├── package.json
-├── README.md                        ← This file
-└── PHASE2-TESTING.md                ← Detailed testing guide
-```
-
----
-
-## 🎯 PHASE 2 STATUS: 100% COMPLETE
-
-**What Works:**
-- ✅ Therapist signup with custom URL
-- ✅ Login/logout
-- ✅ Protected dashboard access
-- ✅ Data saved to Supabase
-- ✅ Session persistence
-
-**What's Next:**
-- Phase 3: Client Intake Integration (wire up Demo.jsx)
-- Phase 4: Therapist Dashboard
-- Phase 5: Stripe Payments
-- Phase 6: AI Features
-- Phase 7: Deploy
-
----
-
-## 🐛 TROUBLESHOOTING:
-
-**Error: "Cannot find module '@supabase/supabase-js'"**
-```bash
-npm install @supabase/supabase-js
-```
-
-**Error: "Invalid login credentials"**
-- Check email/password match your signup
-- Check Supabase auth users tab
-
-**Blank screen or React errors**
-- Check .env file exists with correct credentials
-- Check browser console for errors
-- Make sure npm install completed successfully
-
-**Signup creates account but error appears**
-- Check Supabase Table Editor → therapists table
-- Account may have been created despite error message
-
----
-
-## 📞 NEXT STEPS:
-
-1. **Test Phase 2** - Follow PHASE2-TESTING.md
-2. **Confirm it works** - Let me know when signup/login works
-3. **Move to Phase 3** - We'll integrate the client intake
-
----
-
-## 💚 QUESTIONS?
-
-If anything doesn't work or you need clarification, just ask!
-
-**Current Phase:** Phase 2 ✅ COMPLETE  
-**Next Phase:** Phase 3 - Client Intake Integration
+The wrap-up ritual in `docs/3_playbooks/WRAP_UP.md` is the maintenance engine. At the end of a working session it updates the state, appends any incident, refreshes the playbooks, and sweeps for anything that has gone stale. Because maintenance rides on a ritual we already run, the brain stays current as a byproduct of the work.
