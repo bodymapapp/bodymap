@@ -40,7 +40,7 @@ message, so the history reads like a signed logbook.
 Set once, right after the clone line, in each agent's project instructions:
 
     Engineering:  git config user.name "MyBodyMap Engineering" && git config user.email "engineering@mybodymap.app"
-    Support:      git config user.name "MyBodyMap Support" && git config user.email "support@mybodymap.app"
+    Customer Support:  git config user.name "MyBodyMap Customer Support" && git config user.email "support@mybodymap.app"
     Marketing:    git config user.name "MyBodyMap Marketing" && git config user.email "marketing@mybodymap.app"
     Strategy:     git config user.name "MyBodyMap Strategy" && git config user.email "strategy@mybodymap.app"
     A human:      git config user.name "Your Real Name" && git config user.email "your@email"
