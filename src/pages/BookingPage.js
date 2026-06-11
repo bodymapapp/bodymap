@@ -2827,6 +2827,19 @@ export default function BookingPage() {
             <h2 style={{fontFamily:'Georgia,serif',fontSize:22,fontWeight:700,color:C.dark,margin:'0 0 4px'}}>Book a service</h2>
             <p style={{fontSize:13,color:C.gray,margin:'0 0 14px'}}>Pick what you'd like. Single sessions, packages, or memberships.</p>
 
+            <a
+              href={`/gift/${therapist.custom_url}`}
+              style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                gap: 10, background: '#F0F6EE', border: '1px solid #B7D1AB',
+                borderRadius: 10, padding: '11px 14px', marginBottom: 16,
+                textDecoration: 'none', color: '#2A5741',
+              }}
+            >
+              <span style={{ fontSize: 13, fontWeight: 600 }}>🎁 Give the gift of massage</span>
+              <span style={{ fontSize: 12, fontWeight: 600, whiteSpace: 'nowrap' }}>Buy a gift card →</span>
+            </a>
+
             {/* WHAT TO EXPECT: collapsible preview so clients know what
                 comes after picking a service (intake form, cancellation
                 policy if set). Not pushed up front; for clients who want

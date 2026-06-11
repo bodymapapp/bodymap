@@ -22,9 +22,10 @@
 // Until Phase 2, the "Pay & Send Gift" button shows a placeholder
 // success screen explaining the next step.
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
+import { getStripePublishableKey } from '../lib/paymentMode';
 import {
   DESIGNS,
   ORDERED_DESIGN_KEYS,
@@ -59,7 +60,7 @@ const C = {
 
 const SUGGESTED_AMOUNTS = [50, 100, 150, 200];
 const MIN_AMOUNT = 25;
-const MAX_AMOUNT = 1000;
+const MAX_AMOUNT = 500;
 
 // ─── Step components ──────────────────────────────────────────────
 
@@ -467,67 +468,224 @@ function PersonalizeForm({ form, onChange }) {
   );
 }
 
-function MockCheckout({ amount, onBack, onPretendPay }) {
+function friendlyGiftError(code) {
+  switch (code) {
+    case 'amount_out_of_range': return 'Please choose an amount between $25 and $500.';
+    case 'missing_fields': return 'Please fill in the recipient and your own name and email.';
+    default: return 'We could not start the payment. Please try again in a moment.';
+  }
+}
+
+// Real Stripe Connect checkout for the gift purchase. Mirrors the
+// booking-deposit Payment Element flow: create the intent server-side,
+// mount the Payment Element on the therapist's connected account,
+// confirm inline, then verify and fire the emails via
+// confirm-gift-payment. Completion is client-driven so it does not
+// depend on a Connect webhook.
+function GiftCheckout({ therapist, amount, designKey, themeKey, form, onBack, onPaid }) {
+  const [phase, setPhase] = useState('init'); // init | ready | paying | unavailable | error
+  const [errMsg, setErrMsg] = useState('');
+  const containerRef = useRef(null);
+  const ctx = useRef({ stripe: null, elements: null, paymentElement: null, giftId: null, code: null });
+  const startedRef = useRef(false);
+
+  useEffect(() => {
+    if (startedRef.current) return;
+    startedRef.current = true;
+    let alive = true;
+
+    (async () => {
+      try {
+        const { data, error } = await supabase.functions.invoke('create-gift-payment', {
+          body: {
+            custom_url: therapist.custom_url,
+            amount,
+            design_key: designKey,
+            theme_key: themeKey,
+            recipient_name: form.recipientName,
+            recipient_email: form.recipientEmail,
+            purchaser_name: form.purchaserName,
+            purchaser_email: form.purchaserEmail,
+            message: form.message,
+            delivery: form.delivery,
+            scheduled_date: form.scheduledDate || null,
+          },
+        });
+        if (!alive) return;
+        const res = data || {};
+        if (error || res.error) {
+          if (res.error === 'gifts_unavailable') { setPhase('unavailable'); return; }
+          setErrMsg(friendlyGiftError(res.error)); setPhase('error'); return;
+        }
+
+        ctx.current.giftId = res.gift_id;
+        ctx.current.code = res.code;
+
+        if (!window.Stripe) {
+          await new Promise((resolve) => {
+            const s = document.createElement('script');
+            s.src = 'https://js.stripe.com/v3/';
+            s.onload = resolve;
+            document.head.appendChild(s);
+          });
+        }
+        if (!alive || !containerRef.current) return;
+
+        const stripe = window.Stripe(
+          getStripePublishableKey(),
+          res.account_id ? { stripeAccount: res.account_id } : {}
+        );
+        const elements = stripe.elements({
+          clientSecret: res.client_secret,
+          appearance: {
+            theme: 'stripe',
+            variables: {
+              colorPrimary: '#2A5741', colorBackground: '#FFFFFF',
+              colorText: '#1A1A2E', colorDanger: '#EF4444',
+              fontFamily: 'system-ui, sans-serif', fontSizeBase: '16px',
+              borderRadius: '10px',
+            },
+          },
+        });
+        const pe = elements.create('payment', {
+          layout: { type: 'tabs', defaultCollapsed: false },
+          wallets: { applePay: 'auto', googlePay: 'auto' },
+        });
+        pe.on('ready', () => { if (alive) setPhase('ready'); });
+        pe.mount(containerRef.current);
+        ctx.current.stripe = stripe;
+        ctx.current.elements = elements;
+        ctx.current.paymentElement = pe;
+      } catch (e) {
+        if (alive) { setErrMsg('Something went wrong setting up payment. Please try again.'); setPhase('error'); }
+      }
+    })();
+
+    return () => {
+      alive = false;
+      try { if (ctx.current.paymentElement) ctx.current.paymentElement.destroy(); } catch (e) {}
+    };
+  }, []);
+
+  const pay = async () => {
+    const { stripe, elements, giftId } = ctx.current;
+    if (!stripe || !elements) return;
+    setErrMsg('');
+    setPhase('paying');
+    const returnUrl = `${window.location.origin}/gift/${therapist.custom_url}?gift_return=1&gift_id=${giftId}`;
+    const { error, paymentIntent } = await stripe.confirmPayment({
+      elements,
+      confirmParams: { return_url: returnUrl },
+      redirect: 'if_required',
+    });
+    if (error) {
+      setErrMsg(error.message || 'Payment failed. Please try again.');
+      setPhase('ready');
+      return;
+    }
+    if (paymentIntent && (paymentIntent.status === 'succeeded' || paymentIntent.status === 'processing')) {
+      try {
+        await supabase.functions.invoke('confirm-gift-payment', {
+          body: { gift_id: giftId, payment_intent_id: paymentIntent.id },
+        });
+      } catch (e) { /* the gift is paid; emails are best-effort and idempotent */ }
+      onPaid(ctx.current.code);
+      return;
+    }
+    setErrMsg('Payment did not complete. Please try again.');
+    setPhase('ready');
+  };
+
+  const backBtn = (
+    <button
+      type="button"
+      onClick={onBack}
+      style={{
+        background: C.white, border: `1.5px solid ${C.lineFaint}`,
+        color: C.ink, padding: '12px 20px', borderRadius: 10,
+        fontFamily: C.sans, fontSize: 13, fontWeight: 600, cursor: 'pointer',
+      }}
+    >
+      ← Back
+    </button>
+  );
+
+  if (phase === 'unavailable') {
+    return (
+      <div style={{ background: C.white, border: `1px solid ${C.lineFaint}`, borderRadius: 16, padding: 24, textAlign: 'center' }}>
+        <h3 style={{ fontFamily: C.serif, fontSize: 20, fontWeight: 700, color: C.forest, margin: '0 0 8px' }}>
+          Online gifts are not on yet
+        </h3>
+        <p style={{ fontFamily: C.sans, fontSize: 14, color: C.inkSoft, lineHeight: 1.55, margin: '0 auto 18px', maxWidth: 360 }}>
+          {therapist.business_name || 'This therapist'} has not enabled online gift cards yet. Please check back soon.
+        </p>
+        {backBtn}
+      </div>
+    );
+  }
+
+  if (phase === 'error') {
+    return (
+      <div style={{ background: C.white, border: `1px solid ${C.lineFaint}`, borderRadius: 16, padding: 24, textAlign: 'center' }}>
+        <p style={{ fontFamily: C.sans, fontSize: 14, color: C.ink, lineHeight: 1.55, margin: '0 auto 18px', maxWidth: 360 }}>
+          {errMsg}
+        </p>
+        {backBtn}
+      </div>
+    );
+  }
+
   return (
-    <div style={{
-      background: C.cream, border: `1.5px dashed ${C.gold}`,
-      borderRadius: 14, padding: 24, textAlign: 'center',
-    }}>
-      <div style={{
-        fontFamily: C.sans, fontSize: 11, fontWeight: 700,
-        color: C.goldBg ? '#92660E' : C.gold, letterSpacing: '1.4px',
-        textTransform: 'uppercase', marginBottom: 12,
-      }}>
-        🚧 Preview mode
-      </div>
-      <h3 style={{
-        fontFamily: C.serif, fontSize: 22, fontWeight: 700,
-        color: C.forest, margin: '0 0 8px',
-      }}>
-        Stripe payment goes here
+    <div style={{ background: C.white, border: `1px solid ${C.lineFaint}`, borderRadius: 16, padding: 22 }}>
+      <h3 style={{ fontFamily: C.serif, fontSize: 20, fontWeight: 700, color: C.forest, margin: '0 0 4px' }}>
+        Complete your gift
       </h3>
-      <p style={{
-        fontFamily: C.sans, fontSize: 13, color: C.inkSoft,
-        lineHeight: 1.55, margin: '0 auto 18px', maxWidth: 360,
-      }}>
-        Tomorrow this connects to Stripe Connect Express. The
-        purchaser will pay <strong style={{ color: C.forest }}>${amount}</strong>,
-        the therapist receives it directly, and on success the
-        three emails fire. For now you can preview the success
-        screen below.
+      <p style={{ fontFamily: C.sans, fontSize: 13, color: C.inkSoft, margin: '0 0 16px' }}>
+        You are sending a <strong style={{ color: C.forest }}>${amount}</strong> gift. Payment goes directly to {therapist.business_name || 'the therapist'}.
       </p>
-      <div style={{ display: 'flex', gap: 10, justifyContent: 'center' }}>
+
+      <div ref={containerRef} style={{ minHeight: 60, marginBottom: 16 }} />
+
+      {phase === 'init' && (
+        <p style={{ fontFamily: C.sans, fontSize: 13, color: C.inkMute, textAlign: 'center', padding: '8px 0' }}>
+          Loading secure payment...
+        </p>
+      )}
+
+      {errMsg && (
+        <div style={{ background: '#FEF2F2', border: '1px solid #FCA5A5', color: '#B91C1C', borderRadius: 10, padding: '10px 12px', fontFamily: C.sans, fontSize: 13, marginBottom: 14 }}>
+          {errMsg}
+        </div>
+      )}
+
+      <div style={{ display: 'flex', gap: 10 }}>
+        {backBtn}
         <button
           type="button"
-          onClick={onBack}
+          onClick={pay}
+          disabled={phase !== 'ready'}
           style={{
-            background: C.white, border: `1.5px solid ${C.lineFaint}`,
-            color: C.ink, padding: '12px 20px', borderRadius: 10,
-            fontFamily: C.sans, fontSize: 13, fontWeight: 600,
-            cursor: 'pointer',
+            flex: 1,
+            background: phase === 'ready' ? C.forestSoft : C.lineFaint,
+            color: phase === 'ready' ? C.white : C.inkMute,
+            border: 'none', borderRadius: 10, padding: '13px 22px',
+            fontFamily: C.sans, fontSize: 14, fontWeight: 700,
+            cursor: phase === 'ready' ? 'pointer' : 'not-allowed',
           }}
         >
-          ← Back
-        </button>
-        <button
-          type="button"
-          onClick={onPretendPay}
-          style={{
-            background: C.forestSoft, color: C.white, border: 'none',
-            padding: '12px 22px', borderRadius: 10,
-            fontFamily: C.sans, fontSize: 13, fontWeight: 600,
-            cursor: 'pointer',
-          }}
-        >
-          Preview success screen →
+          {phase === 'paying' ? 'Processing...' : `Pay $${amount} & send gift`}
         </button>
       </div>
+
+      <p style={{ textAlign: 'center', marginTop: 12, fontFamily: C.sans, fontSize: 11, color: C.inkMute }}>
+        Secure payment by Stripe.
+      </p>
     </div>
   );
 }
 
-function SuccessScreen({ form, amount, designKey, themeKey, therapist }) {
-  const mockCode = 'XXXX-XXXX-XXXX';
+function SuccessScreen({ form, amount, designKey, themeKey, therapist, code }) {
+  const giftCode = code || '';
   const recipientFirst = form.recipientName?.split(' ')[0] || 'them';
   const theme = getTheme(themeKey);
 
@@ -579,32 +737,34 @@ function SuccessScreen({ form, amount, designKey, themeKey, therapist }) {
           recipient: form.recipientName,
           purchaser: form.purchaserName,
           message: form.message,
-          code: mockCode,
+          code: giftCode,
           businessName: therapist?.business_name,
           compact: true,
         })}
       </div>
 
-      <div style={{
-        background: C.white, border: `1.5px dashed ${C.gold}`,
-        borderRadius: 12, padding: 14, marginBottom: 24,
-        fontFamily: C.sans, fontSize: 12, color: C.inkSoft,
-        textAlign: 'left',
-      }}>
+      {giftCode && (
         <div style={{
-          fontWeight: 700, color: '#92660E', marginBottom: 6,
-          textTransform: 'uppercase', letterSpacing: '1px', fontSize: 10,
+          background: C.white, border: `1.5px solid ${C.lineFaint}`,
+          borderRadius: 12, padding: 14, marginBottom: 24,
+          fontFamily: C.sans, fontSize: 13, color: C.inkSoft,
+          textAlign: 'center',
         }}>
-          🚧 Preview note
+          <div style={{
+            fontWeight: 700, color: C.forest, marginBottom: 6,
+            textTransform: 'uppercase', letterSpacing: '1px', fontSize: 10,
+          }}>
+            Gift code
+          </div>
+          <code style={{
+            background: C.cream, padding: '4px 10px', borderRadius: 6,
+            fontFamily: 'monospace', fontSize: 15, color: C.ink, letterSpacing: '1px',
+          }}>{giftCode}</code>
+          <div style={{ marginTop: 8, fontSize: 12, color: C.inkMute }}>
+            {recipientFirst} redeems this when they book.
+          </div>
         </div>
-        In production, the code above will be a real one (like
-        <code style={{
-          background: C.cream, padding: '1px 6px', borderRadius: 4,
-          margin: '0 4px', fontFamily: 'monospace',
-        }}>A8K3-9MFP-2X7Q</code>), and three emails will fire
-        automatically: one to the recipient, one to you, one to
-        the therapist.
-      </div>
+      )}
 
       <button
         type="button"
@@ -631,6 +791,7 @@ export default function GiftLandingPage() {
   const [error, setError] = useState(null);
 
   const [step, setStep] = useState('compose');  // 'compose' | 'checkout' | 'success'
+  const [paidCode, setPaidCode] = useState(null);
 
   const [amount, setAmount] = useState(100);
   const [designKey, setDesignKey] = useState('just-because');
@@ -669,6 +830,29 @@ export default function GiftLandingPage() {
       }
     })();
     return () => { alive = false; };
+  }, [customUrl]);
+
+  // Resume after a redirect-based payment method (Klarna, certain bank
+  // flows). Stripe returns the buyer to the gift page with gift_return=1,
+  // gift_id, and payment_intent appended. Verify and show success.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('gift_return') !== '1') return;
+    const giftId = params.get('gift_id');
+    const piId = params.get('payment_intent');
+    if (!giftId) return;
+    (async () => {
+      try {
+        const { data } = await supabase.functions.invoke('confirm-gift-payment', {
+          body: { gift_id: giftId, payment_intent_id: piId },
+        });
+        if (data && data.ok) {
+          setPaidCode(data.code || null);
+          setStep('success');
+        }
+      } catch (e) { /* leave on compose so the buyer can retry */ }
+      window.history.replaceState({}, '', `/gift/${customUrl}`);
+    })();
   }, [customUrl]);
 
   const canProceed = useMemo(() => {
@@ -728,19 +912,8 @@ export default function GiftLandingPage() {
       paddingTop: 32, paddingBottom: 80,
       fontFamily: C.sans, color: C.ink,
     }}>
-      {/* Preview-mode banner */}
       <div style={{
-        background: '#FFF8E1', borderBottom: `1.5px solid ${C.gold}`,
-        padding: '10px 16px', textAlign: 'center',
-        position: 'fixed', top: 0, left: 0, right: 0, zIndex: 100,
-        fontFamily: C.sans, fontSize: 12, color: '#92660E',
-        fontWeight: 600,
-      }}>
-        🚧 Preview mode, no real payments are processed. Tomorrow we wire up Stripe.
-      </div>
-
-      <div style={{
-        maxWidth: 540, margin: '0 auto', padding: '60px 18px 0',
+        maxWidth: 540, margin: '0 auto', padding: '8px 18px 0',
       }}>
         <Hero therapist={therapist} />
 
@@ -811,10 +984,14 @@ export default function GiftLandingPage() {
         )}
 
         {step === 'checkout' && (
-          <MockCheckout
+          <GiftCheckout
+            therapist={therapist}
             amount={amount}
+            designKey={designKey}
+            themeKey={themeKey}
+            form={form}
             onBack={() => setStep('compose')}
-            onPretendPay={() => setStep('success')}
+            onPaid={(code) => { setPaidCode(code); setStep('success'); }}
           />
         )}
 
@@ -825,8 +1002,20 @@ export default function GiftLandingPage() {
             designKey={designKey}
             themeKey={themeKey}
             therapist={therapist}
+            code={paidCode}
           />
         )}
+
+        <div style={{
+          textAlign: 'center', marginTop: 28, paddingTop: 18,
+          borderTop: `1px solid ${C.lineFaint}`,
+          fontFamily: C.sans, fontSize: 12, color: C.inkMute,
+        }}>
+          Powered by MyBodyMap. Are you a massage therapist?{' '}
+          <a href="https://mybodymap.app" style={{ color: C.forest, fontWeight: 600, textDecoration: 'none' }}>
+            Sell your own gift cards, free
+          </a>.
+        </div>
       </div>
     </div>
   );
