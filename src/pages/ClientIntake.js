@@ -2,7 +2,7 @@
 // Custom URL page - loads therapist, shows MyBodyMap, saves to Supabase
 
 import BMLogo from '../components/BMLogo';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { db, supabase } from '../lib/supabase';
 import Demo from './Demo';
@@ -25,6 +25,8 @@ export default function ClientIntake() {
   const [therapist, setTherapist] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [submitError, setSubmitError] = useState(null);
+  const lastIntakeRef = useRef(null);
 
   useEffect(() => {
     loadTherapist();
@@ -69,59 +71,13 @@ export default function ClientIntake() {
   };
 
   const handleSubmit = async (intakeData) => {
+    setSubmitError(null);
+    lastIntakeRef.current = intakeData;
     try {
-      // Step 1: Create or get client
-      const client = await db.upsertClient(therapist.id, {
-        name: intakeData.clientName,
-        phone: intakeData.clientPhone,
-        email: intakeData.clientEmail || null
-      });
-
-      // Update SMS consent if the client opted in on this intake.
-      // Only ever flip sms_opted_in to TRUE, never overwrite a previous TRUE
-      // with FALSE if they left it unchecked this time. Opt-out must go
-      // through STOP on SMS itself (handled by Twilio).
-      if (intakeData.smsOptIn && client?.id) {
-        try {
-          await supabase.from('clients')
-            .update({ sms_opted_in: true, sms_opted_in_at: new Date().toISOString() })
-            .eq('id', client.id);
-        } catch (e) { /* non-blocking */ }
-      }
-
-      // Step 2: Resolve booking_id, use URL param if present, otherwise find
-      // the client's next upcoming booking for this therapist. This ensures
-      // sessions ALWAYS have booking_id set, so the schedule only needs one
-      // condition to determine intake status (no email fallback needed).
-      let resolvedBookingId = bookingIdFromUrl || null;
-      if (!resolvedBookingId && intakeData.clientEmail) {
-        const today = new Date().toISOString().split('T')[0];
-        let nextId = null, fnOk = false;
-        try {
-          const res = await supabase.functions.invoke('booking-lookup', { body: { op: 'nextBooking', therapistId: therapist.id, email: intakeData.clientEmail } });
-          if (res?.data?.ok) { fnOk = true; nextId = res.data.bookingId; }
-        } catch (_e) { /* fall through */ }
-        if (!fnOk) {
-          const { data: nextBooking } = await supabase
-            .from('bookings')
-            .select('id')
-            .eq('therapist_id', therapist.id)
-            .eq('client_email', intakeData.clientEmail.toLowerCase().trim())
-            .neq('status', 'cancelled')
-            .gte('booking_date', today)
-            .order('booking_date', { ascending: true })
-            .limit(1)
-            .maybeSingle();
-          nextId = nextBooking?.id || null;
-        }
-        if (nextId) resolvedBookingId = nextId;
-      }
-
-      // Step 3: Create session with resolved booking_id
-      const newSession = await db.createSession({
-        therapist_id: therapist.id,
-        client_id: client.id,
-        booking_id: resolvedBookingId,
+      // Body map + preferences payload. therapist_id, client_id, and
+      // booking_id are attached server-side by the submit-intake
+      // function so the browser cannot spoof them.
+      const sessionPayload = {
         front_focus: intakeData.frontFocus || [],
         front_avoid: intakeData.frontAvoid || [],
         back_focus: intakeData.backFocus || [],
@@ -138,25 +94,42 @@ export default function ClientIntake() {
         med_flag: intakeData.medFlag || 'none',
         med_note: intakeData.medNote || null,
         client_notes: intakeData.notes || null,
-        // Custom schema additions: medical conditions checklist (text[])
-        // and custom_intake_answers (jsonb keyed by field id). Both nullable.
-        // The columns were added in supabase/migrations/intake_schema.sql.
         medical_conditions: Array.isArray(intakeData.medicalConditions) ? intakeData.medicalConditions : null,
         custom_intake_answers: intakeData.customAnswers && Object.keys(intakeData.customAnswers).length > 0
           ? intakeData.customAnswers
           : null,
-        // Focus distribution (Lindsey #4 follow-up, May 10 2026).
-        // Nullable: client may not have reached the back-body screen
-        // (e.g. on an existing-client returning-flow), or may have
-        // not opted to set distribution. NULL means therapist sees
-        // no distribution constraint; the BodySVG heatmap is still
-        // available as a fallback signal.
         front_pct:  intakeData.frontPct   ?? null,
         top_pct:    intakeData.topPct     ?? null,
         middle_pct: intakeData.middlePct  ?? null,
         bottom_pct: intakeData.bottomPct  ?? null,
-        completed: false
+        completed: false,
+      };
+
+      // All intake writes go through a service-role edge function.
+      // The public anon role cannot read the clients table (privacy),
+      // so an in-browser insert().select() would be denied. This keeps
+      // the save working for anonymous clients and logged-in users
+      // alike, without widening anon privileges.
+      const { data: res, error: fnErr } = await supabase.functions.invoke('submit-intake', {
+        body: {
+          therapist_id: therapist.id,
+          client: {
+            name: intakeData.clientName,
+            phone: intakeData.clientPhone,
+            email: intakeData.clientEmail || null,
+          },
+          sms_opt_in: !!intakeData.smsOptIn,
+          booking_id_from_url: bookingIdFromUrl || null,
+          session: sessionPayload,
+        },
       });
+      if (fnErr || !res || res.error || !res.ok) {
+        throw new Error(res?.error || fnErr?.message || 'intake_save_failed');
+      }
+
+      const client = { id: res.client_id };
+      const newSession = { id: res.session_id };
+      const resolvedBookingId = res.booking_id || bookingIdFromUrl || null;
 
       // Step 4: Record waiver signature if therapist has waiver enabled.
       // This is non-blocking, a signature failure should never prevent intake submission.
@@ -253,7 +226,7 @@ export default function ClientIntake() {
       });
     } catch (err) {
       console.error('Error saving intake:', err);
-      alert('There was an error saving your preferences. Please try again.');
+      setSubmitError('There was an error sending your intake. Please try again.');
     }
   };
 
@@ -413,6 +386,7 @@ export default function ClientIntake() {
   };
 
   return (
+    <>
     <Demo 
       therapist={therapist}
       therapistName={therapist.full_name || therapist.business_name}
@@ -443,5 +417,46 @@ export default function ClientIntake() {
       onSubmit={handleSubmit}
       getLastSession={getLastSession}
     />
+    {submitError && (
+      <div style={{
+        position: 'fixed', left: 12, right: 12, bottom: 'calc(env(safe-area-inset-bottom, 0px) + 12px)',
+        zIndex: 1000, maxWidth: 520, margin: '0 auto',
+        background: '#FFFFFF', border: '1.5px solid #B7D1AB', borderRadius: 14,
+        boxShadow: '0 8px 30px rgba(31,42,36,0.18)', padding: 16,
+        fontFamily: 'system-ui, sans-serif',
+      }}>
+        <div style={{ fontSize: 15, fontWeight: 700, color: '#2A5741', marginBottom: 4 }}>
+          One quick step left
+        </div>
+        <div style={{ fontSize: 13.5, color: '#4b5563', lineHeight: 1.5, marginBottom: 12 }}>
+          {submitError} Your answers are still here, nothing was lost.
+        </div>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button
+            type="button"
+            onClick={() => { if (lastIntakeRef.current) handleSubmit(lastIntakeRef.current); }}
+            style={{
+              flex: 1, background: '#2A5741', color: '#fff', border: 'none',
+              borderRadius: 10, padding: '12px 16px', fontSize: 14, fontWeight: 700,
+              cursor: 'pointer',
+            }}
+          >
+            Try again
+          </button>
+          <button
+            type="button"
+            onClick={() => setSubmitError(null)}
+            style={{
+              background: '#fff', color: '#6b7280', border: '1.5px solid #E5E7EB',
+              borderRadius: 10, padding: '12px 16px', fontSize: 14, fontWeight: 600,
+              cursor: 'pointer',
+            }}
+          >
+            Dismiss
+          </button>
+        </div>
+      </div>
+    )}
+    </>
   );
 }
