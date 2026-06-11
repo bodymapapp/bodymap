@@ -2650,6 +2650,8 @@ const PrefScreen = ({
   setSelectedConditions = () => {},
   customAnswers = {},
   setCustomAnswers = () => {},
+  bodyMap = {},
+  therapist = null,
 }) => {
   const [showWaiver, setShowWaiver] = useState(false);
   const upd = (k, v) => setPrefs((p) => ({ ...p, [k]: v }));
@@ -2887,6 +2889,45 @@ const PrefScreen = ({
           </div>
         </div>
       )}
+      {therapist?.id === '2a2886c3-00f2-4c6f-aaec-4b8150c61fcf' && (() => {
+        const focusRegions = ALL_REGIONS.filter((r) => bodyMap[r.id] === "focus");
+        const avoidRegions = ALL_REGIONS.filter((r) => bodyMap[r.id] === "avoid");
+        const baseLabel = (r) => r.label.replace(/^[LR]\.\s*/, "");
+        const uniq = (arr) => Array.from(new Set(arr));
+        const focusLabels = uniq(focusRegions.map(baseLabel));
+        const avoidLabels = uniq(avoidRegions.map(baseLabel));
+        const pressureTxt = PLABELS[prefs.pressure] || "";
+        const goalTxt = GOAL_LABELS[prefs.goal] || "";
+        return (
+          <Card style={{ marginTop: 8 }}>
+            <p style={{ fontFamily: F.display, fontSize: 17, fontWeight: 700, color: C.green, marginBottom: 2 }}>
+              Does this look right?
+            </p>
+            <p style={{ fontFamily: F.body, fontSize: 12, color: C.textLight, marginBottom: 12 }}>
+              This is what {therapistName || "your therapist"} will see. A quick look catches a wrong tap before you send.
+            </p>
+            <div style={{ display: "flex", gap: 8, justifyContent: "center", marginBottom: 8 }}>
+              <Mini regions={FRONT_REGIONS} selections={bodyMap} label="Front" />
+              <Mini regions={BACK_REGIONS} selections={bodyMap} label="Back" />
+            </div>
+            {focusLabels.length > 0 && (
+              <p style={{ fontFamily: F.body, fontSize: 13, color: C.textMid, margin: "5px 0" }}>
+                <strong style={{ color: C.green }}>Focus:</strong> {focusLabels.join(", ")}
+              </p>
+            )}
+            {(pressureTxt || goalTxt) && (
+              <p style={{ fontFamily: F.body, fontSize: 13, color: C.textMid, margin: "5px 0" }}>
+                <strong style={{ color: C.green }}>Pressure and goal:</strong> {[pressureTxt, goalTxt].filter(Boolean).join(", ")}
+              </p>
+            )}
+            {avoidLabels.length > 0 && (
+              <p style={{ fontFamily: F.body, fontSize: 13, color: C.textMid, margin: "5px 0" }}>
+                <strong style={{ color: C.avoid }}>Please avoid:</strong> {avoidLabels.join(", ")}
+              </p>
+            )}
+          </Card>
+        );
+      })()}
       <div style={{ display: "flex", gap: 10, marginTop: 6 }}>
         <Btn ghost onClick={onBack}>
           ← Back
@@ -5074,6 +5115,8 @@ export default function BodyMapApp({ therapist = null, therapistName = "Your The
           setSelectedConditions={setSelectedConditions}
           customAnswers={customAnswers}
           setCustomAnswers={setCustomAnswers}
+          bodyMap={bodyMap}
+          therapist={therapist}
         />
       </div>
     ),
