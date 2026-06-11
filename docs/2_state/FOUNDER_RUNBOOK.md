@@ -1821,3 +1821,7 @@ Jun 1 2026: founder-outreach broadcast to 62 therapists failed all 62 sends. `pr
 **End of runbook.**
 
 This document is the operational core of MyBodyMap. Update it at the end of any session that introduces meaningful new context, decisions, vendors, or risks. If you are reading this because HK is unavailable: take a breath, read it slowly, ask questions in writing rather than assuming, and remember that the platform is intentionally simple. Most "broken" reports are actually configuration questions answered in this runbook.
+
+## Test accounts (Jun 11 2026)
+- bodymap0n@gmail.com is a VALID test inbox HK monitors for notification testing. It is NOT a bad-email test. Do not treat it as undeliverable.
+- bodymap01@gmail.com and bodymapdemo@gmail.com (Joy therapist) are the other monitored test inboxes.
