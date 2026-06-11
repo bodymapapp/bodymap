@@ -20,9 +20,9 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { notifyTherapist } from "../_shared/notifications.ts";
 import { buildIntakeSummary, summaryRowsHtml, mapBlockHtml, detailsLineHtml } from "../_shared/intakeSummary.ts";
 
-// Test cohort for the rich intake emails. Joy therapist only for now.
-// Flip to all customers by replacing the check with `true`.
-const RICH_EMAIL_THERAPISTS = ['2a2886c3-00f2-4c6f-aaec-4b8150c61fcf'];
+// Rich intake summary email is on for all customers. The therapist
+// email stays prefs-gated by their "intake_filled" setting via
+// notifyTherapist below.
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -93,7 +93,7 @@ serve(async (req) => {
       session = s || null;
     }
 
-    const useRich = RICH_EMAIL_THERAPISTS.includes(therapist_id) && !!session;
+    const useRich = !!session;
 
     let html: string;
     if (useRich) {

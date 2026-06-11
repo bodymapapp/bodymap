@@ -2891,7 +2891,7 @@ const PrefScreen = ({
           </div>
         </div>
       )}
-      {therapist?.id === '2a2886c3-00f2-4c6f-aaec-4b8150c61fcf' && (() => {
+      {therapist?.id && (() => {
         const focusRegions = ALL_REGIONS.filter((r) => bodyMap[r.id] === "focus");
         const avoidRegions = ALL_REGIONS.filter((r) => bodyMap[r.id] === "avoid");
         const baseLabel = (r) => r.label.replace(/^[LR]\.\s*/, "");
