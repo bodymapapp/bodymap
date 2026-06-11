@@ -130,7 +130,7 @@ serve(async (req) => {
         admin.from("clients").select("name").ilike("email", em).limit(5),
         admin.from("bookings")
           .select("id, booking_date, start_time, status, service_name, service_id, therapist_id, practice_agreement_signed_at, services(name)")
-          .ilike("client_email", em).neq("status", "cancelled")
+          .eq("therapist_id", therapistId).ilike("client_email", em).neq("status", "cancelled")
           .order("booking_date", { ascending: true }).limit(200),
       ]);
 
@@ -178,33 +178,44 @@ serve(async (req) => {
     if (op === "profile") {
       if (!token || String(token).length < 20) return json({ ok: false }, 401);
       const { data: row } = await admin.from("client_portal_tokens")
-        .select("email, expires_at").eq("token", token).maybeSingle();
+        .select("*").eq("token", token).maybeSingle();
       if (!row || new Date(row.expires_at).getTime() < Date.now()) return json({ ok: false }, 401);
       admin.from("client_portal_tokens").update({ last_used_at: new Date().toISOString() }).eq("token", token).then(() => {});
       const em = norm(row.email);
+      const tokenTherapistId = row.therapist_id || null;
 
       // A magic link is keyed to an email; in the common case that maps to
       // one client row. If several therapists have this person, take the
       // most recently updated row (multi-therapist switching is later).
+      // Duplicate rows for the same email under one therapist (a known
+      // data situation we are not deleting) are aggregated below so the
+      // body map and history reflect every session, not just one row.
       const { data: clientRows } = await admin.from("clients")
-        .select("*").ilike("email", em).order("updated_at", { ascending: false }).limit(5);
-      const client = (clientRows || [])[0];
-      if (!client) return json({ ok: true, empty: true });
+        .select("*").ilike("email", em).order("updated_at", { ascending: false }).limit(50);
+      if (!clientRows || clientRows.length === 0) return json({ ok: true, empty: true });
+      // Therapist-scoped token: land on that therapist's row. Email-only
+      // token (self-requested): most recently updated row.
+      const client = tokenTherapistId
+        ? (clientRows.find((r: any) => r.therapist_id === tokenTherapistId) || clientRows[0])
+        : clientRows[0];
       const therapistId = client.therapist_id;
+      const clientIds = clientRows
+        .filter((r: any) => r.therapist_id === therapistId)
+        .map((r: any) => r.id);
 
       const [{ data: sessions }, { data: bookings }, { data: pkgs }, { data: subs }, { data: ther }] = await Promise.all([
         admin.from("sessions")
           .select("id, client_id, completed, completed_at, created_at, front_focus, back_focus, front_avoid, back_avoid, front_focus_therapist, back_focus_therapist, pressure, goal, table_temp, room_temp, music, lighting, conversation, draping, oil_pref, medical_conditions")
-          .eq("therapist_id", therapistId).eq("client_id", client.id).order("created_at", { ascending: false }),
+          .eq("therapist_id", therapistId).in("client_id", clientIds).order("created_at", { ascending: false }),
         admin.from("bookings")
           .select("id, client_id, client_email, client_phone, booking_date, start_time, end_time, status, service_name, service:services(name, price, duration)")
           .ilike("client_email", em).neq("status", "cancelled").order("booking_date", { ascending: false }).limit(200),
         admin.from("package_purchases")
           .select("id, client_id, sessions_remaining, sessions_purchased, price_paid, status, expires_at, purchased_at, package:packages(name)")
-          .eq("therapist_id", therapistId).eq("client_id", client.id).order("purchased_at", { ascending: false }),
+          .eq("therapist_id", therapistId).in("client_id", clientIds).order("purchased_at", { ascending: false }),
         admin.from("member_subscriptions")
           .select("id, client_id, status, current_period_start, current_period_end, monthly_price, monthly_session_credits, current_credits, started_at, membership:memberships(name, monthly_session_credits)")
-          .eq("therapist_id", therapistId).eq("client_id", client.id).order("started_at", { ascending: false }),
+          .eq("therapist_id", therapistId).in("client_id", clientIds).order("started_at", { ascending: false }),
         admin.from("therapists").select("id, business_name, full_name, custom_url").eq("id", therapistId).maybeSingle(),
       ]);
 

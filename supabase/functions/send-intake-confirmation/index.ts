@@ -92,7 +92,7 @@ serve(async (req) => {
     // Magic link into the client's own My visits page (upcoming appointment,
     // past sessions, their forms). Falls back to the booking page if a token
     // cannot be minted, so the button is never broken.
-    const portalLink = (await portalLinkForEmail(supabase, (client as any).email)) || cta;
+    const portalLink = (await portalLinkForEmail(supabase, (client as any).email, therapist_id)) || cta;
 
     const html = `<!DOCTYPE html><html><body style="margin:0;background:#F0EEE6;font-family:-apple-system,Segoe UI,Roboto,sans-serif;">
       <div style="max-width:520px;margin:0 auto;padding:28px 22px;">
