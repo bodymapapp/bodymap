@@ -153,13 +153,15 @@ export default function MyVisits() {
   }
   return (
     <div style={{ minHeight: '100vh', background: C.cream }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', maxWidth: 1040, margin: '0 auto', padding: '14px 16px 0' }}>
-        <span style={{ fontFamily: F.serif, fontSize: 16, fontWeight: 600, color: C.forest }}>
-          {therapistData?.name || 'MyBodyMap'}
-        </span>
-        <button onClick={signOut} style={{ fontSize: 13, color: C.muted, background: 'none', border: 'none', textDecoration: 'underline', cursor: 'pointer', fontFamily: F.sans }}>Sign out</button>
+      <div style={{ maxWidth: 720, margin: '0 auto' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 16px 0' }}>
+          <span style={{ fontFamily: F.serif, fontSize: 16, fontWeight: 600, color: C.forest }}>
+            {therapistData?.name || 'MyBodyMap'}
+          </span>
+          <button onClick={signOut} style={{ fontSize: 13, color: C.muted, background: 'none', border: 'none', textDecoration: 'underline', cursor: 'pointer', fontFamily: F.sans }}>Sign out</button>
+        </div>
+        <ClientProfile previewProfile={profileData} therapist={therapistData} clientView />
       </div>
-      <ClientProfile previewProfile={profileData} therapist={therapistData} clientView />
     </div>
   );
 }

@@ -47,7 +47,9 @@ export default function ClientProfile({ client, therapistId, therapist, onBack, 
   // Open/closed state for each section. All sections default to open
   // so the page is fully informative on first visit; the therapist
   // can collapse what they don't need.
-  const [openSections, setOpenSections] = useState({
+  const [openSections, setOpenSections] = useState(() => clientView
+    ? { about: false, visits: false, soap: false, patterns: true, preferences: false, medical: false, membership: false, agreement: false, documents: false, timeline: false }
+    : {
     about: false,
     soap: true,
     patterns: true,
@@ -282,7 +284,8 @@ export default function ClientProfile({ client, therapistId, therapist, onBack, 
 
           {/* Collapse all / Expand all. Right-aligned, quiet, so a
               therapist can flatten the whole profile to scan headers
-              or open it all back up in one tap. */}
+              or open it all back up in one tap. Therapist-only. */}
+          {!clientView && (
           <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 10 }}>
             <button
               type="button"
@@ -302,6 +305,7 @@ export default function ClientProfile({ client, therapistId, therapist, onBack, 
               {anySectionOpen ? 'Collapse all' : 'Expand all'}
             </button>
           </div>
+          )}
 
           {/* Client info: inline tap-to-edit fields wrapped in the
               same collapsible ProfileSection chrome the rest of the
@@ -351,7 +355,7 @@ export default function ClientProfile({ client, therapistId, therapist, onBack, 
             return (
               <ProfileSection accent="visits" order={0} title="Your visits"
                 trailingLabel={up.length ? `${up.length} upcoming` : 'Past visits'}
-                isOpen={openSections.visits !== false} onToggle={() => toggle('visits')}>
+                isOpen={!!openSections.visits} onToggle={() => toggle('visits')}>
                 {(up.length === 0 && pastV.length === 0)
                   ? <p style={{ fontSize: 14, color: '#6B7F72', margin: '6px 0' }}>No visits yet.</p>
                   : (<>
