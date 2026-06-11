@@ -2,12 +2,16 @@
 import React, { useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import BMLogo from "./BMLogo";
+import { useAuth } from "../contexts/AuthContext";
+import { FOUNDER_EMAILS } from "./FounderRoute";
 
 const C = { sage: "#6B9E80", forest: "#2A5741", gray: "#6B7280", gold: "#C9A84C", white: "#FFFFFF" };
 
 export default function Nav() {
   const location = useLocation();
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const isFounder = !!(user?.email && FOUNDER_EMAILS.includes(user.email.toLowerCase().trim()));
   const [menuOpen, setMenuOpen] = useState(false);
 
   const links = [
@@ -110,6 +114,9 @@ export default function Nav() {
                 )}
               </Link>
           )}
+          {isFounder && (
+            <Link to="/founder" onClick={() => setMenuOpen(false)} style={{ color: C.gold, textDecoration: "none", fontWeight: "700", fontSize: "15px" }}>Founder</Link>
+          )}
         </div>
 
         {/* Desktop auth */}
@@ -146,6 +153,9 @@ export default function Nav() {
                   }}>New</span>
                 )}
               </Link>
+          )}
+          {isFounder && (
+            <Link to="/founder" onClick={() => setMenuOpen(false)} style={{ color: C.gold, textDecoration: "none", fontWeight: "700", fontSize: "16px", padding: "14px 0", borderBottom: "1px solid #f3f4f6" }}>Founder</Link>
           )}
           <div style={{ display: "flex", gap: "12px", paddingTop: "16px" }}>
             <Link to="/login" onClick={() => setMenuOpen(false)} style={{ flex: 1, textAlign: "center", color: C.forest, textDecoration: "none", fontWeight: "600", fontSize: "15px", padding: "12px", border: `2px solid ${C.forest}`, borderRadius: "8px" }}>Log In</Link>
