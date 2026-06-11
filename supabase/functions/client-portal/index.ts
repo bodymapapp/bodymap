@@ -169,6 +169,100 @@ serve(async (req) => {
       return json({ ok: true, name, upcoming, past });
     }
 
+    // ---- full client profile (read-only portal) ----------------------
+    // Returns the same shape pieces the therapist client page builds
+    // (patterns, preferences, visits, memberships) but with every
+    // therapist-private field stripped: SOAP/therapist_notes, internal
+    // flags (do_not_rebook/dnr_reason), the private notes field, payment
+    // processor ids, and signature/mandate ip. Service role, own data only.
+    if (op === "profile") {
+      if (!token || String(token).length < 20) return json({ ok: false }, 401);
+      const { data: row } = await admin.from("client_portal_tokens")
+        .select("email, expires_at").eq("token", token).maybeSingle();
+      if (!row || new Date(row.expires_at).getTime() < Date.now()) return json({ ok: false }, 401);
+      admin.from("client_portal_tokens").update({ last_used_at: new Date().toISOString() }).eq("token", token).then(() => {});
+      const em = norm(row.email);
+
+      // A magic link is keyed to an email; in the common case that maps to
+      // one client row. If several therapists have this person, take the
+      // most recently updated row (multi-therapist switching is later).
+      const { data: clientRows } = await admin.from("clients")
+        .select("*").ilike("email", em).order("updated_at", { ascending: false }).limit(5);
+      const client = (clientRows || [])[0];
+      if (!client) return json({ ok: true, empty: true });
+      const therapistId = client.therapist_id;
+
+      const [{ data: sessions }, { data: bookings }, { data: pkgs }, { data: subs }, { data: ther }] = await Promise.all([
+        admin.from("sessions")
+          .select("id, completed, completed_at, created_at, front_focus, back_focus, front_avoid, back_avoid, front_focus_therapist, back_focus_therapist, pressure, goal, table_temp, room_temp, music, lighting, conversation, draping, oil_pref")
+          .eq("therapist_id", therapistId).eq("client_id", client.id).order("created_at", { ascending: false }),
+        admin.from("bookings")
+          .select("id, booking_date, start_time, status, service_name, services(name), practice_agreement_signed_at")
+          .ilike("client_email", em).neq("status", "cancelled").order("booking_date", { ascending: true }).limit(200),
+        admin.from("package_purchases")
+          .select("id, sessions_remaining, sessions_purchased, status, purchased_at, package:packages(name)")
+          .eq("therapist_id", therapistId).eq("client_id", client.id).order("purchased_at", { ascending: false }),
+        admin.from("member_subscriptions")
+          .select("id, status, monthly_price, current_credits, started_at, membership:memberships(name)")
+          .eq("therapist_id", therapistId).eq("client_id", client.id).order("started_at", { ascending: false }),
+        admin.from("therapists").select("business_name, full_name, custom_url").eq("id", therapistId).maybeSingle(),
+      ]);
+
+      const ss = sessions || [];
+      const topN = (field: string, n = 3) => {
+        const counts = new Map<string, number>();
+        for (const s of ss) {
+          const arr = Array.isArray((s as any)[field]) ? (s as any)[field] : [];
+          for (const z of arr) counts.set(z, (counts.get(z) || 0) + 1);
+        }
+        return [...counts.entries()].map(([id, count]) => ({ id, count })).sort((a, b) => b.count - a.count).slice(0, n);
+      };
+      const topFrontZones = topN("front_focus_therapist").length ? topN("front_focus_therapist") : topN("front_focus");
+      const topBackZones = topN("back_focus_therapist").length ? topN("back_focus_therapist") : topN("back_focus");
+      const topAvoidZones = [...topN("front_avoid", 2), ...topN("back_avoid", 2)].sort((a, b) => b.count - a.count).slice(0, 3);
+      const latest = ss.find((s: any) => s.completed);
+      const preferences = latest ? {
+        pressure: latest.pressure, goal: latest.goal, table_temp: latest.table_temp, room_temp: latest.room_temp,
+        music: latest.music, lighting: latest.lighting, conversation: latest.conversation, draping: latest.draping, oil_pref: latest.oil_pref,
+      } : null;
+
+      const today = todayISO();
+      const tName = ther?.business_name || ther?.full_name || "Your therapist";
+      const shapeBk = (b: any) => {
+        const when = fmtWhen(b.booking_date, b.start_time);
+        return { id: b.id, date: when.date, time: when.time, raw_date: b.booking_date, status: b.status,
+          service: b.service_name || b.services?.name || "Session", therapist_name: tName,
+          therapist_url: ther?.custom_url || null, needs_forms: !b.practice_agreement_signed_at };
+      };
+      const allBk = (bookings || []).map(shapeBk);
+      const upcoming = allBk.filter((b: any) => b.raw_date >= today);
+      const past = allBk.filter((b: any) => b.raw_date < today).reverse().slice(0, 12);
+
+      const c = client;
+      const safeClient = {
+        name: c.name, email: c.email, phone: c.phone, alt_phone: c.alt_phone,
+        birthday: c.birthday, gender: c.gender, referral_source: c.referral_source, customer_since: c.customer_since,
+        address_line1: c.address_line1, address_line2: c.address_line2, city: c.city, state: c.state, zip: c.zip, country: c.country,
+        allergies: c.allergies, health_conditions: c.health_conditions, medications: c.medications,
+        areas_to_avoid: c.areas_to_avoid, emergency_contact: c.emergency_contact,
+        total_sessions: c.total_sessions, loyalty_points: c.loyalty_points,
+        card_brand: c.card_brand, card_last4: c.card_last4,
+        agreement_signed_at: c.practice_agreement_signed_at,
+      };
+
+      return json({
+        ok: true,
+        client: safeClient,
+        therapist: { name: tName, url: ther?.custom_url || null },
+        visits: { upcoming, past },
+        patterns: { topFrontZones, topBackZones, topAvoidZones },
+        totalSessions: ss.length,
+        preferences,
+        memberships: (subs || []).map((m: any) => ({ name: m.membership?.name || "Membership", status: m.status, credits: m.current_credits, price: m.monthly_price })),
+        packages: (pkgs || []).map((p: any) => ({ name: p.package?.name || "Package", remaining: p.sessions_remaining, purchased: p.sessions_purchased, status: p.status, purchased_at: p.purchased_at })),
+      });
+    }
+
     return json({ ok: false, error: "unknown op" }, 400);
   } catch (err) {
     console.error("[client-portal] error:", err);
