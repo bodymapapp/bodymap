@@ -21,6 +21,46 @@ const C = {
 
 const TOKEN_KEY = 'mbm_portal_token';
 
+// These presentational components live at module scope on purpose. When a
+// component is defined inside another component, it becomes a brand-new
+// function on every render, so React unmounts and remounts its whole
+// subtree each time. For the email field that meant losing focus on every
+// keystroke, which dismissed the mobile keyboard. Module scope keeps their
+// identity stable so inputs keep focus.
+const Shell = ({ children }) => (
+  <div style={{ minHeight: '100vh', background: C.cream, fontFamily: 'Georgia, serif', color: C.ink }}>
+    <div style={{ maxWidth: 620, margin: '0 auto', padding: '28px 20px 60px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 28 }}>
+        <span style={{ fontSize: 26 }}>🌿</span>
+        <span style={{ fontSize: 22, fontWeight: 700, color: C.forest }}>MyBodyMap</span>
+      </div>
+      {children}
+    </div>
+  </div>
+);
+
+const bookUrl = (b) => (b.therapist_url ? `/book/${b.therapist_url}` : null);
+const manageUrl = (b) => (b.therapist_url ? `/book/${b.therapist_url}/manage?b=${b.id}` : null);
+
+const Btn = ({ href, children, solid }) => (
+  <a href={href} style={{
+    display: 'inline-block', textDecoration: 'none', fontSize: 16, fontWeight: 700,
+    color: solid ? '#fff' : C.forest, background: solid ? C.forest : '#fff',
+    border: `2px solid ${C.forest}`, borderRadius: 10, padding: '11px 18px', marginRight: 10, marginTop: 8,
+  }}>{children}</a>
+);
+
+const Card = ({ b, showManage }) => (
+  <div style={{ background: '#fff', border: `1px solid ${C.line}`, borderRadius: 14, padding: '18px 18px', marginBottom: 14 }}>
+    <div style={{ fontSize: 20, fontWeight: 700, marginBottom: 4 }}>{b.date}{b.time ? ` at ${b.time}` : ''}</div>
+    <div style={{ fontSize: 17, color: C.inkSoft }}>{b.service} with {b.therapist_name}</div>
+    <div>
+      {bookUrl(b) && <Btn href={bookUrl(b)} solid>Book again</Btn>}
+      {showManage && manageUrl(b) && <Btn href={manageUrl(b)}>Manage</Btn>}
+    </div>
+  </div>
+);
+
 export default function MyVisits() {
   const [token, setToken] = useState('');
   const [mode, setMode] = useState('loading'); // loading | email | sent | visits
@@ -76,18 +116,6 @@ export default function MyVisits() {
     setMode('email');
   };
 
-  const Shell = ({ children }) => (
-    <div style={{ minHeight: '100vh', background: C.cream, fontFamily: 'Georgia, serif', color: C.ink }}>
-      <div style={{ maxWidth: 620, margin: '0 auto', padding: '28px 20px 60px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 28 }}>
-          <span style={{ fontSize: 26 }}>🌿</span>
-          <span style={{ fontSize: 22, fontWeight: 700, color: C.forest }}>MyBodyMap</span>
-        </div>
-        {children}
-      </div>
-    </div>
-  );
-
   if (mode === 'loading') {
     return <Shell><p style={{ fontSize: 18, color: C.inkSoft }}>One moment, loading your visits.</p></Shell>;
   }
@@ -137,28 +165,7 @@ export default function MyVisits() {
 
   // mode === 'visits'
   const { name, upcoming = [], past = [] } = data || {};
-  const bookUrl = (b) => (b.therapist_url ? `/book/${b.therapist_url}` : null);
-  const manageUrl = (b) => (b.therapist_url ? `/book/${b.therapist_url}/manage?b=${b.id}` : null);
   const needForms = upcoming.filter((b) => b.needs_forms && b.therapist_url);
-
-  const Btn = ({ href, children, solid }) => (
-    <a href={href} style={{
-      display: 'inline-block', textDecoration: 'none', fontSize: 16, fontWeight: 700,
-      color: solid ? '#fff' : C.forest, background: solid ? C.forest : '#fff',
-      border: `2px solid ${C.forest}`, borderRadius: 10, padding: '11px 18px', marginRight: 10, marginTop: 8,
-    }}>{children}</a>
-  );
-
-  const Card = ({ b, showManage }) => (
-    <div style={{ background: '#fff', border: `1px solid ${C.line}`, borderRadius: 14, padding: '18px 18px', marginBottom: 14 }}>
-      <div style={{ fontSize: 20, fontWeight: 700, marginBottom: 4 }}>{b.date}{b.time ? ` at ${b.time}` : ''}</div>
-      <div style={{ fontSize: 17, color: C.inkSoft }}>{b.service} with {b.therapist_name}</div>
-      <div>
-        {bookUrl(b) && <Btn href={bookUrl(b)} solid>Book again</Btn>}
-        {showManage && manageUrl(b) && <Btn href={manageUrl(b)}>Manage</Btn>}
-      </div>
-    </div>
-  );
 
   return (
     <Shell>
