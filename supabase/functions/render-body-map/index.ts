@@ -91,7 +91,9 @@ serve(async (req) => {
   const cors = { 'Access-Control-Allow-Origin': '*' };
   try {
     const url = new URL(req.url);
-    const sessionId = url.searchParams.get('s') || url.searchParams.get('session');
+    const raw = url.searchParams.get('s') || url.searchParams.get('session') || '';
+    const match = raw.match(/[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}/);
+    const sessionId = match ? match[0] : null;
     if (!sessionId) return new Response('missing session', { status: 400, headers: cors });
 
     const SUPABASE_URL = Deno.env.get('SUPABASE_URL') || '';
