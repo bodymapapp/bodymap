@@ -66,6 +66,7 @@ import VerifyPhone from './pages/VerifyPhone';
 import Playbooks from './pages/Playbooks';
 import NotificationCompliance from './pages/founder/NotificationCompliance';
 import FounderMobilePreview from './pages/FounderMobilePreview';
+import FounderStocktake from './pages/FounderStocktake';
 
 posthog.init('phc_qmIcERdaYLksKAU1Sa4wYht7ngmk5wP5JKyCHrWiw1H', { api_host: 'https://us.i.posthog.com' });
 
@@ -97,6 +98,7 @@ function App() {
           <Route path="/founder/stripe-debug" element={<FounderRoute><StripeDebug /></FounderRoute>} />
           <Route path="/founder/notifications" element={<FounderRoute><NotificationCompliance /></FounderRoute>} />
           <Route path="/founder/mobile-preview" element={<FounderRoute><FounderMobilePreview /></FounderRoute>} />
+          <Route path="/founder/stocktake" element={<FounderRoute><FounderStocktake /></FounderRoute>} />
           <Route path="/help" element={<Help />} />
           <Route path="/campaigns" element={<Campaigns />} />
           <Route path="/comparison" element={<Comparison />} />

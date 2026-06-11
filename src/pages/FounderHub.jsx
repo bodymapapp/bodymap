@@ -303,6 +303,34 @@ export default function FounderHub() {
           padding: "32px 24px 80px",
         }}>
           <Header />
+          <Link
+            to="/founder/stocktake"
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: 12,
+              background: "#2E4636",
+              border: "1px solid #2E4636",
+              borderRadius: 12,
+              padding: "14px 18px",
+              marginBottom: 24,
+              textDecoration: "none",
+              color: "#fff",
+            }}
+          >
+            <div>
+              <div style={{ fontSize: 13, fontWeight: 700, letterSpacing: "0.02em", marginBottom: 2 }}>
+                Open the live Stock-take
+              </div>
+              <div style={{ fontSize: 12, color: "rgba(255,255,255,.85)", lineHeight: 1.5 }}>
+                Everything remaining by priority and by ribbon, plus the growth, money, and exit read. Headline numbers pulled live.
+              </div>
+            </div>
+            <span style={{ background: "rgba(255,255,255,.18)", color: "#fff", padding: "8px 14px", borderRadius: 18, fontSize: 12, fontWeight: 700, whiteSpace: "nowrap", flexShrink: 0 }}>
+              Open →
+            </span>
+          </Link>
           <div style={{
             display: "grid",
             gridTemplateColumns: "minmax(280px, 320px) 1fr",
