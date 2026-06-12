@@ -13,6 +13,7 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
+import { CLIENT_FIELDS, CLIENT_COCKPIT_FIELDS } from '../lib/clientFields';
 import { DetailPanel } from '../components/ScheduleDashboard';
 import CheckoutModal from '../components/CheckoutModal';
 import BookingModal from '../components/BookingModal';
@@ -291,15 +292,18 @@ export default function BookingDetailPage({ therapist }) {
     if (key.startsWith('other')) return r.replace(/^other:?\s*/i, '').trim() || 'Other';
     return r;
   };
-  const detailRows = clientRow ? [
-    ['Email', clientRow.email || null],
-    ['Phone', clientRow.phone || null],
-    ['Other phone', clientRow.alt_phone || null],
-    ['Birthday', fmtBirthday(clientRow.birthday)],
-    ['Gender', genderLabel(clientRow.gender)],
-    ['Found you via', referralLabel(clientRow.referral_source)],
-    ['Client since', fmtLongDate(clientRow.customer_since)],
-  ] : [];
+  const fieldDisplay = {
+    email: clientRow?.email || null,
+    phone: clientRow?.phone || null,
+    alt_phone: clientRow?.alt_phone || null,
+    birthday: fmtBirthday(clientRow?.birthday),
+    gender: genderLabel(clientRow?.gender),
+    referral_source: referralLabel(clientRow?.referral_source),
+    customer_since: fmtLongDate(clientRow?.customer_since),
+  };
+  const detailRows = clientRow
+    ? CLIENT_COCKPIT_FIELDS.map((k) => [CLIENT_FIELDS[k].label, fieldDisplay[k]])
+    : [];
 
   const _sqCard = !!(clientRow && clientRow.square_customer_id && clientRow.square_card_id);
   const _stCard = !!(clientRow && clientRow.stripe_customer_id && clientRow.payment_method_id && clientRow.card_last4);

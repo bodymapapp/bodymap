@@ -21,6 +21,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../../lib/supabase';
+import { CLIENT_FIELDS } from '../../lib/clientFields';
 import AutoGrowingTextarea from '../AutoGrowingTextarea';
 import { ChevronButton } from '../ChevronIcon';
 import { recordFactHistory, HISTORY_FIELDS, listFactHistory, HISTORY_FIELD_LABELS, HISTORY_SOURCE_LABELS } from '../../lib/clientHistory';
@@ -309,7 +310,7 @@ export default function AboutCard({ client, onUpdated, pulse = false, readOnly =
         placeholder="Add phone"
       />
       <Row readOnly={readOnly}
-        label="Alternate phone"
+        label={CLIENT_FIELDS.alt_phone.label}
         value={altPhone}
         setValue={setAltPhone}
         onSave={(v) => saveField('alt_phone', v)}
@@ -329,7 +330,7 @@ export default function AboutCard({ client, onUpdated, pulse = false, readOnly =
         placeholder="Add birthday"
       />
       <Row readOnly={readOnly}
-        label="Customer since"
+        label={CLIENT_FIELDS.customer_since.label}
         value={customerSince}
         setValue={setCustomerSince}
         onSave={(v) => saveField('customer_since', v)}
@@ -345,7 +346,7 @@ export default function AboutCard({ client, onUpdated, pulse = false, readOnly =
         justSaved={justSaved === 'gender'}
       />
       <PillRow
-        label="How they found you"
+        label={CLIENT_FIELDS.referral_source.label}
         value={referralSource}
         options={['Referred by someone', 'Found online', 'Social media', 'Returning client', 'Walk-in']}
         onSave={(v) => { setReferralSource(v); saveField('referral_source', v); }}
