@@ -40,6 +40,9 @@ export function AgentBoardEmbedded() {
   const [recentlyArchived, setRecentlyArchived] = useState(null);
   const [publishing, setPublishing] = useState(false);
   const [publishMsg, setPublishMsg] = useState(null);
+  const [briefingId, setBriefingId] = useState(null);
+  const [selectMode, setSelectMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState(() => new Set());
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -134,6 +137,33 @@ export function AgentBoardEmbedded() {
     await patch(task, { status });
   }
 
+  function toggleSelect(id) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }
+
+  async function writeBrief(task) {
+    setBriefingId(task.id);
+    try {
+      const { data: sess } = await supabase.auth.getSession();
+      const token = sess?.session?.access_token;
+      const url = `${process.env.REACT_APP_SUPABASE_URL}/functions/v1/board-brief`;
+      const res = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ title: task.title, detail: task.detail || "", agent: task.agent }),
+      });
+      const body = await res.json().catch(() => ({}));
+      if (res.ok && body.ok && body.brief) {
+        await patch(task, { detail: body.brief });
+      }
+    } catch (e) {}
+    setBriefingId(null);
+  }
+
   async function publish() {
     setPublishing(true);
     setPublishMsg(null);
@@ -141,14 +171,18 @@ export function AgentBoardEmbedded() {
       const { data: sess } = await supabase.auth.getSession();
       const token = sess?.session?.access_token;
       const url = `${process.env.REACT_APP_SUPABASE_URL}/functions/v1/board-publish`;
+      const idsArr = selectMode && selectedIds.size ? Array.from(selectedIds) : null;
       const res = await fetch(url, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: idsArr ? JSON.stringify({ ids: idsArr }) : JSON.stringify({}),
       });
       const body = await res.json().catch(() => ({}));
       if (res.ok && body.ok) {
         const n = body.published;
         setPublishMsg({ ok: true, text: `Published. The agents will see ${n} task${n === 1 ? "" : "s"} the next time you open them.` });
+        setSelectMode(false);
+        setSelectedIds(new Set());
       } else {
         setPublishMsg({ ok: false, text: body.error || "Publish did not go through. Your tasks are safe, try again in a moment." });
       }
@@ -187,9 +221,23 @@ export function AgentBoardEmbedded() {
             Publish writes the open work into the brain. Each agent reads its part next time you open it.
           </div>
         </div>
-        <button onClick={publish} disabled={publishing} style={publishing ? disabledBtn : primaryBtn}>
-          {publishing ? "Publishing..." : "Publish to agents"}
-        </button>
+        <div style={{ display: "flex", gap: 8, flexShrink: 0, alignItems: "center" }}>
+          {selectMode ? (
+            <>
+              <button onClick={() => { setSelectMode(false); setSelectedIds(new Set()); }} style={tinyGhost}>Cancel</button>
+              <button onClick={publish} disabled={publishing || selectedIds.size === 0} style={(publishing || selectedIds.size === 0) ? disabledBtn : primaryBtn}>
+                {publishing ? "Publishing..." : `Publish ${selectedIds.size} selected`}
+              </button>
+            </>
+          ) : (
+            <>
+              <button onClick={() => setSelectMode(true)} style={tinyGhost}>Choose</button>
+              <button onClick={publish} disabled={publishing} style={publishing ? disabledBtn : primaryBtn}>
+                {publishing ? "Publishing..." : "Publish all"}
+              </button>
+            </>
+          )}
+        </div>
       </div>
       {publishMsg && <div style={publishMsg.ok ? noteOk : noteWarn}>{publishMsg.text}</div>}
 
@@ -239,6 +287,11 @@ export function AgentBoardEmbedded() {
                     onSetStatus={(s) => setStatus(task, s)}
                     onSaveDetail={(detail) => patch(task, { detail })}
                     onSaveTitle={(title) => patch(task, { title })}
+                    selectMode={selectMode}
+                    selected={selectedIds.has(task.id)}
+                    onToggleSelect={() => toggleSelect(task.id)}
+                    onWriteBrief={() => writeBrief(task)}
+                    briefing={briefingId === task.id}
                   />
                 ))}
 
@@ -283,23 +336,32 @@ export function AgentBoardEmbedded() {
   );
 }
 
-function TaskCard({ task, number, accent, isFirst, isLast, expanded, onToggleExpand, onToggleDone, onMove, onArchive, onSetStatus, onSaveDetail, onSaveTitle }) {
+function TaskCard({ task, number, accent, isFirst, isLast, expanded, onToggleExpand, onToggleDone, onMove, onArchive, onSetStatus, onSaveDetail, onSaveTitle, selectMode, selected, onToggleSelect, onWriteBrief, briefing }) {
   const [detail, setDetail] = useState(task.detail || "");
   const [title, setTitle] = useState(task.title || "");
   const inProgress = task.status === "in_progress";
+  const hasBrief = !!(task.detail && task.detail.trim());
 
   useEffect(() => { setDetail(task.detail || ""); }, [task.detail]);
   useEffect(() => { setTitle(task.title || ""); }, [task.title]);
 
   const dotColor = inProgress ? "#D97706" : "#CBD5E1";
+  const cardStyle = selectMode && selected
+    ? { ...card, borderLeft: `3px solid ${accent}`, background: accent + "0D" }
+    : inProgress ? { ...card, borderLeft: `3px solid ${accent}` } : card;
 
   return (
-    <div style={inProgress ? { ...card, borderLeft: `3px solid ${accent}` } : card}>
+    <div style={cardStyle}>
       <div style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
         <button onClick={onToggleDone} style={checkbox} aria-label="Mark done" />
         <span style={{ ...cardNum, color: accent }}>{number}</span>
         <button onClick={onToggleExpand} style={titleBtn}>{task.title}</button>
-        <span style={{ ...statusDot, background: dotColor }} title={inProgress ? "In progress" : "Not started"} />
+        {hasBrief && !selectMode && <span style={readyMark} title="Has instructions">✓</span>}
+        {selectMode ? (
+          <button onClick={onToggleSelect} style={selected ? { ...selDot, background: accent, borderColor: accent } : selDot} aria-label="Select" />
+        ) : (
+          <span style={{ ...statusDot, background: dotColor }} title={inProgress ? "In progress" : "Not started"} />
+        )}
       </div>
 
       <div style={{ display: "flex", gap: 2, marginTop: 6, paddingLeft: 28 }}>
@@ -317,6 +379,9 @@ function TaskCard({ task, number, accent, isFirst, isLast, expanded, onToggleExp
             onBlur={() => { if (title.trim() && title !== task.title) onSaveTitle(title.trim()); }}
             style={detailTitle}
           />
+          <button onClick={onWriteBrief} disabled={briefing} style={briefing ? briefBtnOff : briefBtn}>
+            {briefing ? "Writing instructions..." : hasBrief ? "Rewrite instructions" : "Write instructions for me"}
+          </button>
           <textarea
             value={detail}
             onChange={(e) => setDetail(e.target.value)}
@@ -442,5 +507,15 @@ const noteWarn = {
   background: "#FFF7ED", border: "1px solid #FED7AA", color: "#9A3412",
   borderRadius: 10, padding: "10px 14px", fontSize: 13, marginBottom: 12,
 };
+const selDot = {
+  width: 18, height: 18, borderRadius: 999, border: "2px solid #CBD5E1",
+  background: "#fff", cursor: "pointer", flexShrink: 0, padding: 0, marginTop: 1,
+};
+const readyMark = { fontSize: 12, fontWeight: 800, color: "#16A34A", flexShrink: 0, marginTop: 1 };
+const briefBtn = {
+  width: "100%", background: "#EEF4F0", color: C.forest, border: `1px solid ${C.sage}`,
+  borderRadius: 8, padding: "9px 10px", fontSize: 13, fontWeight: 600, cursor: "pointer", marginBottom: 8,
+};
+const briefBtnOff = { ...briefBtn, color: C.gray, cursor: "default", borderColor: C.line, background: "#F3F4F6" };
 
 export default AgentBoardEmbedded;

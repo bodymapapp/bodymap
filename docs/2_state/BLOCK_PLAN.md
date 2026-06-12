@@ -3,6 +3,14 @@
 
 Last refreshed: 2026-06-11, after the brain cleanup and Founder Hub mobile access. See "Shipped 2026-06-11" below.
 
+<!-- ASSIGNMENTS:START -->
+## Assignments by agent
+
+Published from the Agent Board. Each agent reads its own section and works the top open item by number. [ ] is open, [~] is in progress. This block is written by the board, do not hand-edit it.
+
+(Nothing published yet.)
+<!-- ASSIGNMENTS:END -->
+
 ## Shipped 2026-06-11 (this session)
 - Brain cleanup merged to main: docs reorganized into one front door plus five numbered rooms (1 constitution, 2 state, 3 playbooks, 4 incidents, 5 reference) plus an archive. New files: README front door, GLOSSARY, WRAP_UP, IMAGE_SPEC, INCIDENTS. Two drifted BLOCK_PLAN copies collapsed into this one canonical file. Founder Hub doc paths repointed to the new rooms. Shipped but unverified by HK.
 - Priority 0 legal and data-safeguards content carried into this canonical plan (it had lived only in the now-archived June 1 copy). Statuses in that block are as of June 1, confirm anything that shipped since.

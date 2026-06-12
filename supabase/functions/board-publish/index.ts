@@ -1,18 +1,17 @@
 // supabase/functions/board-publish/index.ts
 //
-// Publishes the Agent Board's active tasks (open + in progress) into the
-// brain as docs/2_state/ASSIGNMENTS.md, so the other agents read their
-// assignments at the start of every session. Triggered by the Publish
-// button on the Founder Hub Agent Board.
+// Publishes the Agent Board's tasks into the brain so the agents read
+// their assignments. Writes a numbered, per-agent list between the
+// ASSIGNMENTS markers at the top of docs/2_state/BLOCK_PLAN.md, which
+// every agent already reads at the start of a session. So a task shows
+// up as, for example, "Engineering 1", and HK can dispatch it in the
+// Engineering chat by saying "complete Engineering 1".
 //
-// Why a function and not a direct write from the browser: committing to
-// GitHub needs a token, and the token must never touch the browser or the
-// repo. It lives here as the GITHUB_TOKEN edge-function secret.
+// Body (optional): { ids: ["uuid", ...] } publishes only those tasks.
+// With no ids, publishes all open and in-progress tasks.
 //
-// Founder-only: the caller's Supabase session is verified and must be the
-// founder email before anything is written.
-//
-// Auto-deploys via GitHub Actions on push to supabase/functions/**.
+// Founder-only. The GitHub token lives as the GITHUB_TOKEN secret and
+// never leaves the server. Auto-deploys via GitHub Actions.
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -24,8 +23,10 @@ const corsHeaders = {
 
 const FOUNDER_EMAIL = "bodymapdemo@gmail.com";
 const REPO = "bodymapapp/bodymap";
-const FILE_PATH = "docs/2_state/ASSIGNMENTS.md";
+const FILE_PATH = "docs/2_state/BLOCK_PLAN.md";
 const BRANCH = "main";
+const START = "<!-- ASSIGNMENTS:START -->";
+const END = "<!-- ASSIGNMENTS:END -->";
 
 const AGENTS: [string, string][] = [
   ["engineering", "Engineering"],
@@ -41,33 +42,38 @@ function toBase64(str: string): string {
   for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
   return btoa(bin);
 }
+function fromBase64(b64: string): string {
+  const bin = atob(b64.replace(/\s/g, ""));
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return new TextDecoder().decode(bytes);
+}
 
-function buildMarkdown(tasks: any[]): string {
+function buildBlock(tasks: any[]): string {
   const when = new Date().toISOString().slice(0, 16).replace("T", " ");
-  let md = "# ASSIGNMENTS.md\n\n";
-  md += "Published from the Agent Board. Each agent reads its own section at the ";
-  md += "start of every session and works the top open item. [ ] is open, [~] is ";
-  md += "in progress. Done and archived tasks are not published here, they live on ";
-  md += "the board.\n\n";
-  md += `Last published: ${when} (UTC) from the Founder Hub.\n\n`;
+  let md = "## Assignments by agent\n\n";
+  md += "Published from the Agent Board. Each agent reads its own section and ";
+  md += "works the top open item by number. [ ] is open, [~] is in progress. ";
+  md += "This block is written by the board, do not hand-edit it.\n\n";
+  md += `Last published: ${when} (UTC).\n\n`;
   for (const [key, label] of AGENTS) {
     const rows = tasks
       .filter((t) => t.agent === key)
       .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
-    md += `## ${label}\n`;
+    md += `### ${label}\n`;
     if (rows.length === 0) {
       md += "- No open assignment.\n\n";
       continue;
     }
-    for (const t of rows) {
+    rows.forEach((t, i) => {
       const box = t.status === "in_progress" ? "[~]" : "[ ]";
-      let line = `- ${box} ${t.title}`;
+      let line = `${i + 1}. ${box} ${t.title}`;
       if (t.detail && String(t.detail).trim()) line += `: ${String(t.detail).trim()}`;
       md += line + "\n";
-    }
+    });
     md += "\n";
   }
-  return md;
+  return md.trimEnd();
 }
 
 serve(async (req) => {
@@ -84,7 +90,6 @@ serve(async (req) => {
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const githubToken = Deno.env.get("GITHUB_TOKEN");
 
-    // Verify the caller is the founder.
     const authHeader = req.headers.get("Authorization") || "";
     const userClient = createClient(supabaseUrl, anonKey, {
       global: { headers: { Authorization: authHeader } },
@@ -101,15 +106,21 @@ serve(async (req) => {
       );
     }
 
-    // Read the active tasks with the service role.
+    let ids: string[] | null = null;
+    try {
+      const body = await req.json();
+      if (Array.isArray(body?.ids) && body.ids.length > 0) ids = body.ids;
+    } catch (_e) {
+      // no body, publish everything active
+    }
+
     const admin = createClient(supabaseUrl, serviceKey);
-    const { data: tasks, error: readErr } = await admin
-      .from("agent_tasks")
-      .select("*")
-      .in("status", ["open", "in_progress"]);
+    let query = admin.from("agent_tasks").select("*").in("status", ["open", "in_progress"]);
+    if (ids) query = query.in("id", ids);
+    const { data: tasks, error: readErr } = await query;
     if (readErr) return json({ error: "Could not read the board." }, 500);
 
-    const markdown = buildMarkdown(tasks || []);
+    const block = buildBlock(tasks || []);
 
     const ghBase = `https://api.github.com/repos/${REPO}/contents/${FILE_PATH}`;
     const ghHeaders = {
@@ -119,34 +130,39 @@ serve(async (req) => {
       "Content-Type": "application/json",
     };
 
-    // Find the current file SHA, if the file already exists.
-    let sha: string | undefined;
     const getRes = await fetch(`${ghBase}?ref=${BRANCH}`, { headers: ghHeaders });
-    if (getRes.ok) {
-      const existing = await getRes.json();
-      sha = existing.sha;
-    }
+    if (!getRes.ok) return json({ error: "Could not read the block plan." }, 502);
+    const existing = await getRes.json();
+    const current = fromBase64(existing.content || "");
 
-    const putBody: Record<string, unknown> = {
-      message: "Publish agent assignments from the Agent Board",
-      content: toBase64(markdown),
-      branch: BRANCH,
-    };
-    if (sha) putBody.sha = sha;
+    const si = current.indexOf(START);
+    const ei = current.indexOf(END);
+    if (si === -1 || ei === -1 || ei < si) {
+      return json(
+        { error: "The assignments markers are missing from the block plan, so nothing was changed." },
+        409
+      );
+    }
+    const before = current.slice(0, si + START.length);
+    const after = current.slice(ei);
+    const next = `${before}\n${block}\n${after}`;
 
     const putRes = await fetch(ghBase, {
       method: "PUT",
       headers: ghHeaders,
-      body: JSON.stringify(putBody),
+      body: JSON.stringify({
+        message: "Publish agent assignments from the Agent Board",
+        content: toBase64(next),
+        branch: BRANCH,
+        sha: existing.sha,
+      }),
     });
-
     if (!putRes.ok) {
       const detail = await putRes.text();
       return json({ error: "Could not write to the brain.", detail }, 502);
     }
 
-    const count = (tasks || []).length;
-    return json({ ok: true, published: count });
+    return json({ ok: true, published: (tasks || []).length });
   } catch (e) {
     return json({ error: "Publish failed.", detail: String(e) }, 500);
   }
