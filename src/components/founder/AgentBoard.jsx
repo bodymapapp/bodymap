@@ -1,15 +1,13 @@
 // src/components/founder/AgentBoard.jsx
 //
-// Founder-only command board for the five MyBodyMap agents. Each agent
-// has its own list of tasks HK can add, reorder, mark done, drill into,
-// and archive. Live edits persist to the agent_tasks Supabase table
-// (founder-only via RLS), the same pattern the Income Statement uses for
-// finance_line_items, so there are no git commits per keystroke.
+// Founder-only command board for the five MyBodyMap agents, laid out as
+// color-coded columns of cards (a Trello-style board). Each agent has its
+// own column. Cards are numbered per agent, so you can dispatch them by
+// number in an agent's chat (for example "complete Engineering 1").
 //
-// Phase 1 (this file): the board itself.
-// Phase 1b (next): a Publish button that writes the open tasks into the
-//   brain so the other agents read their assignments at startup.
-// Phase 2: a per-agent "what am I missing" suggestion via the Claude API.
+// Live edits persist to the agent_tasks Supabase table, founder-only via
+// RLS. Publish writes the active tasks into the brain so the agents read
+// their assignments.
 
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "../../lib/supabase";
@@ -25,11 +23,11 @@ const C = {
 };
 
 const AGENTS = [
-  { key: "engineering", num: 1, label: "Engineering" },
-  { key: "customer_support", num: 2, label: "Customer Support" },
-  { key: "marketing", num: 3, label: "Marketing" },
-  { key: "strategy", num: 4, label: "Strategy" },
-  { key: "chief_of_staff", num: 5, label: "Chief of Staff" },
+  { key: "engineering", num: 1, label: "Engineering", color: "#2A5741" },
+  { key: "customer_support", num: 2, label: "Customer Support", color: "#2F6F8F" },
+  { key: "marketing", num: 3, label: "Marketing", color: "#C2682E" },
+  { key: "strategy", num: 4, label: "Strategy", color: "#6D5BA6" },
+  { key: "chief_of_staff", num: 5, label: "Chief of Staff", color: "#B58A2E" },
 ];
 
 export function AgentBoardEmbedded() {
@@ -63,9 +61,14 @@ export function AgentBoardEmbedded() {
     load();
   }, [load]);
 
-  function byAgent(key, status) {
+  function activeFor(key) {
     return tasks
-      .filter((t) => t.agent === key && t.status === status)
+      .filter((t) => t.agent === key && (t.status === "open" || t.status === "in_progress"))
+      .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
+  }
+  function doneFor(key) {
+    return tasks
+      .filter((t) => t.agent === key && t.status === "done")
       .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
   }
 
@@ -77,14 +80,7 @@ export function AgentBoardEmbedded() {
       ...tasks.filter((t) => t.agent === agentKey).map((t) => t.sort_order || 0)
     );
     const tempId = `temp-${Date.now()}`;
-    const optimistic = {
-      id: tempId,
-      agent: agentKey,
-      title,
-      detail: "",
-      status: "open",
-      sort_order: maxOrder + 1,
-    };
+    const optimistic = { id: tempId, agent: agentKey, title, detail: "", status: "open", sort_order: maxOrder + 1 };
     setTasks((prev) => [...prev, optimistic]);
     setDrafts((prev) => ({ ...prev, [agentKey]: "" }));
     const { data, error } = await supabase
@@ -123,7 +119,7 @@ export function AgentBoardEmbedded() {
   }
 
   async function move(task, dir) {
-    const siblings = byAgent(task.agent, task.status);
+    const siblings = activeFor(task.agent);
     const i = siblings.findIndex((t) => t.id === task.id);
     const j = dir === "up" ? i - 1 : i + 1;
     if (j < 0 || j >= siblings.length) return;
@@ -195,9 +191,7 @@ export function AgentBoardEmbedded() {
           {publishing ? "Publishing..." : "Publish to agents"}
         </button>
       </div>
-      {publishMsg && (
-        <div style={publishMsg.ok ? noteOk : noteWarn}>{publishMsg.text}</div>
-      )}
+      {publishMsg && <div style={publishMsg.ok ? noteOk : noteWarn}>{publishMsg.text}</div>}
 
       {recentlyArchived && (
         <div style={undoBanner}>
@@ -207,87 +201,89 @@ export function AgentBoardEmbedded() {
         </div>
       )}
 
-      {AGENTS.map((agent) => {
-        const active = tasks
-          .filter((t) => t.agent === agent.key && (t.status === "open" || t.status === "in_progress"))
-          .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
-        const done = byAgent(agent.key, "done");
-        const draft = drafts[agent.key] || "";
-        return (
-          <section key={agent.key} style={agentSection}>
-            <div style={agentHeader}>
-              <span style={numBadge}>{agent.num}</span>
-              <span style={{ fontFamily: "Georgia, serif", fontSize: 17, fontWeight: 700, color: C.ink }}>
-                {agent.label}
-              </span>
-              <span style={{ marginLeft: "auto", fontSize: 12, color: C.gray }}>
-                {active.length} active
-              </span>
-            </div>
-
-            {active.length === 0 && (
-              <p style={{ fontSize: 13, color: C.gray, margin: "8px 2px 12px" }}>
-                Nothing here yet. Add the first task below.
-              </p>
-            )}
-
-            {active.map((task, idx) => (
-              <TaskCard
-                key={task.id}
-                task={task}
-                isFirst={idx === 0}
-                isLast={idx === active.length - 1}
-                expanded={expandedId === task.id}
-                onToggleExpand={() => setExpandedId(expandedId === task.id ? null : task.id)}
-                onToggleDone={() => toggleDone(task)}
-                onMove={(dir) => move(task, dir)}
-                onArchive={() => archive(task)}
-                onSetStatus={(s) => setStatus(task, s)}
-                onSaveDetail={(detail) => patch(task, { detail })}
-                onSaveTitle={(title) => patch(task, { title })}
-              />
-            ))}
-
-            <div style={addRow}>
-              <input
-                value={draft}
-                onChange={(e) => setDrafts((p) => ({ ...p, [agent.key]: e.target.value }))}
-                onKeyDown={(e) => { if (e.key === "Enter") addTask(agent.key); }}
-                placeholder={`Add a task for ${agent.label}`}
-                style={addInput}
-              />
-              <button onClick={() => addTask(agent.key)} disabled={!draft.trim()} style={draft.trim() ? primaryBtn : disabledBtn}>
-                Add
-              </button>
-            </div>
-
-            {done.length > 0 && (
-              <div style={{ marginTop: 8 }}>
-                <button
-                  onClick={() => setShowDoneFor((p) => ({ ...p, [agent.key]: !p[agent.key] }))}
-                  style={linkBtn}
-                >
-                  {showDoneFor[agent.key] ? "Hide done" : `Show done (${done.length})`}
-                </button>
-                {showDoneFor[agent.key] && done.map((task) => (
-                  <div key={task.id} style={doneRow}>
-                    <button onClick={() => toggleDone(task)} style={checkDone} aria-label="Reopen">✓</button>
-                    <span style={{ flex: 1, fontSize: 14, color: C.gray, textDecoration: "line-through" }}>
-                      {task.title}
-                    </span>
-                    <button onClick={() => archive(task)} style={tinyGhost}>Archive</button>
-                  </div>
-                ))}
+      <div style={boardRow}>
+        {AGENTS.map((agent) => {
+          const active = activeFor(agent.key);
+          const done = doneFor(agent.key);
+          const draft = drafts[agent.key] || "";
+          return (
+            <section key={agent.key} style={column}>
+              <div style={{ ...columnHead, background: tint(agent.color) }}>
+                <span style={{ ...numBadge, background: agent.color }}>{agent.num}</span>
+                <span style={{ fontFamily: "Georgia, serif", fontSize: 15, fontWeight: 700, color: C.ink }}>
+                  {agent.label}
+                </span>
+                <span style={{ marginLeft: "auto", fontSize: 12, color: C.gray }}>{active.length}</span>
               </div>
-            )}
-          </section>
-        );
-      })}
+
+              <div style={{ padding: "10px 10px 4px" }}>
+                {active.length === 0 && (
+                  <p style={{ fontSize: 13, color: C.gray, margin: "4px 2px 10px" }}>
+                    Nothing here yet. Add the first task below.
+                  </p>
+                )}
+
+                {active.map((task, idx) => (
+                  <TaskCard
+                    key={task.id}
+                    task={task}
+                    number={idx + 1}
+                    accent={agent.color}
+                    isFirst={idx === 0}
+                    isLast={idx === active.length - 1}
+                    expanded={expandedId === task.id}
+                    onToggleExpand={() => setExpandedId(expandedId === task.id ? null : task.id)}
+                    onToggleDone={() => toggleDone(task)}
+                    onMove={(dir) => move(task, dir)}
+                    onArchive={() => archive(task)}
+                    onSetStatus={(s) => setStatus(task, s)}
+                    onSaveDetail={(detail) => patch(task, { detail })}
+                    onSaveTitle={(title) => patch(task, { title })}
+                  />
+                ))}
+
+                <div style={addRow}>
+                  <input
+                    value={draft}
+                    onChange={(e) => setDrafts((p) => ({ ...p, [agent.key]: e.target.value }))}
+                    onKeyDown={(e) => { if (e.key === "Enter") addTask(agent.key); }}
+                    placeholder="Add a task"
+                    style={addInput}
+                  />
+                  <button onClick={() => addTask(agent.key)} disabled={!draft.trim()} style={draft.trim() ? smallAdd : smallAddOff}>
+                    Add
+                  </button>
+                </div>
+
+                {done.length > 0 && (
+                  <div style={{ marginTop: 6 }}>
+                    <button
+                      onClick={() => setShowDoneFor((p) => ({ ...p, [agent.key]: !p[agent.key] }))}
+                      style={linkBtn}
+                    >
+                      {showDoneFor[agent.key] ? "Hide done" : `Show done (${done.length})`}
+                    </button>
+                    {showDoneFor[agent.key] && done.map((task) => (
+                      <div key={task.id} style={doneRow}>
+                        <button onClick={() => toggleDone(task)} style={checkDone} aria-label="Reopen">✓</button>
+                        <span style={{ flex: 1, fontSize: 13, color: C.gray, textDecoration: "line-through" }}>
+                          {task.title}
+                        </span>
+                        <button onClick={() => archive(task)} style={tinyGhost}>Archive</button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </section>
+          );
+        })}
+      </div>
     </div>
   );
 }
 
-function TaskCard({ task, isFirst, isLast, expanded, onToggleExpand, onToggleDone, onMove, onArchive, onSetStatus, onSaveDetail, onSaveTitle }) {
+function TaskCard({ task, number, accent, isFirst, isLast, expanded, onToggleExpand, onToggleDone, onMove, onArchive, onSetStatus, onSaveDetail, onSaveTitle }) {
   const [detail, setDetail] = useState(task.detail || "");
   const [title, setTitle] = useState(task.title || "");
   const inProgress = task.status === "in_progress";
@@ -295,23 +291,26 @@ function TaskCard({ task, isFirst, isLast, expanded, onToggleExpand, onToggleDon
   useEffect(() => { setDetail(task.detail || ""); }, [task.detail]);
   useEffect(() => { setTitle(task.title || ""); }, [task.title]);
 
+  const dotColor = inProgress ? "#D97706" : "#CBD5E1";
+
   return (
-    <div style={inProgress ? cardActive : card}>
-      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+    <div style={inProgress ? { ...card, borderLeft: `3px solid ${accent}` } : card}>
+      <div style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
         <button onClick={onToggleDone} style={checkbox} aria-label="Mark done" />
-        <button onClick={onToggleExpand} style={titleBtn}>
-          {task.title}
-        </button>
+        <span style={{ ...cardNum, color: accent }}>{number}</span>
+        <button onClick={onToggleExpand} style={titleBtn}>{task.title}</button>
+        <span style={{ ...statusDot, background: dotColor }} title={inProgress ? "In progress" : "Not started"} />
+      </div>
+
+      <div style={{ display: "flex", gap: 2, marginTop: 6, paddingLeft: 28 }}>
+        <button onClick={() => onMove("up")} disabled={isFirst} style={isFirst ? arrowOff : arrow} aria-label="Move up">↑</button>
+        <button onClick={() => onMove("down")} disabled={isLast} style={isLast ? arrowOff : arrow} aria-label="Move down">↓</button>
+        <button onClick={onToggleExpand} style={arrow} aria-label="Details">{expanded ? "‹" : "›"}</button>
         {inProgress && <span style={ipBadge}>In progress</span>}
-        <div style={{ display: "flex", gap: 2, flexShrink: 0 }}>
-          <button onClick={() => onMove("up")} disabled={isFirst} style={isFirst ? arrowOff : arrow} aria-label="Move up">↑</button>
-          <button onClick={() => onMove("down")} disabled={isLast} style={isLast ? arrowOff : arrow} aria-label="Move down">↓</button>
-          <button onClick={onToggleExpand} style={arrow} aria-label="Details">{expanded ? "‹" : "›"}</button>
-        </div>
       </div>
 
       {expanded && (
-        <div style={{ marginTop: 10, paddingLeft: 32 }}>
+        <div style={{ marginTop: 10 }}>
           <input
             value={title}
             onChange={(e) => setTitle(e.target.value)}
@@ -322,8 +321,8 @@ function TaskCard({ task, isFirst, isLast, expanded, onToggleExpand, onToggleDon
             value={detail}
             onChange={(e) => setDetail(e.target.value)}
             onBlur={() => { if (detail !== task.detail) onSaveDetail(detail); }}
-            placeholder="Add detail, links, or context for this task"
-            rows={3}
+            placeholder="Detail, links, or the full instructions for this task"
+            rows={4}
             style={detailArea}
           />
           <div style={{ display: "flex", justifyContent: "space-between", marginTop: 8 }}>
@@ -338,57 +337,84 @@ function TaskCard({ task, isFirst, isLast, expanded, onToggleExpand, onToggleDon
   );
 }
 
+function tint(hex) {
+  return hex + "14";
+}
+
 const primaryBtn = {
   background: C.forest, color: "#fff", border: "none", borderRadius: 10,
   padding: "9px 16px", fontSize: 14, fontWeight: 600, cursor: "pointer", flexShrink: 0,
 };
 const disabledBtn = { ...primaryBtn, background: "#CBD5E1", cursor: "default" };
+const smallAdd = {
+  background: C.forest, color: "#fff", border: "none", borderRadius: 8,
+  padding: "7px 12px", fontSize: 13, fontWeight: 600, cursor: "pointer", flexShrink: 0,
+};
+const smallAddOff = { ...smallAdd, background: "#CBD5E1", cursor: "default" };
 const linkBtn = { background: "none", border: "none", color: C.sage, fontSize: 13, fontWeight: 600, cursor: "pointer", padding: "6px 2px" };
-const agentSection = { marginBottom: 22, paddingBottom: 18, borderBottom: `1px solid ${C.softLine}` };
-const agentHeader = { display: "flex", alignItems: "center", gap: 10, marginBottom: 10 };
+const boardRow = {
+  display: "flex", gap: 12, overflowX: "auto", paddingBottom: 10,
+  WebkitOverflowScrolling: "touch", scrollSnapType: "x proximity",
+};
+const column = {
+  flex: "0 0 290px", width: 290, background: "#FBF8F3",
+  border: `1px solid ${C.line}`, borderRadius: 14, scrollSnapAlign: "start",
+  alignSelf: "flex-start",
+};
+const columnHead = {
+  display: "flex", alignItems: "center", gap: 8,
+  padding: "11px 12px", borderTopLeftRadius: 14, borderTopRightRadius: 14,
+  borderBottom: `1px solid ${C.line}`,
+};
 const numBadge = {
-  width: 24, height: 24, borderRadius: 8, background: C.cream, color: C.forest,
+  width: 22, height: 22, borderRadius: 7, color: "#fff",
   display: "inline-flex", alignItems: "center", justifyContent: "center",
-  fontSize: 13, fontWeight: 700, flexShrink: 0,
+  fontSize: 12, fontWeight: 700, flexShrink: 0,
 };
 const card = {
-  background: "#fff", border: `1px solid ${C.line}`, borderRadius: 12,
-  padding: "10px 12px", marginBottom: 8,
+  background: "#fff", border: `1px solid ${C.line}`, borderRadius: 10,
+  padding: "9px 10px", marginBottom: 8,
 };
+const cardNum = { fontSize: 13, fontWeight: 800, flexShrink: 0, marginTop: 1 };
 const checkbox = {
-  width: 20, height: 20, borderRadius: 6, border: `2px solid ${C.sage}`,
-  background: "#fff", cursor: "pointer", flexShrink: 0, padding: 0,
+  width: 18, height: 18, borderRadius: 6, border: `2px solid ${C.sage}`,
+  background: "#fff", cursor: "pointer", flexShrink: 0, padding: 0, marginTop: 1,
 };
 const checkDone = {
-  width: 20, height: 20, borderRadius: 6, border: `2px solid ${C.sage}`,
-  background: C.sage, color: "#fff", cursor: "pointer", flexShrink: 0, fontSize: 12, lineHeight: 1, padding: 0,
+  width: 18, height: 18, borderRadius: 6, border: `2px solid ${C.sage}`,
+  background: C.sage, color: "#fff", cursor: "pointer", flexShrink: 0, fontSize: 11, lineHeight: 1, padding: 0,
 };
 const titleBtn = {
   flex: 1, textAlign: "left", background: "none", border: "none",
-  fontSize: 15, color: C.ink, cursor: "pointer", padding: 0, minWidth: 0,
+  fontSize: 14, color: C.ink, cursor: "pointer", padding: 0, minWidth: 0, lineHeight: 1.35,
 };
+const statusDot = { width: 9, height: 9, borderRadius: 999, flexShrink: 0, marginTop: 5 };
 const arrow = {
-  width: 28, height: 28, borderRadius: 8, border: `1px solid ${C.line}`,
-  background: "#fff", color: C.forest, cursor: "pointer", fontSize: 15, lineHeight: 1, padding: 0,
+  width: 26, height: 26, borderRadius: 7, border: `1px solid ${C.line}`,
+  background: "#fff", color: C.forest, cursor: "pointer", fontSize: 14, lineHeight: 1, padding: 0,
 };
 const arrowOff = { ...arrow, color: "#D1D5DB", cursor: "default" };
-const addRow = { display: "flex", gap: 8, marginTop: 6 };
+const addRow = { display: "flex", gap: 6, marginTop: 4, marginBottom: 4 };
 const addInput = {
-  flex: 1, border: `1px solid ${C.line}`, borderRadius: 10, padding: "9px 12px",
-  fontSize: 14, color: C.ink, minWidth: 0,
+  flex: 1, border: `1px solid ${C.line}`, borderRadius: 9, padding: "8px 10px",
+  fontSize: 13, color: C.ink, minWidth: 0,
 };
 const detailTitle = {
   width: "100%", border: `1px solid ${C.line}`, borderRadius: 8, padding: "8px 10px",
-  fontSize: 14, color: C.ink, marginBottom: 8, fontWeight: 600,
+  fontSize: 14, color: C.ink, marginBottom: 8, fontWeight: 600, boxSizing: "border-box",
 };
 const detailArea = {
   width: "100%", border: `1px solid ${C.line}`, borderRadius: 8, padding: "8px 10px",
-  fontSize: 14, color: C.ink, resize: "vertical", fontFamily: "inherit",
+  fontSize: 14, color: C.ink, resize: "vertical", fontFamily: "inherit", boxSizing: "border-box",
 };
-const doneRow = { display: "flex", alignItems: "center", gap: 10, padding: "6px 2px" };
+const doneRow = { display: "flex", alignItems: "center", gap: 8, padding: "5px 2px" };
 const tinyGhost = {
   background: "none", border: `1px solid ${C.line}`, borderRadius: 8,
   color: C.gray, fontSize: 12, padding: "4px 10px", cursor: "pointer",
+};
+const ipBadge = {
+  marginLeft: "auto", fontSize: 10, fontWeight: 700, color: "#B45309",
+  background: "#FEF3C7", border: "1px solid #FDE68A", borderRadius: 999, padding: "2px 8px",
 };
 const undoBanner = {
   display: "flex", alignItems: "center", gap: 12, background: C.cream,
@@ -402,14 +428,6 @@ const undoBtn = {
 const undoDismiss = {
   marginLeft: "auto", background: "none", border: "none", color: C.gray,
   fontSize: 14, cursor: "pointer", padding: 4,
-};
-const cardActive = {
-  background: "#fff", border: `1px solid ${C.line}`, borderLeft: "3px solid #D97706",
-  borderRadius: 12, padding: "10px 12px", marginBottom: 8,
-};
-const ipBadge = {
-  flexShrink: 0, fontSize: 11, fontWeight: 700, color: "#B45309",
-  background: "#FEF3C7", border: "1px solid #FDE68A", borderRadius: 999, padding: "2px 8px",
 };
 const publishBar = {
   display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12,
