@@ -47,9 +47,12 @@ const F = {
   serif: 'Georgia, "Times New Roman", serif',
 };
 
-export default function AboutCard({ client, onUpdated, pulse = false, readOnly = false }) {
+export default function AboutCard({ client, onUpdated, pulse = false, readOnly = false, fields = null }) {
   // Local mirror of the values shown. Updates after save so the
   // cell shows the new value without a re-fetch.
+  // When `fields` is given, only those keys render (compact reuse in the
+  // schedule cockpit). Null means show everything (full profile card).
+  const show = (k) => !fields || fields.includes(k);
   const [name, setName] = useState(client?.name || '');
   const [email, setEmail] = useState(client?.email || '');
   const [phone, setPhone] = useState(client?.phone || '');
@@ -284,6 +287,7 @@ export default function AboutCard({ client, onUpdated, pulse = false, readOnly =
         label="Name"
         value={name}
         setValue={setName}
+        hidden={!show('name')}
         onSave={(v) => saveField('name', v)}
         justSaved={justSaved === 'name'}
         error={errorOn === 'name' ? errorMsg : ''}
@@ -356,6 +360,7 @@ export default function AboutCard({ client, onUpdated, pulse = false, readOnly =
           therapists don't need to see it at a glance for every client.
           Tap "Address" header to expand; tap a field to edit. */}
       <AddressBlock
+        hidden={!show('address')}
         readOnly={readOnly}
         line1={addressLine1}
         setLine1={setAddressLine1}
@@ -384,6 +389,7 @@ export default function AboutCard({ client, onUpdated, pulse = false, readOnly =
         label="Allergies"
         value={allergies}
         setValue={setAllergies}
+        hidden={!show('allergies')}
         onSave={(v) => saveField('allergies', v)}
         justSaved={justSaved === 'allergies'}
         error={errorOn === 'allergies' ? errorMsg : ''}
@@ -393,6 +399,7 @@ export default function AboutCard({ client, onUpdated, pulse = false, readOnly =
         label="Conditions"
         value={healthConditions}
         setValue={setHealthConditions}
+        hidden={!show('health_conditions')}
         onSave={(v) => saveField('health_conditions', v)}
         justSaved={justSaved === 'health_conditions'}
         error={errorOn === 'health_conditions' ? errorMsg : ''}
@@ -402,6 +409,7 @@ export default function AboutCard({ client, onUpdated, pulse = false, readOnly =
         label="Medications"
         value={medications}
         setValue={setMedications}
+        hidden={!show('medications')}
         onSave={(v) => saveField('medications', v)}
         justSaved={justSaved === 'medications'}
         error={errorOn === 'medications' ? errorMsg : ''}
@@ -411,6 +419,7 @@ export default function AboutCard({ client, onUpdated, pulse = false, readOnly =
         label="Areas to avoid"
         value={areasToAvoid}
         setValue={setAreasToAvoid}
+        hidden={!show('areas_to_avoid')}
         onSave={(v) => saveField('areas_to_avoid', v)}
         justSaved={justSaved === 'areas_to_avoid'}
         error={errorOn === 'areas_to_avoid' ? errorMsg : ''}
@@ -420,6 +429,7 @@ export default function AboutCard({ client, onUpdated, pulse = false, readOnly =
         label="Emergency contact"
         value={emergencyContact}
         setValue={setEmergencyContact}
+        hidden={!show('emergency_contact')}
         onSave={(v) => saveField('emergency_contact', v)}
         justSaved={justSaved === 'emergency_contact'}
         error={errorOn === 'emergency_contact' ? errorMsg : ''}
@@ -464,7 +474,7 @@ export default function AboutCard({ client, onUpdated, pulse = false, readOnly =
           )}
         </div>
       )}
-      {!readOnly && (
+      {!readOnly && show('notes') && (
         <RowMultiline
           label="Notes"
           value={notes}
@@ -494,7 +504,7 @@ function prettyHistoryDate(d) {
 
 // Single-line tap-to-edit row. Click anywhere on the row body to
 // enter edit mode. Blur or Enter saves. Esc cancels.
-function Row({ label, value, setValue, onSave, justSaved, error, required, type = 'text', placeholder = 'Add value', readOnly = false }) {
+function Row({ label, value, setValue, onSave, justSaved, error, required, type = 'text', placeholder = 'Add value', readOnly = false, hidden = false }) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(value);
   const inputRef = useRef(null);
@@ -519,6 +529,7 @@ function Row({ label, value, setValue, onSave, justSaved, error, required, type 
     setEditing(false);
   }
 
+  if (hidden) return null;
   return (
     <div style={{
       display: 'grid',
@@ -642,7 +653,7 @@ function Row({ label, value, setValue, onSave, justSaved, error, required, type 
 // HK Jun 1 2026 Scope B: no dropdowns, no free-text-only fields.
 // A stored value that is not one of the options (e.g. an imported
 // "Other: ..." value) shows as the Other pill pre-filled.
-function PillRow({ label, value, options, onSave, justSaved }) {
+function PillRow({ label, value, options, onSave, justSaved, hidden = false }) {
   const isKnown = options.includes(value);
   const otherText = (!isKnown && value) ? value.replace(/^Other:\s*/i, '') : '';
   const [showOther, setShowOther] = useState(!isKnown && !!value);
@@ -658,6 +669,7 @@ function PillRow({ label, value, options, onSave, justSaved }) {
 
   const otherSelected = showOther || (!isKnown && !!value);
 
+  if (hidden) return null;
   return (
     <div style={{ padding: '12px 14px', borderBottom: `1px solid ${C.lineSoft}` }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
@@ -726,7 +738,7 @@ function PillRow({ label, value, options, onSave, justSaved }) {
   );
 }
 
-function RowMultiline({ label, value, setValue, onSave, justSaved, error, placeholder = 'Add notes' }) {
+function RowMultiline({ label, value, setValue, onSave, justSaved, error, placeholder = 'Add notes', hidden = false }) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(value);
   const inputRef = useRef(null);
@@ -753,6 +765,7 @@ function RowMultiline({ label, value, setValue, onSave, justSaved, error, placeh
     setEditing(false);
   }
 
+  if (hidden) return null;
   return (
     <div style={{
       display: 'grid',
@@ -858,6 +871,7 @@ function AddressBlock({
   country, setCountry,
   saveField, justSaved, errorOn, errorMsg,
   readOnly = false,
+  hidden = false,
 }) {
   const [open, setOpen] = useState(false);
   const hasAny = !!(line1 || line2 || city || state || zip);
@@ -865,6 +879,7 @@ function AddressBlock({
     ? [city, state].filter(Boolean).join(', ') + (zip ? ` ${zip}` : '')
     : '';
 
+  if (hidden) return null;
   return (
     <div style={{
       borderRadius: 10,
