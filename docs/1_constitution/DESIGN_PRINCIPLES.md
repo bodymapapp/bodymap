@@ -25,6 +25,10 @@ Keep the four short. The deep detail goes below the ADRR block, kept for safety 
 
 HK's time is for strategic decisions, not typing or busywork. Every deliverable arrives ready to use: copy-paste-ready text, tappable A/B/C choices, finished drafts. Never hand HK a task he has to assemble, retype, paste around, or chase. No "combine these blocks", no "now go send me a screenshot", no "paste this there". If a thing can be done by an agent, the agent does it. If a choice is needed, present it as a tap. Adding homework to a reply is a failure mode. Multi-part prompts and specs are delivered standalone so one copy lands one result. HK set this 2026-06-11 after replies kept adding work back onto him.
 
+### No going away. Finish it, do not hand back half-built work.
+
+When a task is started, complete it and push it before reporting. Do not defer pieces to "next time," and do not end a reply by parking an unfinished feature back on HK to verify, assemble, or come back to. "I will do the rest later" and "take a look and tell me" are the failure modes. Keep going until the thing is done, then report it done. HK set this 2026-06-11 after replies kept stopping early and leaving the remaining work on him.
+
 ---
 
 ## 1. The seven ribbons are the taxonomy. Don't invent sections.
