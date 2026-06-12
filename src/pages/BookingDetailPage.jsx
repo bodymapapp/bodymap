@@ -14,6 +14,7 @@ import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { CLIENT_FIELDS, CLIENT_COCKPIT_FIELDS } from '../lib/clientFields';
+import InlineEditField from '../components/InlineEditField';
 import { DetailPanel } from '../components/ScheduleDashboard';
 import CheckoutModal from '../components/CheckoutModal';
 import BookingModal from '../components/BookingModal';
@@ -214,6 +215,17 @@ export default function BookingDetailPage({ therapist }) {
     return () => { supabase.removeChannel(channel); };
   }, [bookingId, loadBooking]);
 
+  // Save one client field straight to the row, then mirror locally so the
+  // value updates without a refetch. Light inline edit, no heavy card.
+  const saveClientField = useCallback(async (field, raw) => {
+    if (!clientRow?.id) return;
+    let value = typeof raw === 'string' ? raw.trim() : raw;
+    if (field === 'email' && value) value = value.toLowerCase();
+    const payload = { [field]: value || null };
+    const { error } = await supabase.from('clients').update(payload).eq('id', clientRow.id);
+    if (!error) setClientRow((r) => (r ? { ...r, ...payload } : r));
+  }, [clientRow]);
+
   // HK Jun 1 2026: Amazon-style back. Use browser history so the
   // schedule returns to exactly where the therapist was (same day,
   // scroll, view). Fall back to the schedule root on a cold deep-link.
@@ -292,18 +304,17 @@ export default function BookingDetailPage({ therapist }) {
     if (key.startsWith('other')) return r.replace(/^other:?\s*/i, '').trim() || 'Other';
     return r;
   };
-  const fieldDisplay = {
-    email: clientRow?.email || null,
-    phone: clientRow?.phone || null,
-    alt_phone: clientRow?.alt_phone || null,
-    birthday: fmtBirthday(clientRow?.birthday),
-    gender: genderLabel(clientRow?.gender),
-    referral_source: referralLabel(clientRow?.referral_source),
-    customer_since: fmtLongDate(clientRow?.customer_since),
+  // Same compact set as the profile card, edited inline here. Order follows
+  // CLIENT_COCKPIT_FIELDS; formatters give the read view, type drives the input.
+  const cockpitFieldMeta = {
+    email: { type: 'email', format: (v) => v || null, width: 180 },
+    phone: { type: 'tel', format: (v) => v || null, width: 140 },
+    alt_phone: { type: 'tel', format: (v) => v || null, width: 140 },
+    birthday: { type: 'date', format: fmtBirthday, width: 150 },
+    gender: { type: 'text', format: genderLabel, width: 150 },
+    referral_source: { type: 'text', format: referralLabel, width: 175 },
+    customer_since: { type: 'date', format: fmtLongDate, width: 150 },
   };
-  const detailRows = clientRow
-    ? CLIENT_COCKPIT_FIELDS.map((k) => [CLIENT_FIELDS[k].label, fieldDisplay[k]])
-    : [];
 
   const _sqCard = !!(clientRow && clientRow.square_customer_id && clientRow.square_card_id);
   const _stCard = !!(clientRow && clientRow.stripe_customer_id && clientRow.payment_method_id && clientRow.card_last4);
@@ -393,16 +404,31 @@ export default function BookingDetailPage({ therapist }) {
 
             <div ref={setSessionEditorSlot} />
 
-            {detailRows.length > 0 && (
+            {clientRow && (
               <div style={{ background: '#fff', border: `1px solid ${C.line}`, borderRadius: 14, padding: '14px 18px' }}>
                 <div style={{ fontSize: 11, fontWeight: 700, color: C.inkMute, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>Client details</div>
                 <div style={{ fontSize: 13 }}>
-                  {detailRows.map(([label, value]) => (
-                    <div key={label} style={{ display: 'flex', justifyContent: 'space-between', gap: 12, padding: '5px 0', borderTop: label === detailRows[0][0] ? 'none' : `1px solid ${C.line}` }}>
-                      <span style={{ color: C.inkMute, flexShrink: 0 }}>{label}</span>
-                      <span style={{ color: value ? C.ink : C.inkMute, textAlign: 'right', wordBreak: 'break-word', opacity: value ? 1 : 0.65 }}>{value || 'Not on file'}</span>
-                    </div>
-                  ))}
+                  {CLIENT_COCKPIT_FIELDS.map((key, i) => {
+                    const meta = cockpitFieldMeta[key];
+                    const has = !!clientRow[key];
+                    return (
+                      <div key={key} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, padding: '5px 0', borderTop: i === 0 ? 'none' : `1px solid ${C.line}` }}>
+                        <span style={{ color: C.inkMute, flexShrink: 0 }}>{CLIENT_FIELDS[key].label}</span>
+                        <div style={{ flex: 1, display: 'flex', justifyContent: 'flex-end', minWidth: 0, textAlign: 'right' }}>
+                          <InlineEditField
+                            value={clientRow[key] || ''}
+                            type={meta.type}
+                            width={meta.width}
+                            onSave={(v) => saveClientField(key, v)}
+                            formatValue={(v) => meta.format(v) || 'Not on file'}
+                            fontSize={13}
+                            color={has ? C.ink : C.inkMute}
+                            ariaLabel={`Edit ${CLIENT_FIELDS[key].label}`}
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             )}
