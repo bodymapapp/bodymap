@@ -731,6 +731,7 @@ function Row({ label, value, setValue, onSave, justSaved, error, required, type 
 function PillRow({ label, value, options, onSave, justSaved, hidden = false }) {
   const isKnown = options.includes(value);
   const otherText = (!isKnown && value) ? value.replace(/^Other:\s*/i, '') : '';
+  const [editing, setEditing] = useState(false);
   const [showOther, setShowOther] = useState(!isKnown && !!value);
   const [draft, setDraft] = useState(otherText);
   const inputRef = useRef(null);
@@ -740,51 +741,81 @@ function PillRow({ label, value, options, onSave, justSaved, hidden = false }) {
     setDraft((!options.includes(value) && value) ? value.replace(/^Other:\s*/i, '') : '');
   }, [value, options]);
 
-  useEffect(() => { if (showOther && inputRef.current) inputRef.current.focus(); }, [showOther]);
-
-  const otherSelected = showOther || (!isKnown && !!value);
+  useEffect(() => { if (editing && showOther && inputRef.current) inputRef.current.focus(); }, [editing, showOther]);
 
   if (hidden) return null;
+
+  const display = isKnown ? value : (value ? value.replace(/^Other:\s*/i, '') : '');
+
+  // Collapsed: one clean line, same as every other field. Tap to change.
+  if (!editing) {
+    return (
+      <div style={{
+        display: 'grid', gridTemplateColumns: 'minmax(70px, 90px) 1fr',
+        alignItems: 'center', padding: '7px 4px',
+        borderBottom: `1px solid ${C.lineSoft}`, gap: 12,
+      }}>
+        <div style={{ fontSize: 11, fontWeight: 700, color: C.muted, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+          {label}
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+          <button
+            onClick={() => setEditing(true)}
+            aria-label={`Edit ${label}`}
+            style={{
+              flex: 1, minWidth: 0, textAlign: 'left', padding: '6px 8px',
+              background: 'transparent', border: '1.5px solid transparent', borderRadius: 8,
+              fontSize: 14, fontFamily: 'inherit', color: display ? C.ink : C.muted,
+              cursor: 'pointer', fontStyle: display ? 'normal' : 'italic',
+              overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+              transition: 'background 0.12s',
+            }}
+            onMouseEnter={(e) => { e.currentTarget.style.background = C.hover; }}
+            onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
+          >
+            {display || 'Tap to choose'}
+          </button>
+          {justSaved && <span style={{ fontSize: 11, fontWeight: 600, color: C.saved, flexShrink: 0 }}>✓ Saved</span>}
+        </div>
+      </div>
+    );
+  }
+
+  // Editing: reveal the chips. Picking one collapses back to the line.
+  const otherSelected = showOther || (!isKnown && !!value);
+  const pick = (opt) => { setShowOther(false); onSave(opt); setEditing(false); };
   return (
-    <div style={{ padding: '6px 4px', borderBottom: `1px solid ${C.lineSoft}` }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 5 }}>
+    <div style={{ padding: '8px 4px', borderBottom: `1px solid ${C.lineSoft}` }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
         <span style={{ fontSize: 11, fontWeight: 700, color: C.muted, textTransform: 'uppercase', letterSpacing: '0.08em' }}>{label}</span>
-        {justSaved && <span style={{ fontSize: 11, color: C.saved, fontWeight: 700 }}>Saved</span>}
+        <button type="button" onClick={() => setEditing(false)}
+          style={{ marginLeft: 'auto', background: 'transparent', border: 'none', color: C.sage, fontSize: 12, fontWeight: 700, cursor: 'pointer', padding: 0 }}>
+          Done
+        </button>
       </div>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
         {options.map(opt => {
           const active = value === opt;
           return (
-            <button
-              key={opt}
-              type="button"
-              onClick={() => { setShowOther(false); onSave(opt); }}
+            <button key={opt} type="button" onClick={() => pick(opt)}
               style={{
-                padding: '5px 12px',
-                borderRadius: 999,
+                padding: '5px 12px', borderRadius: 999,
                 border: `1.5px solid ${active ? C.forest : C.line}`,
                 background: active ? C.forest : C.paper,
                 color: active ? '#fff' : C.ink,
-                fontSize: 13,
-                fontWeight: 600,
-                cursor: 'pointer',
+                fontSize: 13, fontWeight: 600, cursor: 'pointer',
               }}>
               {opt}
             </button>
           );
         })}
-        <button
-          type="button"
-          onClick={() => setShowOther(true)}
+        <button type="button" onClick={() => setShowOther(true)}
           style={{
-            padding: '5px 12px',
-            borderRadius: 999,
+            padding: '5px 12px', borderRadius: 999,
             border: `1.5px solid ${otherSelected ? C.forest : C.line}`,
             background: otherSelected ? C.forest : C.paper,
             color: otherSelected ? '#fff' : C.ink,
-            fontSize: 13,
-            fontWeight: 600,
-            cursor: 'pointer',
+            fontSize: 13, fontWeight: 600, cursor: 'pointer',
           }}>
           Other
         </button>
@@ -794,18 +825,13 @@ function PillRow({ label, value, options, onSave, justSaved, hidden = false }) {
           ref={inputRef}
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
-          onBlur={() => { const t = draft.trim(); onSave(t ? `Other: ${t}` : ''); }}
+          onBlur={() => { const t = draft.trim(); onSave(t ? `Other: ${t}` : ''); setEditing(false); }}
           onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur(); }}
           placeholder="Type it in"
           style={{
-            marginTop: 8,
-            width: '100%',
-            boxSizing: 'border-box',
-            padding: '8px 10px',
-            border: `1.5px solid ${C.line}`,
-            borderRadius: 8,
-            fontSize: 14,
-            fontFamily: F.sans,
+            marginTop: 8, width: '100%', boxSizing: 'border-box',
+            padding: '8px 10px', border: `1.5px solid ${C.line}`,
+            borderRadius: 8, fontSize: 14, fontFamily: F.sans,
           }}
         />
       )}
