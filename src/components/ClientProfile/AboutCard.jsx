@@ -24,7 +24,7 @@ import { supabase } from '../../lib/supabase';
 import { CLIENT_FIELDS } from '../../lib/clientFields';
 import { formatUSPhone, normalizePhone } from '../../lib/formatters/phone';
 import AutoGrowingTextarea from '../AutoGrowingTextarea';
-import { ChevronButton } from '../ChevronIcon';
+import AddressAutocompleteInput from '../AddressAutocompleteInput';
 import { recordFactHistory, HISTORY_FIELDS, listFactHistory, HISTORY_FIELD_LABELS, HISTORY_SOURCE_LABELS } from '../../lib/clientHistory';
 
 const C = {
@@ -69,11 +69,9 @@ export default function AboutCard({ client, onUpdated, pulse = false, readOnly =
   // line1/line2/city/state/zip/country May 21 evening; this is the
   // UI surface that lets therapists view and edit them. All optional.
   const [addressLine1, setAddressLine1] = useState(client?.address_line1 || '');
-  const [addressLine2, setAddressLine2] = useState(client?.address_line2 || '');
   const [city, setCity] = useState(client?.city || '');
   const [state, setState] = useState(client?.state || '');
   const [zip, setZip] = useState(client?.zip || '');
-  const [country, setCountry] = useState(client?.country || '');
   // Scope B (HK Jun 1 2026): extra client fields
   const [birthday, setBirthday] = useState(client?.birthday || '');
   const [customerSince, setCustomerSince] = useState(client?.customer_since || '');
@@ -122,11 +120,9 @@ export default function AboutCard({ client, onUpdated, pulse = false, readOnly =
     setPhone(client?.phone || '');
     setNotes(client?.notes || '');
     setAddressLine1(client?.address_line1 || '');
-    setAddressLine2(client?.address_line2 || '');
     setCity(client?.city || '');
     setState(client?.state || '');
     setZip(client?.zip || '');
-    setCountry(client?.country || '');
     setAllergies(client?.allergies || '');
     setHealthConditions(client?.health_conditions || '');
     setMedications(client?.medications || '');
@@ -146,11 +142,9 @@ export default function AboutCard({ client, onUpdated, pulse = false, readOnly =
     setGender(client?.gender || '');
     setReferralSource(client?.referral_source || '');
     setAddressLine1(client?.address_line1 || '');
-    setAddressLine2(client?.address_line2 || '');
     setCity(client?.city || '');
     setState(client?.state || '');
     setZip(client?.zip || '');
-    setCountry(client?.country || '');
     setAllergies(client?.allergies || '');
     setHealthConditions(client?.health_conditions || '');
     setMedications(client?.medications || '');
@@ -242,11 +236,9 @@ export default function AboutCard({ client, onUpdated, pulse = false, readOnly =
     if (field === 'phone') payload.phone = toStoredPhone(value) || null;
     if (field === 'notes') payload.notes = value.trim() || null;
     if (field === 'address_line1') payload.address_line1 = value.trim() || null;
-    if (field === 'address_line2') payload.address_line2 = value.trim() || null;
     if (field === 'city')  payload.city  = value.trim() || null;
     if (field === 'state') payload.state = value.trim() || null;
     if (field === 'zip')   payload.zip   = value.trim() || null;
-    if (field === 'country') payload.country = value.trim() || null;
     if (field === 'birthday')        payload.birthday        = value.trim() || null;
     if (field === 'customer_since')  payload.customer_since  = value.trim() || null;
     if (field === 'alt_phone')       payload.alt_phone       = toStoredPhone(value) || null;
@@ -272,11 +264,9 @@ export default function AboutCard({ client, onUpdated, pulse = false, readOnly =
       if (field === 'phone') setPhone(client?.phone || '');
       if (field === 'notes') setNotes(client?.notes || '');
       if (field === 'address_line1') setAddressLine1(client?.address_line1 || '');
-      if (field === 'address_line2') setAddressLine2(client?.address_line2 || '');
       if (field === 'city')  setCity(client?.city || '');
       if (field === 'state') setState(client?.state || '');
       if (field === 'zip')   setZip(client?.zip || '');
-      if (field === 'country') setCountry(client?.country || '');
       if (field === 'birthday')        setBirthday(client?.birthday || '');
       if (field === 'customer_since')  setCustomerSince(client?.customer_since || '');
       if (field === 'alt_phone')       setAltPhone(client?.alt_phone || '');
@@ -302,6 +292,36 @@ export default function AboutCard({ client, onUpdated, pulse = false, readOnly =
         source: 'edit',
       });
     }
+    if (onUpdated) onUpdated(payload);
+  }
+
+  // Address arrives as one autocomplete pick. Save every part in a
+  // single write, mirror locally, notify the parent.
+  async function saveAddressParts(parts) {
+    setAddressLine1(parts.street1 || '');
+    setCity(parts.city || '');
+    setState(parts.state || '');
+    setZip(parts.postal_code || '');
+    if (isSample) {
+      setJustSaved('address_line1');
+      setTimeout(() => setJustSaved(null), 1500);
+      return;
+    }
+    const payload = {
+      address_line1: parts.street1 || null,
+      city: parts.city || null,
+      state: parts.state || null,
+      zip: parts.postal_code || null,
+    };
+    if (parts.country) payload.country = parts.country;
+    const { error } = await supabase.from('clients').update(payload).eq('id', client.id);
+    if (error) {
+      setErrorOn('address_line1');
+      setErrorMsg('Save failed. Try again.');
+      return;
+    }
+    setJustSaved('address_line1');
+    setTimeout(() => setJustSaved(null), 1500);
     if (onUpdated) onUpdated(payload);
   }
 
@@ -401,21 +421,10 @@ export default function AboutCard({ client, onUpdated, pulse = false, readOnly =
         hidden={!show('address')}
         readOnly={readOnly}
         line1={addressLine1}
-        setLine1={setAddressLine1}
-        line2={addressLine2}
-        setLine2={setAddressLine2}
         city={city}
-        setCity={setCity}
         state={state}
-        setState={setState}
         zip={zip}
-        setZip={setZip}
-        country={country}
-        setCountry={setCountry}
-        saveField={saveField}
-        justSaved={justSaved}
-        errorOn={errorOn}
-        errorMsg={errorMsg}
+        saveAddress={saveAddressParts}
       />
       <div style={{
         marginTop: 18, marginBottom: 2, paddingTop: 14, borderTop: `1px solid ${C.lineSoft}`,
@@ -711,12 +720,12 @@ function PillRow({ label, value, options, onSave, justSaved, hidden = false }) {
 
   if (hidden) return null;
   return (
-    <div style={{ padding: '8px 14px', borderBottom: `1px solid ${C.lineSoft}` }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-        <span style={{ fontSize: 12, fontWeight: 700, color: C.inkSoft, textTransform: 'uppercase', letterSpacing: '0.04em' }}>{label}</span>
+    <div style={{ padding: '6px 4px', borderBottom: `1px solid ${C.lineSoft}` }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 5 }}>
+        <span style={{ fontSize: 11, fontWeight: 700, color: C.muted, textTransform: 'uppercase', letterSpacing: '0.08em' }}>{label}</span>
         {justSaved && <span style={{ fontSize: 11, color: C.saved, fontWeight: 700 }}>Saved</span>}
       </div>
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
         {options.map(opt => {
           const active = value === opt;
           return (
@@ -725,7 +734,7 @@ function PillRow({ label, value, options, onSave, justSaved, hidden = false }) {
               type="button"
               onClick={() => { setShowOther(false); onSave(opt); }}
               style={{
-                padding: '8px 14px',
+                padding: '5px 12px',
                 borderRadius: 999,
                 border: `1.5px solid ${active ? C.forest : C.line}`,
                 background: active ? C.forest : C.paper,
@@ -742,7 +751,7 @@ function PillRow({ label, value, options, onSave, justSaved, hidden = false }) {
           type="button"
           onClick={() => setShowOther(true)}
           style={{
-            padding: '8px 14px',
+            padding: '5px 12px',
             borderRadius: 999,
             border: `1.5px solid ${otherSelected ? C.forest : C.line}`,
             background: otherSelected ? C.forest : C.paper,
@@ -810,7 +819,7 @@ function RowMultiline({ label, value, setValue, onSave, justSaved, error, placeh
     <div style={{
       display: 'grid',
       gridTemplateColumns: 'minmax(70px, 90px) 1fr',
-      alignItems: 'flex-start',
+      alignItems: 'center',
       padding: '7px 4px',
       gap: 12,
     }}>
@@ -820,7 +829,6 @@ function RowMultiline({ label, value, setValue, onSave, justSaved, error, placeh
         color: C.muted,
         textTransform: 'uppercase',
         letterSpacing: '0.08em',
-        paddingTop: 8,
       }}>
         {label}
       </div>
@@ -835,7 +843,7 @@ function RowMultiline({ label, value, setValue, onSave, justSaved, error, placeh
               if (e.key === 'Escape') { e.preventDefault(); cancel(); }
               if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); commit(); }
             }}
-            minRows={3}
+            minRows={1}
             maxRows={12}
             placeholder={placeholder}
             style={{
@@ -846,7 +854,6 @@ function RowMultiline({ label, value, setValue, onSave, justSaved, error, placeh
               background: C.paper,
               color: C.ink,
               boxSizing: 'border-box',
-              minHeight: 70,
             }}
           />
         ) : (
@@ -865,9 +872,10 @@ function RowMultiline({ label, value, setValue, onSave, justSaved, error, placeh
               color: value ? C.ink : C.muted,
               cursor: 'pointer',
               fontStyle: value ? 'normal' : 'italic',
-              whiteSpace: 'pre-wrap',
+              whiteSpace: 'nowrap',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
               transition: 'background 0.12s',
-              minHeight: 38,
             }}
             onMouseEnter={(e) => { e.currentTarget.style.background = C.hover; }}
             onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
@@ -903,131 +911,56 @@ function RowMultiline({ label, value, setValue, onSave, justSaved, error, placeh
 // short preview (e.g. "Nashville, TN 37212") so therapists can see
 // the city without expanding.
 function AddressBlock({
-  line1, setLine1,
-  line2, setLine2,
-  city, setCity,
-  state, setState,
-  zip, setZip,
-  country, setCountry,
-  saveField, justSaved, errorOn, errorMsg,
+  line1, city, state, zip,
+  saveAddress,
   readOnly = false,
   hidden = false,
 }) {
-  const [open, setOpen] = useState(false);
-  const hasAny = !!(line1 || line2 || city || state || zip);
-  const summary = hasAny
-    ? [city, state].filter(Boolean).join(', ') + (zip ? ` ${zip}` : '')
-    : '';
-
   if (hidden) return null;
+  const oneLine = [line1, [city, state].filter(Boolean).join(', '), zip]
+    .filter(Boolean).join(', ');
   return (
     <div style={{
-      borderRadius: 10,
-      background: C.cream,
-      marginTop: 4,
-      marginBottom: 4,
-      overflow: 'hidden',
+      display: 'grid',
+      gridTemplateColumns: 'minmax(70px, 90px) 1fr',
+      alignItems: 'center',
+      padding: '7px 4px',
+      borderBottom: `1px solid ${C.lineSoft}`,
+      gap: 12,
     }}>
-      <button
-        type="button"
-        onClick={() => setOpen(v => !v)}
-        aria-expanded={open}
-        style={{
-          width: '100%',
-          background: 'transparent',
-          border: 'none',
-          padding: '10px 12px',
-          display: 'flex',
-          alignItems: 'center',
-          gap: 10,
-          cursor: 'pointer',
-          textAlign: 'left',
-          fontFamily: 'inherit',
-        }}
-      >
-        <div style={{
-          width: 36, height: 36, borderRadius: 8,
-          background: open ? '#D4E6DA' : '#F0EBE0',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: 16, flexShrink: 0,
-        }}>
-          📍
-        </div>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: 14, fontWeight: 700, color: C.ink }}>
-            Address
-          </div>
+      <div style={{
+        fontSize: 11, fontWeight: 700, color: C.muted,
+        textTransform: 'uppercase', letterSpacing: '0.08em',
+      }}>
+        Address
+      </div>
+      <div style={{ minWidth: 0 }}>
+        {readOnly ? (
           <div style={{
-            fontSize: 12,
-            color: C.muted,
-            marginTop: 2,
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            whiteSpace: 'nowrap',
+            padding: '6px 8px', fontSize: 14,
+            color: oneLine ? C.ink : C.muted,
+            fontStyle: oneLine ? 'normal' : 'italic',
+            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
           }}>
-            {hasAny ? (summary || 'Address on file') : 'Add an address (optional)'}
+            {oneLine || 'Not set'}
           </div>
-        </div>
-        <ChevronButton open={open} ariaLabel={open ? 'Collapse address' : 'Expand address'} />
-      </button>
-      {open && (
-        <div style={{ padding: '4px 8px 10px 8px' }}>
-          <Row readOnly={readOnly}
-            label="Street address"
-            value={line1}
-            setValue={setLine1}
-            onSave={(v) => saveField('address_line1', v)}
-            justSaved={justSaved === 'address_line1'}
-            error={errorOn === 'address_line1' ? errorMsg : ''}
-            placeholder="123 Main St"
+        ) : (
+          <AddressAutocompleteInput
+            street1={line1}
+            city={city}
+            state={state}
+            postal_code={zip}
+            onSelect={saveAddress}
+            placeholder="Start typing the address"
+            inputStyle={{
+              width: '100%', boxSizing: 'border-box',
+              padding: '6px 8px', border: `1.5px solid ${C.line}`,
+              borderRadius: 8, fontSize: 14, fontFamily: 'inherit',
+              background: C.paper, color: C.ink,
+            }}
           />
-          <Row readOnly={readOnly}
-            label="Apt / Suite"
-            value={line2}
-            setValue={setLine2}
-            onSave={(v) => saveField('address_line2', v)}
-            justSaved={justSaved === 'address_line2'}
-            error={errorOn === 'address_line2' ? errorMsg : ''}
-            placeholder="Apt 4B (optional)"
-          />
-          <Row readOnly={readOnly}
-            label="City"
-            value={city}
-            setValue={setCity}
-            onSave={(v) => saveField('city', v)}
-            justSaved={justSaved === 'city'}
-            error={errorOn === 'city' ? errorMsg : ''}
-            placeholder="Nashville"
-          />
-          <Row readOnly={readOnly}
-            label="State"
-            value={state}
-            setValue={setState}
-            onSave={(v) => saveField('state', v)}
-            justSaved={justSaved === 'state'}
-            error={errorOn === 'state' ? errorMsg : ''}
-            placeholder="TN"
-          />
-          <Row readOnly={readOnly}
-            label="Zip"
-            value={zip}
-            setValue={setZip}
-            onSave={(v) => saveField('zip', v)}
-            justSaved={justSaved === 'zip'}
-            error={errorOn === 'zip' ? errorMsg : ''}
-            placeholder="37212"
-          />
-          <Row readOnly={readOnly}
-            label="Country"
-            value={country}
-            setValue={setCountry}
-            onSave={(v) => saveField('country', v)}
-            justSaved={justSaved === 'country'}
-            error={errorOn === 'country' ? errorMsg : ''}
-            placeholder="United States"
-          />
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 }
