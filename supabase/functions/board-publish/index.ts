@@ -29,12 +29,14 @@ const START = "<!-- ASSIGNMENTS:START -->";
 const END = "<!-- ASSIGNMENTS:END -->";
 
 const AGENTS: [string, string][] = [
-  ["engineering", "Engineering"],
+  ["engineering", "Engineering 1"],
+  ["engineering_2", "Engineering 2"],
   ["customer_support", "Customer Support"],
   ["marketing", "Marketing"],
   ["strategy", "Strategy"],
   ["chief_of_staff", "Chief of Staff"],
 ];
+const BUCKET_RANK: Record<string, number> = { now: 0, next: 1, later: 2 };
 
 function toBase64(str: string): string {
   const bytes = new TextEncoder().encode(str);
@@ -52,24 +54,26 @@ function fromBase64(b64: string): string {
 function buildBlock(tasks: any[]): string {
   const when = new Date().toISOString().slice(0, 16).replace("T", " ");
   let md = "## Assignments by agent\n\n";
-  md += "Published from the Agent Board. Each agent works the items under its own name, by number. ";
-  md += 'When HK says "run [agent] [number]" or "complete [agent] [number]", find that exact heading below ';
-  md += "and do what its prompt says. [ ] is open, [~] is in progress. The tag is how it should run: ";
-  md += "GREEN safe to run alone, AMBER draft for HK, RED HK does it. Do not hand-edit this block.\n\n";
+  md += "Published from the Agent Board. Each lane works the items under its own name, by number. ";
+  md += 'When HK says "run [number]" in a lane\'s chat, you are that lane, so find that number below and ';
+  md += "do what its prompt says. [ ] is open, [~] is in progress. The tag is how it should run: ";
+  md += "GREEN safe to run alone, YELLOW draft for HK, RED HK does it. Only published tasks appear here. ";
+  md += "Do not hand-edit this block.\n\n";
   md += `Last published: ${when} (UTC).\n\n`;
   for (const [key, label] of AGENTS) {
-    const rows = tasks
+    const ordered = tasks
       .filter((t) => t.agent === key)
-      .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
+      .sort((a, b) => ((BUCKET_RANK[String(a.time_bucket)] ?? 0) - (BUCKET_RANK[String(b.time_bucket)] ?? 0)) || ((a.sort_order || 0) - (b.sort_order || 0)));
+    const published = ordered.map((t, i) => ({ t, n: i + 1 })).filter((x) => x.t.published_at);
     md += `### ${label}\n\n`;
-    if (rows.length === 0) { md += "No open assignment.\n\n"; continue; }
-    rows.forEach((t, i) => {
+    if (published.length === 0) { md += "No published task.\n\n"; continue; }
+    for (const { t, n } of published) {
       const box = t.status === "in_progress" ? "[~]" : "[ ]";
-      const tier = ["green", "amber", "red"].includes(String(t.tier)) ? String(t.tier).toUpperCase() : "AMBER";
-      md += `**${label} ${i + 1}** ${box} [${tier}] ${t.title}\n`;
+      const tier = ["green", "yellow", "red"].includes(String(t.tier)) ? String(t.tier).toUpperCase() : "YELLOW";
+      md += `**${label} \u00b7 ${n}** ${box} [${tier}] ${t.title}\n`;
       const d = (t.detail && String(t.detail).trim()) ? String(t.detail).trim() : "";
       md += d ? `${d}\n\n` : "(No prompt written yet. Use the title as the goal, or ask HK.)\n\n";
-    });
+    }
   }
   return md.trimEnd();
 }
@@ -113,11 +117,22 @@ serve(async (req) => {
     }
 
     const admin = createClient(supabaseUrl, serviceKey);
-    let query = admin.from("agent_tasks").select("*").in("status", ["open", "in_progress"]);
-    if (ids) query = query.in("id", ids);
-    const { data: tasks, error: readErr } = await query;
+
+    // Stamp the targeted cards as published, and mark them in progress so the
+    // check-mark scheme stays consistent. ids given = those cards; no ids = all
+    // active cards.
+    const nowIso = new Date().toISOString();
+    let stampQuery = admin.from("agent_tasks").update({ published_at: nowIso, status: "in_progress" }).in("status", ["open", "in_progress"]);
+    if (ids) stampQuery = stampQuery.in("id", ids);
+    const { error: stampErr } = await stampQuery;
+    if (stampErr) return json({ error: "Could not mark the tasks published." }, 500);
+
+    // Read all active cards so numbering matches the board, then the block
+    // includes only the published ones.
+    const { data: tasks, error: readErr } = await admin.from("agent_tasks").select("*").in("status", ["open", "in_progress"]);
     if (readErr) return json({ error: "Could not read the board." }, 500);
 
+    const publishedCount = (tasks || []).filter((t: any) => t.published_at).length;
     const block = buildBlock(tasks || []);
 
     const ghBase = `https://api.github.com/repos/${REPO}/contents/${FILE_PATH}`;
@@ -160,7 +175,7 @@ serve(async (req) => {
       return json({ error: "Could not write to the brain.", detail }, 502);
     }
 
-    return json({ ok: true, published: (tasks || []).length });
+    return json({ ok: true, published: publishedCount });
   } catch (e) {
     return json({ error: "Publish failed.", detail: String(e) }, 500);
   }

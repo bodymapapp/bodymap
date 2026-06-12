@@ -20,7 +20,8 @@ const FOUNDER_EMAIL = "bodymapdemo@gmail.com";
 const MODEL = "claude-opus-4-7";
 
 const LABELS: Record<string, string> = {
-  engineering: "Engineering",
+  engineering: "Engineering 1",
+  engineering_2: "Engineering 2",
   customer_support: "Customer Support",
   marketing: "Marketing",
   strategy: "Strategy",
@@ -54,19 +55,23 @@ serve(async (req) => {
     const title = String(body?.title || "").trim();
     const detail = String(body?.detail || "").trim();
     const agentLabel = LABELS[String(body?.agent || "")] || "the";
+    const refinement = String(body?.refinement || "").trim();
     if (!title) return json({ error: "No task title." }, 400);
 
     const system =
-      `You write a clear, specific work brief for a MyBodyMap agent. The agent is the ${agentLabel} agent. ` +
-      `It will read this brief and do the work, with HK reviewing. Given the task title and any notes, ` +
-      `write a brief the agent can act on right away. Cover, in plain short lines: the goal in one or two sentences; ` +
-      `the specifics of what to do and where it lives if known; constraints that matter for MyBodyMap (always say ` +
-      `MyBodyMap not BodyMap, always platform not app or tool, no em dashes, mobile first, never show error pages to ` +
-      `customers, never delete customer data without confirmation); and what done looks like. ` +
-      `Output rules: plain and concrete, no fluff, no preamble, no sign off, around 120 to 200 words, no em dashes anywhere. ` +
-      `Write only the brief.`;
+      `You write a clear, specific work prompt for a MyBodyMap agent. The agent is the ${agentLabel} agent. ` +
+      `It will read this prompt and do the work, with HK reviewing. Given the task title, any notes, and any ` +
+      `refinements from HK, write a prompt the agent can act on right away. Cover, in plain short lines: the goal ` +
+      `in one or two sentences; the specifics of what to do and where it lives if known; constraints that matter for ` +
+      `MyBodyMap (always say MyBodyMap not BodyMap, always platform not app or tool, no em dashes, mobile first, never ` +
+      `show error pages to customers, never delete customer data without confirmation); and what done looks like. ` +
+      `End with a short section titled "Risks" in plain words a non-technical founder can read in seconds, naming any ` +
+      `risk to the founder, to therapists, or to customers, or write "Risks: low" if there are none worth noting. ` +
+      `If HK gave refinements, follow them and weave them in. ` +
+      `Output rules: plain and concrete, no fluff, no preamble, no sign off, around 150 to 230 words, no em dashes anywhere. ` +
+      `Write only the prompt.`;
 
-    const userMsg = `Task title: ${title}\nNotes: ${detail || "(none)"}`;
+    const userMsg = `Task title: ${title}\nNotes: ${detail || "(none)"}\nHK refinements: ${refinement || "(none)"}`;
 
     const aiRes = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
