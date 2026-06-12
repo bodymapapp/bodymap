@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useMemo, useRef } from "react";
 import { db, supabase } from "../lib/supabase";
 import { getSampleSessions } from "../data/sampleClients";
-import { AFTERCARE_PRESETS } from "../lib/sessionIntelligence";
+import { AFTERCARE_PRESETS, zoneOpacity } from "../lib/sessionIntelligence";
 import DocumentJourney from "./DocumentJourney";
 import DocumentDrawer from "./DocumentDrawer";
 import AutoGrowingTextarea from "./AutoGrowingTextarea";
@@ -507,7 +507,7 @@ export default function SessionDetail({ session, client, onBack, onUpdate }) {
       (s.back_focus  || []).forEach(a => { bf[a] = (bf[a] || 0) + 1; });
       (s.back_avoid  || []).forEach(a => { ba[a] = (ba[a] || 0) + 1; });
     });
-    const toEntry = (c) => ({ count: c, total: n, opacity: parseFloat(Math.min(0.3 + (c / n) * 0.7, 1.0).toFixed(2)) });
+    const toEntry = (c) => ({ count: c, total: n, opacity: zoneOpacity(c, n) });
     return {
       frontFocus: Object.fromEntries(Object.entries(ff).map(([k,v]) => [k, toEntry(v)])),
       frontAvoid: Object.fromEntries(Object.entries(fa).map(([k,v]) => [k, toEntry(v)])),

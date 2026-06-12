@@ -23,6 +23,7 @@ import DocErrorBoundary from './DocErrorBoundary';
 import ViewErrorBoundary from './ViewErrorBoundary';
 import BodyDiagram from './BodyDiagram';
 import { zoneLabel, zonesToBodyDiagram, pressureLabel, goalLabel, preferenceLabel } from '../lib/bodyZones';
+import { zoneOpacity } from '../lib/sessionIntelligence';
 
 // HK May 25 2026: the 4 doc page components are heavy (each pulls in
 // body diagram + html2canvas dependencies via DocumentDrawer's
@@ -888,14 +889,15 @@ function PatternsContent({ allSessions }) {
   });
 
   // Build heatmap inputs: { zoneId: { opacity 0-1, count } }.
-  // Opacity scales the dot size in BodyDiagram heatmap mode.
+  // Opacity is the zone's absolute share of this client's sessions, so
+  // the shade reads the same on every client (see zoneOpacity).
   function buildHeatmap(counts) {
-    const max = Math.max(1, ...Object.values(counts));
+    const total = allSessions.length;
     const out = {};
     Object.entries(counts).forEach(([id, count]) => {
       // Translate session zone ids to body-diagram zone ids.
       const { frontIds, backIds } = zonesToBodyDiagram([id]);
-      const opacity = count / max;
+      const opacity = zoneOpacity(count, total);
       [...frontIds, ...backIds].forEach(diagId => {
         out[diagId] = { opacity, count };
       });
@@ -964,8 +966,22 @@ function PatternsContent({ allSessions }) {
               <div style={{ fontSize: 10, fontWeight: 600, color: SO.inkMute, marginTop: 4, letterSpacing: '0.08em', textTransform: 'uppercase' }}>Back</div>
             </div>
           </div>
-          <div style={{ fontSize: 11, color: SO.inkMute, marginTop: 8, textAlign: 'center', lineHeight: 1.45 }}>
-            Bigger circles = recurring zones. Sage = focus, rose = avoid.
+          <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
+            <div style={{ display: 'flex', gap: 14, alignItems: 'center', flexWrap: 'wrap', justifyContent: 'center' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <span style={{ fontSize: 9, color: SO.inkMute }}>Rare</span>
+                <span style={{ width: 54, height: 8, borderRadius: 4, background: 'linear-gradient(90deg, #E4EFE7, #16271D)' }} />
+                <span style={{ fontSize: 9, color: SO.inkMute }}>Most visits</span>
+                <span style={{ fontSize: 10, color: SO.inkSoft, fontWeight: 600, marginLeft: 2 }}>Focus</span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <span style={{ width: 54, height: 8, borderRadius: 4, background: 'linear-gradient(90deg, #F6DBE2, #6E1326)' }} />
+                <span style={{ fontSize: 10, color: SO.inkSoft, fontWeight: 600 }}>Avoid</span>
+              </div>
+            </div>
+            <div style={{ fontSize: 11, color: SO.inkMute, textAlign: 'center', lineHeight: 1.45 }}>
+              Darker = bigger share of this client's sessions, on the same scale for every client. Bigger circles = recurring zones.
+            </div>
           </div>
         </div>
       )}
@@ -1621,7 +1637,7 @@ export function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelle
   // HK May 25 2026: lock body scroll when the slide-over is open so
   // wheel/touch events on the panel don't cascade to the page behind.
   // HK May 31 2026 round 3: gated to mode==='slide' only. In page mode
-  // the panel IS the page — locking body scroll there made the entire
+  // the panel IS the page, so locking body scroll there made the entire
   // /dashboard/schedule/booking/:id route unscrollable, which is what
   // HK hit. Backdrop + overlay logic only applies to the slide-over.
   useEffect(() => {

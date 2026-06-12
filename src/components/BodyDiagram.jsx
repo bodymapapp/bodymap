@@ -30,6 +30,30 @@ const COLORS = {
   redDeep: '#7F1D1D',
 };
 
+// Heatmap shade ramps. The dot fill is interpolated along these by the
+// zone's absolute intensity (share of the client's sessions), so a rare
+// zone reads pale and a recurring one reads deep. Size and halo are the
+// secondary cues. The count numeral flips from dark ink to white once
+// the fill is dark enough to carry white text, keeping it readable
+// across the whole ramp.
+const SAGE_RAMP = ['#E4EFE7', '#16271D']; // pale mint to deep forest
+const ROSE_RAMP = ['#F6DBE2', '#6E1326']; // pale rose to deep crimson
+const INK_FOCUS = '#16271D';
+const INK_AVOID = '#5A0F1F';
+
+function hexToRgb(h) {
+  return [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)];
+}
+
+// Interpolate between two hex colors. t is clamped to 0..1.
+function lerpHex(a, b, t) {
+  const x = Math.max(0, Math.min(1, t));
+  const ca = hexToRgb(a);
+  const cb = hexToRgb(b);
+  const ch = ca.map((v, i) => Math.round(v + (cb[i] - v) * x));
+  return `rgb(${ch[0]}, ${ch[1]}, ${ch[2]})`;
+}
+
 export default function BodyDiagram({
   focusAreas = [],
   avoidAreas = [],
@@ -59,14 +83,18 @@ export default function BodyDiagram({
         // Zone size scales with count. Min radius 11, max 20.
         const r = 11 + opacity * 9;
         const fontSize = r >= 17 ? 14 : r >= 14 ? 12 : 11;
+        // Fill shade scales with intensity; numeral flips to white once
+        // the dot is dark enough to carry it.
+        const fill = lerpHex(SAGE_RAMP[0], SAGE_RAMP[1], opacity);
+        const textFill = opacity >= 0.55 ? 'white' : INK_FOCUS;
         return (
           <g key={'hf-' + area}>
             {/* Outer halo for emphasis on high-count zones */}
             <circle cx={c[0]} cy={c[1]} r={r + 5} fill={`rgba(74,107,84,${(opacity * 0.15).toFixed(2)})`} />
-            {/* Main zone circle, color saturation scales with count */}
-            <circle cx={c[0]} cy={c[1]} r={r} fill={COLORS.sage} stroke={COLORS.sageDeep} strokeWidth={opacity > 0.7 ? '2.5' : '1.5'} />
+            {/* Main zone circle, shade scales with intensity */}
+            <circle cx={c[0]} cy={c[1]} r={r} fill={fill} stroke={COLORS.sageDeep} strokeWidth={opacity > 0.7 ? '2.5' : '1.5'} />
             {/* Number IN the circle */}
-            <text x={c[0]} y={c[1] + fontSize / 3} textAnchor="middle" fill="white" fontSize={fontSize} fontWeight="800" fontFamily="Inter, sans-serif">{count}</text>
+            <text x={c[0]} y={c[1] + fontSize / 3} textAnchor="middle" fill={textFill} fontSize={fontSize} fontWeight="800" fontFamily="Inter, sans-serif">{count}</text>
           </g>
         );
       })}
@@ -75,11 +103,13 @@ export default function BodyDiagram({
         const c = ZONE_COORDS[area]; if (!c) return null;
         const r = 11 + opacity * 9;
         const fontSize = r >= 17 ? 14 : r >= 14 ? 12 : 11;
+        const fill = lerpHex(ROSE_RAMP[0], ROSE_RAMP[1], opacity);
+        const textFill = opacity >= 0.55 ? 'white' : INK_AVOID;
         return (
           <g key={'ha-' + area}>
             <circle cx={c[0]} cy={c[1]} r={r + 5} fill={`rgba(185,28,28,${(opacity * 0.12).toFixed(2)})`} />
-            <circle cx={c[0]} cy={c[1]} r={r} fill={COLORS.red} stroke={COLORS.redDeep} strokeWidth={opacity > 0.7 ? '2.5' : '1.5'} />
-            <text x={c[0]} y={c[1] + fontSize / 3} textAnchor="middle" fill="white" fontSize={fontSize} fontWeight="800" fontFamily="Inter, sans-serif">{count}</text>
+            <circle cx={c[0]} cy={c[1]} r={r} fill={fill} stroke={COLORS.redDeep} strokeWidth={opacity > 0.7 ? '2.5' : '1.5'} />
+            <text x={c[0]} y={c[1] + fontSize / 3} textAnchor="middle" fill={textFill} fontSize={fontSize} fontWeight="800" fontFamily="Inter, sans-serif">{count}</text>
           </g>
         );
       })}

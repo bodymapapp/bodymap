@@ -19,6 +19,7 @@ import React from 'react';
 import BodyDiagram from '../BodyDiagram';
 import EmptyState from './EmptyStates';
 import { zoneLabel, zonesToBodyDiagram } from '../../lib/bodyZones';
+import { zoneOpacity } from '../../lib/sessionIntelligence';
 
 const C = {
   forest: '#1F3A2C',
@@ -55,13 +56,12 @@ export default function PatternsCard({ patterns, totalSessions }) {
     );
   }
 
-  // Build the heatmap input for BodyDiagram. Each zone's "opacity"
-  // is its count divided by the max count, so the most-frequent zone
-  // is the biggest/darkest dot.
+  // Build the heatmap input for BodyDiagram. Each zone's "opacity" is
+  // its share of the client's total sessions (absolute), so the shade
+  // means the same thing on every client rather than each client maxing
+  // out their own busiest zone.
   const allFocusZones = [...topFrontZones, ...topBackZones];
   const allAvoidZones = topAvoidZones;
-  const maxFocusCount = Math.max(1, ...allFocusZones.map(z => z.count));
-  const maxAvoidCount = Math.max(1, ...allAvoidZones.map(z => z.count));
 
   // For the silhouette, we use simple zone IDs and translate them via
   // zonesToBodyDiagram. The diagram needs front/back split separately
@@ -71,7 +71,7 @@ export default function PatternsCard({ patterns, totalSessions }) {
   const heatmapFocusBack = {};
   for (const z of allFocusZones) {
     const { frontIds, backIds } = zonesToBodyDiagram([z.id]);
-    const opacity = z.count / maxFocusCount;
+    const opacity = zoneOpacity(z.count, totalSessions);
     for (const id of frontIds) {
       heatmapFocusFront[id] = { opacity, count: z.count };
     }
@@ -84,7 +84,7 @@ export default function PatternsCard({ patterns, totalSessions }) {
   const heatmapAvoidBack = {};
   for (const z of allAvoidZones) {
     const { frontIds, backIds } = zonesToBodyDiagram([z.id]);
-    const opacity = z.count / maxAvoidCount;
+    const opacity = zoneOpacity(z.count, totalSessions);
     for (const id of frontIds) {
       heatmapAvoidFront[id] = { opacity, count: z.count };
     }
@@ -191,25 +191,29 @@ function Legend() {
       paddingTop: 10,
       borderTop: `1px solid ${C.lineFaint}`,
       display: 'flex',
-      justifyContent: 'center',
-      gap: 18,
-      flexWrap: 'wrap',
+      flexDirection: 'column',
+      alignItems: 'center',
+      gap: 6,
     }}>
-      <LegendItem color={C.sage} label="Focus zones" />
-      <LegendItem color={C.rose} label="Avoid zones" />
+      <div style={{ display: 'flex', justifyContent: 'center', gap: 16, flexWrap: 'wrap' }}>
+        <LegendItem gradient="linear-gradient(90deg, #E4EFE7, #16271D)" label="Focus" />
+        <LegendItem gradient="linear-gradient(90deg, #F6DBE2, #6E1326)" label="Avoid" />
+      </div>
       <span style={{
         fontSize: 10.5,
         color: C.muted,
         fontStyle: 'italic',
         fontFamily: F.sans,
+        textAlign: 'center',
+        lineHeight: 1.4,
       }}>
-        bigger dot = more sessions
+        Darker = bigger share of this client's sessions, same scale for every client. Bigger dot = more sessions.
       </span>
     </div>
   );
 }
 
-function LegendItem({ color, label }) {
+function LegendItem({ gradient, label }) {
   return (
     <span style={{
       display: 'inline-flex',
@@ -221,10 +225,10 @@ function LegendItem({ color, label }) {
       fontWeight: 600,
     }}>
       <span style={{
-        width: 10,
+        width: 28,
         height: 10,
-        borderRadius: '50%',
-        background: color,
+        borderRadius: 5,
+        background: gradient,
       }}/>
       {label}
     </span>

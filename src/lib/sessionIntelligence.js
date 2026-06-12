@@ -333,6 +333,18 @@ export function getStandingFlags(session) {
 
 // ---------- Body zone heatmap aggregation ----------
 
+// Absolute shade intensity for one zone: its share of the client's
+// total sessions, floored at 0.3 so even a single hit stays visible
+// and capped at 1.0. Absolute means the same share reads as the same
+// darkness on every client, so a heavier client looks visibly hotter
+// than a lighter one rather than every client maxing out their own
+// busiest zone. This is the one source of truth for every heatmap
+// surface (profile patterns, schedule dashboard, printable recap).
+export function zoneOpacity(count, total) {
+  const n = Math.max(1, total || 0);
+  return parseFloat(Math.min(0.3 + (count / n) * 0.7, 1.0).toFixed(2));
+}
+
 export function aggregateHeatmap(history, currentSessionId, limit = 5) {
   const prior = getPriorSessions(history, currentSessionId).slice(0, limit);
   const n = prior.length;
@@ -344,7 +356,7 @@ export function aggregateHeatmap(history, currentSessionId, limit = 5) {
     (s.back_focus || []).forEach(a => { bf[a] = (bf[a] || 0) + 1; });
     (s.back_avoid || []).forEach(a => { ba[a] = (ba[a] || 0) + 1; });
   });
-  const toEntry = c => ({ count: c, total: n, opacity: parseFloat(Math.min(0.3 + (c / n) * 0.7, 1.0).toFixed(2)) });
+  const toEntry = c => ({ count: c, total: n, opacity: zoneOpacity(c, n) });
   return {
     frontFocus: Object.fromEntries(Object.entries(ff).map(([k, v]) => [k, toEntry(v)])),
     frontAvoid: Object.fromEntries(Object.entries(fa).map(([k, v]) => [k, toEntry(v)])),
