@@ -8332,7 +8332,14 @@ export default function ScheduleDashboard({ therapist }) {
   // becomes the booking, and the page's back button returns to the
   // schedule with its state preserved. The slide-over render below stays
   // as a dormant fallback (never triggered while onOpenBooking is wired).
-  const openBooking = (id) => { if (id) routeNavigate(`/dashboard/schedule/booking/${id}`); };
+  const openBooking = (id) => {
+    if (!id) return;
+    // External calendar events (Google) are reference blocks, not
+    // bookings. They have no detail page, so tapping one must never
+    // navigate to a booking-not-found screen.
+    if (String(id).startsWith('ext_')) return;
+    routeNavigate(`/dashboard/schedule/booking/${id}`);
+  };
 
   // Preview-data toggle (HK May 18 2026, simplified per HK May 18
   // feedback): one boolean. Therapist taps to flip. Persists to
