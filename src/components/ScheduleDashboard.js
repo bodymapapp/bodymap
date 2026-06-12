@@ -35,7 +35,17 @@ const PostSessionBrief = React.lazy(() => import('../pages/PostSessionBrief'));
 const PostSessionSummary = React.lazy(() => import('../pages/PostSessionSummary'));
 
 const addDays = (d,n) => { const x=new Date(d); x.setDate(x.getDate()+n); return x; };
-const sameDay = (a,b) => a.toDateString()===b.toDateString();
+const sameDay = (a,b) => {
+  // Defensive: callers should pass Date objects, but a stray string
+  // (e.g. an external event row) must never crash an entire schedule
+  // view. Coerce safely, using noon for date-only strings so a UTC
+  // parse does not roll back a day in negative-offset timezones.
+  const coerce = (x) => x instanceof Date ? x
+    : new Date(typeof x === 'string' && x.length <= 10 ? x + 'T12:00:00' : x);
+  const da = coerce(a), db = coerce(b);
+  if (isNaN(da) || isNaN(db)) return false;
+  return da.toDateString()===db.toDateString();
+};
 const fmt12 = t => { if(!t) return ''; const [h,m]=t.toString().split(':').map(Number); return `${h%12||12}:${String(m).padStart(2,'0')} ${h>=12?'PM':'AM'}`; };
 const fmtDay = d => d.toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'});
 const fmtShort = d => d.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'});
@@ -9070,7 +9080,10 @@ export default function ScheduleDashboard({ therapist }) {
         extEvents = (extRows || []).map(e => {
           const startD = new Date(e.start_at);
           const endD = new Date(e.end_at);
-          const dateStr = `${startD.getFullYear()}-${String(startD.getMonth()+1).padStart(2,'0')}-${String(startD.getDate()).padStart(2,'0')}`;
+          // Match real bookings: date is a Date at local midnight, not
+          // a string. sameDay() and the upcoming filter both call Date
+          // methods on it, so a string here crashes the whole view.
+          const bd = new Date(startD.getFullYear(), startD.getMonth(), startD.getDate());
           const startMins = startD.getHours() * 60 + startD.getMinutes();
           const durationMins = Math.round((endD - startD) / 60000);
           const startStr = `${String(startD.getHours()).padStart(2,'0')}:${String(startD.getMinutes()).padStart(2,'0')}`;
@@ -9083,7 +9096,7 @@ export default function ScheduleDashboard({ therapist }) {
             email: '',
             time: e.is_all_day ? 'All day' : fmt12(startStr),
             duration: durationMins,
-            date: dateStr,
+            date: bd,
             status: 'external',
             sessionId: null,
             clientId: null,
