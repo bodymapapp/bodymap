@@ -5032,6 +5032,13 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
             )}
           </div>
         ) : (
+          <>
+          <div style={{ background:'#F6FBF6', border:'1.5px solid #CBE6CF', borderRadius:10, padding:'12px 14px', marginBottom:12 }}>
+            <div style={{ fontSize:13, fontWeight:700, color:'#1F4131', marginBottom:6 }}>One quick heads-up before you connect</div>
+            <div style={{ fontSize:12.5, color:'#3D4A42', lineHeight:1.55 }}>
+              Google will show a screen that says "Google hasn't verified this app." That is normal while our app finishes Google's review, and your information stays private and safe. To continue, tap <strong>Advanced</strong> at the bottom left, then tap <strong>Go to MyBodyMap</strong>. That is all. You will land right back here, connected.
+            </div>
+          </div>
           <button onClick={connectGoogleCalendar} disabled={googleConnecting}
             style={{
               display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
@@ -5049,6 +5056,7 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
             </svg>
             {googleConnecting ? 'Redirecting to Google...' : 'Connect Google Calendar'}
           </button>
+          </>
         )}
       </div></CollapsibleSection>
       </>)}
