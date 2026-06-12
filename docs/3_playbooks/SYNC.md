@@ -38,11 +38,13 @@ docs/3_playbooks/DEUCE_SETUP.md.
    git push -u origin <branch>
    Do not save a dozen commits for the end; pushed branch commits are how
    other agents and the gate see your work.
-4. When the task is done, open a pull request and turn on auto-merge:
-   gh pr create --fill
-   gh pr merge --auto --squash
-   Deuce takes it from here: it waits until your branch is current and the
-   build passes, then merges it to main on its own. You never push to main.
+4. When the task is done, submit the branch through Deuce:
+   bash scripts/submit-pr.sh "short title of the change"
+   The helper pushes your branch, opens the PR, and arms auto-merge for you.
+   Use this, not gh: the agent sandbox has git, node, npm, and curl, but it
+   does NOT have gh or jq. Deuce takes it from here: it waits until your
+   branch is current and the build passes, then merges it to main on its own.
+   You never push to main.
 5. End: run the WRAP_UP playbook, add your DONE_FEED line, and make sure
    your PR is in (auto-merge on, or already merged).
 
@@ -84,10 +86,11 @@ never on main directly:
       git checkout -b <yourtag>/<short-task-name>
     Commit and push the BRANCH as you work, with [tag] messages:
       git push -u origin <branch>
-    When done, open a PR and enable auto-merge:
-      gh pr create --fill
-      gh pr merge --auto --squash
-    Deuce merges your branch to main once it is current and the build
+    When done, submit the branch through Deuce:
+      bash scripts/submit-pr.sh "short title of the change"
+    The helper pushes your branch, opens the PR, and arms auto-merge. Use
+    this, not gh: the sandbox has git, node, npm, and curl, but not gh and
+    not jq. Deuce merges your branch to main once it is current and the build
     passes. Never push to main. If Deuce reports a failure or conflict, fix
     it on your branch and push again.
 

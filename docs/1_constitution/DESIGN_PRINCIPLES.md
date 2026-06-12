@@ -1361,6 +1361,39 @@ comes before consistency for its own sake.
 
 ---
 
+## 38. Project-instruction changes are returned as complete ready-to-paste text, with placeholders for secrets. Never a list of hand-edits.
+
+**Rule.** When HK needs an agent's project instructions changed, the chief
+returns the complete, ready-to-paste replacement text for those
+instructions, as one block HK can copy in a single action. Any secret in
+that text is shown only as a clearly marked placeholder, for example
+`PASTE_YOUR_NEW_TOKEN_HERE`, that HK swaps in himself. The chief never hands
+HK a list of in-place edits to perform by hand ("change line 3 to...",
+"find the gh line and replace it"). One copy lands one result.
+
+**Secrets never appear in chat, only placeholders.** The chief never prints
+a real token, key, or password back into the conversation, even one it was
+given or one it can read from the environment or the remote URL. The
+replacement text carries a named placeholder; HK fills the real value in
+his own paste, where it never crosses the chat transcript.
+
+**Why.** This is the "deliver work, not homework" principle (top of this
+file) applied to the one surface that is most error-prone to hand-edit:
+the agents' own instructions. A hand-edit list invites a missed line, a
+half-applied change, or an agent left in a broken state, which is exactly
+how the token rotation left a chief session unable to push. A full
+replacement block removes the chance of a partial apply. Echoing a secret
+back into chat would leak it into the transcript and history, so the
+placeholder is not a convenience, it is the safe default.
+
+**Cost.** Set 2026-06-12 after a token rotation left agent instructions
+partly updated and a chief session unable to push, so the gh-to-helper
+correction and a design principle did not land until re-applied. The fix
+is to always return the whole block, with placeholders, not a diff to apply
+by hand.
+
+---
+
 ## Risk register (current open items, as of Jun 1 2026)
 
 Items here are known live risks. Each entry: severity, what could go wrong, what's queued to mitigate.
