@@ -55,3 +55,15 @@ Loud rainbow gradients, corporate blue, generic stock clipart, fake award/Capter
 ## Canonical cover prompts
 
 Three standing directions live in the marketing working notes and are handed to the image tool: (1) product showcase in device frames with the body map as hero, (2) photography-led with a warm real treatment photo and a brand panel, (3) editorial brand statement, minimal type plus botanical. Reuse and refine these rather than starting from scratch.
+
+---
+
+## Cover direction chosen + accuracy rules (HK, 2026-06-11)
+
+Product showcase is the winning direction. Photography-led and editorial were rejected. Standing cover: a browser window and a phone floating on calm cream-sage, showing the REAL app, with the right third carrying the leaf + "MyBodyMap" wordmark, the serif headline "Everything your practice needs, with a memory." (memory in sage italic), three sage check lines (Visual body-map intake / Booking, payments & notes / Remembers every session), and mybodymap.app.
+
+Accuracy rules for any app mockup, the AI invented an inaccurate UI and a curvy figure on the first pass:
+- Recreate the REAL interface from screenshots. White background; forest-green top-tab nav (Clients · Schedule · Billing · Platform · Outreach · Gifts · Settings) and accents; Fraunces serif page titles; cream cards; green primary buttons; gold highlights. Do not invent a different layout or a fictional left sidebar.
+- The body diagram is the app's abstract peg/mannequin figure (pale cream, simple rounded head/torso/limbs), FRONT and BACK, with small red dots for AVOID areas and green dots for FOCUS areas. NEVER a realistic, curvy, anatomical, or nude body.
+- Show the memory/moat with a small green note, e.g. "This area has come up in 4 of the last 4 sessions" or "Welcome back after 32 days. Normal cadence ~14 days."
+- When generating, attach the real app screenshots as visual reference.
