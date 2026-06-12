@@ -441,6 +441,16 @@ Full competitive analysis: `research/competitive-analysis-2026-04.md` and `resea
 
 Major decisions made and the reasoning behind them. Append to this rather than overwriting.
 
+### Jun 12, 2026 (operating model: the Deuce gate)
+
+- **Adopted the many-agents, one-gate operating model.** With 30+ agents building at once, agents stop pushing straight to main. Each works on its own branch and submits through a gate. Full model in the "Operating model: many agents, one gate named Deuce" section near the end of this runbook. Supersedes the solo "main only, no feature branches" model (section 6 line updated the same day).
+- **Named the gate Deuce.** Deuce runs permissive: it sequences changes as they arrive and auto-passes anything that is conflict-free and builds, with no per-change human approval. It stops only build breaks and textual conflicts between lanes.
+- **Meaning-level contradictions are the chief's job, flagged not blocked.** A machine cannot judge two lanes that disagree in intent, or a change that breaks a documented rule (the class that caused the silent approve+deposit revenue bug and the blocked-day RLS gap, both of which passed every mechanical check). The chief reads the merged stream and flags these to HK. Main stays revertible, so a flag plus a one-line revert is the net. Nothing waits in line.
+- **Engineering owns the gate setup; the chief sequences and verifies.** HK chose to have the engineering agent make the GitHub changes (protect main, turn on the merge queue, point it at the Vercel build as the required check) rather than do them by hand. Reasoning: one-time, reversible setup, and HK is stretched. The chief sets the order and checks the result after. The danger in either path is ordering, which the chief controls regardless of who clicks.
+- **Order is fixed and it matters: agents first, protection second.** Agent instructions move to "branch, push, PR, auto-merge" BEFORE main is protected. If protection is turned on while agents are still told to push to main, all 30 wedge at once.
+- **Token rotation precedes the flip.** The GitHub token pasted in chat is treated as compromised. HK rotates it and issues per-agent credentials before the gate goes live.
+- **Strictness is a dial.** Start with two checks, no conflict and build passes. Add checks (a test, a lint rule, a chief-review ping on a risky path) only in response to a real class of problem, never preemptively.
+
 ### Jun 10, 2026 (pay-link notifications + coupons thread)
 
 - **Coupon codes shipped as Phase 1 only; referral codes deferred to Phase 2.** HK chose to ship manual discount codes now (percent or dollar, first-time-only, expiry, usage caps) and hold referral codes for later. Discounts apply to the service price and are re-validated and re-priced server-side in both deposit functions, so a code can never be faked or over-redeemed. Never trust a browser-supplied price on a money flow.
@@ -1921,7 +1931,7 @@ Together: the status board tells you who is doing what, the preview links let yo
 This is the work beyond the docs. Most of it is engineering and admin, not the chief's lane.
 
 1. **Update the agents first, then protect main, in that order.** Today every agent is told to push straight to main. The moment main is protected, those pushes are rejected and all 30 agents wedge at once. So the agents' instructions move to "branch, push, open PR, auto-merge" BEFORE protection flips on. (Chief writes the instruction change, eng/HK sequences the flip.)
-2. **Protect main and turn on the merge queue (this is Deuce).** Disable direct pushes, require the queue as the only path onto main. (GitHub repo setting, eng or HK.)
+2. **Protect main and turn on the merge queue (this is Deuce).** Disable direct pushes, require the queue as the only path onto main. (GitHub repo setting. Owner: engineering agent, decided by HK Jun 12 2026. The chief sequences the order and verifies the result after. Reversible.)
 3. **Wire the build check.** Deuce needs a "build passes" signal per change. Simplest path: use Vercel's existing preview build as the required check, no new code. (Eng.)
 4. **One checkout per agent.** Give each agent its own worktree or clone so installs stop thrashing each other. This is the lockfile incident's actual root cause. (Eng, or however agents are launched.)
 5. **Rotate the GitHub token, issue per-agent credentials.** The token pasted in chat is compromised. One shared write key for 30 agents is one key to the whole repo. (HK, security.)
