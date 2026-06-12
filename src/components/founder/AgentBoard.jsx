@@ -188,8 +188,8 @@ export function AgentBoardEmbedded() {
     const done = doneFor(laneKey);
     return (
       <section key={laneKey} style={laneBox}>
-        <div style={{ ...laneHead, borderTop: `3px solid ${lane.color}` }}>
-          <span style={{ fontFamily: "Georgia, serif", fontSize: 13, fontWeight: 700, color: C.ink }}>{lane.label}</span>
+        <div style={{ ...(isMobile ? laneHeadMobile : laneHead), borderTop: `3px solid ${lane.color}` }}>
+          <span style={{ fontFamily: "Georgia, serif", fontSize: isMobile ? 18 : 13, fontWeight: 700, color: C.ink }}>{lane.label}</span>
           <span style={countPill}>{ordered.length}</span>
         </div>
         <div style={laneBody}>
@@ -268,16 +268,17 @@ export function AgentBoardEmbedded() {
 
       {isMobile ? (
         <div>
-          <div style={tabRow}>
+          <div style={laneGrid}>
             {COLUMNS.flat().map((laneKey) => {
               const lane = LANES[laneKey];
               const count = laneOrdered(laneKey).length;
               const active = activeLane === laneKey;
               return (
                 <button key={laneKey} onClick={() => setActiveLane(laneKey)}
-                  style={active ? { ...laneTab, background: lane.color, color: "#fff", borderColor: lane.color } : laneTab}>
-                  {lane.label}
-                  <span style={active ? { ...tabCount, background: "rgba(255,255,255,.25)", color: "#fff", borderColor: "transparent" } : tabCount}>{count}</span>
+                  style={active ? { ...laneChip, background: lane.color, borderColor: lane.color } : laneChip}>
+                  <span style={{ width: 10, height: 10, borderRadius: 3, background: active ? "#fff" : lane.color, flexShrink: 0 }} />
+                  <span style={{ fontFamily: "Georgia, serif", fontSize: 14, fontWeight: 700, color: active ? "#fff" : C.ink, lineHeight: 1.15, flex: 1, minWidth: 0 }}>{lane.label}</span>
+                  <span style={active ? { ...chipCount, background: "rgba(255,255,255,.22)", color: "#fff", borderColor: "transparent" } : chipCount}>{count}</span>
                 </button>
               );
             })}
@@ -320,7 +321,7 @@ function Card({ task, number, isMobile, selectMode, selected, onSelect, onOpen, 
   const ring = isMobile ? emptyRingMobile : emptyRing;
   const mark = isMobile ? checkMarkMobile : checkMark;
   return (
-    <div style={{ ...(isMobile ? cardBaseMobile : cardBase), background: tier.bg, border: `1px solid ${tier.border}`, ...(selectMode && selected ? { outline: `2px solid ${C.forest}` } : {}) }}>
+    <div style={{ ...(isMobile ? cardBaseMobile : cardBase), background: tier.bg, border: `1px solid ${tier.border}`, ...(isMobile ? { borderLeft: `4px solid ${tier.dot}` } : {}), ...(selectMode && selected ? { outline: `2px solid ${C.forest}` } : {}) }}>
       <span style={isMobile ? cardNumMobile : cardNum}>{number}</span>
       {selectMode && (
         <button onClick={(e) => { e.stopPropagation(); onSelect(); }} style={selected ? { ...(isMobile ? selDotMobile : selDot), background: C.forest, borderColor: C.forest } : (isMobile ? selDotMobile : selDot)} aria-label="Select" />
@@ -409,8 +410,9 @@ function TaskDetail({ task, lane, briefing, onClose, onSaveTitle, onSaveDetail, 
 }
 
 function Legend({ isMobile }) {
-  return (
-    <div style={isMobile ? legendWrapMobile : legendWrap}>
+  const [open, setOpen] = useState(false);
+  const groups = (
+    <>
       <span style={legendGroup}>
         <b style={legendTitle}>Card color</b>
         <Chip color={TIERS.green.bg} border={TIERS.green.border} text="Green: runs alone" />
@@ -427,8 +429,19 @@ function Legend({ isMobile }) {
         <b style={legendTitle}>Sections</b>
         <span style={legendItem}>Now, Next week, Next month</span>
       </span>
-    </div>
+    </>
   );
+  if (isMobile) {
+    return (
+      <div style={{ marginBottom: 12 }}>
+        <button onClick={() => setOpen((o) => !o)} style={legendToggle} aria-expanded={open}>
+          {open ? "Hide the color and check guide" : "What the colors and checks mean"}
+        </button>
+        {open && <div style={legendWrapMobile}>{groups}</div>}
+      </div>
+    );
+  }
+  return <div style={legendWrap}>{groups}</div>;
 }
 function Chip({ color, border, text }) {
   return <span style={legendItem}><span style={{ width: 14, height: 14, borderRadius: 4, background: color, border: `1px solid ${border}`, display: "inline-block" }} /> {text}</span>;
@@ -482,11 +495,13 @@ const briefBtnOff = { ...briefBtn, color: C.gray, cursor: "default", borderColor
 
 // Mobile-only style variants. Desktop never reads these. They live below the
 // base styles so their spreads resolve. Bigger tap targets for thumbs, a
-// scrollable lane-tab row, and stacked legend and publish controls.
-const tabRow = { display: "flex", gap: 6, overflowX: "auto", paddingBottom: 8, marginBottom: 10, WebkitOverflowScrolling: "touch" };
-const laneTab = { flexShrink: 0, display: "inline-flex", alignItems: "center", gap: 6, background: "#fff", border: `1px solid ${C.line}`, color: C.ink, borderRadius: 999, padding: "9px 13px", fontSize: 13, fontWeight: 700, cursor: "pointer", minHeight: 40, fontFamily: "Georgia, serif", whiteSpace: "nowrap" };
-const tabCount = { fontSize: 11, fontWeight: 700, color: C.gray, background: "#F3F4F6", border: `1px solid ${C.line}`, borderRadius: 999, padding: "0 7px", lineHeight: "16px" };
-const cardBaseMobile = { ...cardBase, gap: 10, padding: "11px 12px", marginBottom: 8, borderRadius: 9 };
+// lane grid that shows every lane at once, and stacked legend and publish bar.
+const laneGrid = { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 14 };
+const laneChip = { display: "flex", alignItems: "center", gap: 8, background: "#fff", border: `1px solid ${C.line}`, borderRadius: 12, padding: "11px 12px", cursor: "pointer", minHeight: 48, textAlign: "left", boxSizing: "border-box" };
+const chipCount = { fontSize: 11, fontWeight: 700, color: C.gray, background: "#F3F4F6", border: `1px solid ${C.line}`, borderRadius: 999, padding: "0 7px", lineHeight: "16px", flexShrink: 0 };
+const laneHeadMobile = { ...laneHead, padding: "12px 14px" };
+const legendToggle = { width: "100%", background: "#fff", border: `1px solid ${C.line}`, color: C.forest, borderRadius: 10, padding: "11px 14px", fontSize: 14, fontWeight: 700, cursor: "pointer", textAlign: "left" };
+const cardBaseMobile = { ...cardBase, gap: 10, padding: "11px 12px", marginBottom: 8, borderRadius: 9, boxSizing: "border-box" };
 const cardNumMobile = { ...cardNum, fontSize: 15, minWidth: 18 };
 const titleBtnMobile = { ...titleBtn, fontSize: 16, whiteSpace: "normal", overflow: "visible", textOverflow: "clip", lineHeight: 1.35, padding: "2px 0" };
 const checksBtnMobile = { ...checksBtn, padding: 10, minWidth: 44, minHeight: 44, justifyContent: "center" };

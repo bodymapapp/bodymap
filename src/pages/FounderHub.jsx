@@ -304,6 +304,30 @@ export default function FounderHub() {
   return (
     <>
       <Nav />
+      <Link
+        to="/dashboard"
+        aria-label="Back to the app"
+        style={{
+          position: "fixed",
+          left: 16,
+          bottom: "calc(16px + env(safe-area-inset-bottom, 0px))",
+          zIndex: 900,
+          display: "inline-flex",
+          alignItems: "center",
+          gap: 8,
+          background: C.forest,
+          color: "#fff",
+          textDecoration: "none",
+          borderRadius: 999,
+          padding: "11px 16px",
+          fontSize: 14,
+          fontWeight: 700,
+          boxShadow: "0 6px 20px rgba(20,40,30,.28)",
+        }}
+      >
+        <span style={{ fontSize: 16, lineHeight: 1 }}>{"\u2190"}</span>
+        Back to app
+      </Link>
       <div style={{
         minHeight: "100vh",
         background: C.paper,
