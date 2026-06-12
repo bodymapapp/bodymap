@@ -110,6 +110,18 @@ serve(async (req) => {
     );
   }
 
+  // The consent screen lets the user uncheck individual permissions. If
+  // they skipped calendar access, the token cannot read their calendar
+  // and every sync 403s silently. Catch it here and send them back with
+  // a clear message instead of marking them connected-but-broken.
+  const grantedScopes = String(tokenJson.scope || "");
+  if (!grantedScopes.includes("calendar.events") && !grantedScopes.includes("auth/calendar")) {
+    return Response.redirect(
+      settingsRedirect({ google_error: "calendar_permission_needed" }),
+      302
+    );
+  }
+
   // Fetch the user's email so we can show 'connected as ...' in
   // the dashboard. tokeninfo is the cheapest way; userinfo also
   // works but requires extra scopes.

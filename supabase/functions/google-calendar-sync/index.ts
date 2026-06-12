@@ -101,7 +101,25 @@ serve(async (req) => {
       results.push({ therapist_id: t.id, ...r });
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
-      results.push({ therapist_id: t.id, synced: 0, deleted: 0, error: msg });
+      // Self-heal: a 403 insufficient-scopes means this therapist
+      // connected without granting calendar access, so every run fails
+      // silently forever. Flip them to not-connected so the dashboard
+      // prompts a clean reconnect (which now also enforces the scope).
+      const insufficientScope =
+        /insufficient (authentication scopes|permission)/i.test(msg) ||
+        msg.includes("ACCESS_TOKEN_SCOPE_INSUFFICIENT");
+      if (insufficientScope) {
+        await supabase
+          .from("therapists")
+          .update({ google_calendar_connected: false })
+          .eq("id", t.id);
+      }
+      results.push({
+        therapist_id: t.id,
+        synced: 0,
+        deleted: 0,
+        error: insufficientScope ? "calendar_permission_not_granted" : msg,
+      });
     }
   }
 
