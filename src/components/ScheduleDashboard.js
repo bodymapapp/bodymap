@@ -9085,17 +9085,33 @@ export default function ScheduleDashboard({ therapist }) {
           .lte('end_at', extTo.toISOString())
           .order('start_at');
         perfLog('external_calendar_events query', tExt, `rows=${extRows?.length || 0}`);
+        // Render Google events in the therapist's BUSINESS timezone, not
+        // the device's. Bookings are stored as business-zone wall-clock and
+        // shown as-is; pinning external events the same way keeps the two
+        // consistent even when the therapist is travelling.
+        const dispTz = therapist.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
+        const partsIn = (d) => {
+          try {
+            const p = new Intl.DateTimeFormat('en-US', { timeZone: dispTz, year:'numeric', month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit', hour12:false })
+              .formatToParts(d).reduce((o,x)=>{o[x.type]=x.value;return o;},{});
+            let h = parseInt(p.hour,10); if (h === 24) h = 0;
+            return { y:+p.year, mo:+p.month, d:+p.day, h, mi:+p.minute };
+          } catch (_e) {
+            return { y:d.getFullYear(), mo:d.getMonth()+1, d:d.getDate(), h:d.getHours(), mi:d.getMinutes() };
+          }
+        };
         extEvents = (extRows || []).map(e => {
           const startD = new Date(e.start_at);
           const endD = new Date(e.end_at);
-          // Match real bookings: date is a Date at local midnight, not
-          // a string. sameDay() and the upcoming filter both call Date
-          // methods on it, so a string here crashes the whole view.
-          const bd = new Date(startD.getFullYear(), startD.getMonth(), startD.getDate());
-          const startMins = startD.getHours() * 60 + startD.getMinutes();
+          const sp = partsIn(startD), ep = partsIn(endD);
+          // Date as a Date at business-zone midnight. sameDay() and the
+          // upcoming filter call Date methods on it, so a string here
+          // crashes the whole view.
+          const bd = new Date(sp.y, sp.mo - 1, sp.d);
+          const startMins = sp.h * 60 + sp.mi;
           const durationMins = Math.round((endD - startD) / 60000);
-          const startStr = `${String(startD.getHours()).padStart(2,'0')}:${String(startD.getMinutes()).padStart(2,'0')}`;
-          const endStr = `${String(endD.getHours()).padStart(2,'0')}:${String(endD.getMinutes()).padStart(2,'0')}`;
+          const startStr = `${String(sp.h).padStart(2,'0')}:${String(sp.mi).padStart(2,'0')}`;
+          const endStr = `${String(ep.h).padStart(2,'0')}:${String(ep.mi).padStart(2,'0')}`;
           return {
             id: `ext_${e.id}`,
             external: true,
@@ -9183,6 +9199,29 @@ export default function ScheduleDashboard({ therapist }) {
   const allAppts = [...(realBookings||[]), ...(showSample ? SAMPLE : [])];
 
   const TABS=[{id:'today',label:'Today'},{id:'weekly',label:'Weekly'},{id:'monthly',label:'Monthly'},{id:'yearly',label:'Yearly'},{id:'insights',label:'Insights'}];
+
+  // Timezone label so the therapist can confirm the schedule is in their
+  // business zone (especially while travelling). US zones shown as CT/ET
+  // etc; other zones fall back to the raw short name.
+  const tzShort = (() => {
+    const z = therapist?.timezone;
+    if (!z) return '';
+    try {
+      const a = new Intl.DateTimeFormat('en-US', { timeZone: z, timeZoneName: 'short' })
+        .formatToParts(new Date()).find(p => p.type === 'timeZoneName')?.value || '';
+      const m = a.match(/^([CEMP])[SD]T$/);
+      return m ? `${m[1]}T` : a;
+    } catch (_e) { return ''; }
+  })();
+  const syncedAgo = (() => {
+    const ts = therapist?.google_last_synced_at;
+    if (!ts) return 'pending';
+    const mins = Math.max(0, Math.round((Date.now() - new Date(ts).getTime()) / 60000));
+    if (mins < 1) return 'just now';
+    if (mins < 60) return `${mins} min ago`;
+    const hrs = Math.round(mins / 60);
+    return hrs < 24 ? `${hrs} hr ago` : `${Math.round(hrs / 24)} d ago`;
+  })();
 
   const isMobileW = window.innerWidth < 768;
   return (
@@ -9481,6 +9520,14 @@ export default function ScheduleDashboard({ therapist }) {
           </button>
         ))}
       </div>
+
+      {(tzShort || therapist.google_calendar_connected) && (
+        <div style={{display:'flex',alignItems:'center',justifyContent:'center',flexWrap:'wrap',gap:8,marginTop:-6,marginBottom:14,fontSize:11.5,color:'#94A3B8',fontWeight:600}}>
+          {tzShort && <span title={therapist.timezone || ''}>🕐 Times shown in {tzShort}</span>}
+          {tzShort && therapist.google_calendar_connected && <span style={{color:'#E2E8F0'}}>·</span>}
+          {therapist.google_calendar_connected && <span>📅 Google synced {syncedAgo}</span>}
+        </div>
+      )}
 
       {/* Action row. HK Jun 2 2026: web shows all three across one row
           spanning the page (Book Appointment takes half as the primary,
