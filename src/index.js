@@ -1,3 +1,4 @@
+import "./__deuce_intentional_break_does_not_exist__";
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import './index.css';
