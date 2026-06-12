@@ -61,7 +61,7 @@ serve(async (req) => {
     const { data, error } = await supabase
       .from("therapists")
       .select(
-        "id, google_calendar_connected, google_access_token, google_refresh_token, google_token_expires_at, google_calendar_id, google_sync_token"
+        "id, google_calendar_connected, google_access_token, google_refresh_token, google_token_expires_at, google_calendar_id, google_sync_token, timezone"
       )
       .eq("id", body.therapist_id)
       .eq("google_calendar_connected", true)
@@ -74,7 +74,7 @@ serve(async (req) => {
     const { data, error } = await supabase
       .from("therapists")
       .select(
-        "id, google_calendar_connected, google_access_token, google_refresh_token, google_token_expires_at, google_calendar_id, google_sync_token"
+        "id, google_calendar_connected, google_access_token, google_refresh_token, google_token_expires_at, google_calendar_id, google_sync_token, timezone"
       )
       .eq("google_calendar_connected", true);
     if (error) {
@@ -185,6 +185,10 @@ async function syncOneTherapist(
   let synced = 0;
   let deleted = 0;
   let usedSyncToken = !!t.google_sync_token;
+  // Google returns the calendar's own timezone on the list response.
+  // That is the authoritative business timezone, so we capture it and
+  // write it back (browser capture is only a fallback when missing).
+  let calTimeZone: string | null = null;
 
   do {
     const params = new URLSearchParams({
@@ -226,6 +230,7 @@ async function syncOneTherapist(
     }
 
     const data = await res.json();
+    if (data.timeZone) calTimeZone = data.timeZone;
 
     for (const ev of data.items || []) {
       // Skip MyBodyMap-mirrored events. We tag them on forward
@@ -293,6 +298,9 @@ async function syncOneTherapist(
     .update({
       google_sync_token: nextSyncToken || t.google_sync_token,
       google_last_synced_at: new Date().toISOString(),
+      // Authoritative business timezone from Google. Only write when we
+      // got one and it actually differs, to avoid a needless write each run.
+      ...(calTimeZone && calTimeZone !== t.timezone ? { timezone: calTimeZone } : {}),
     })
     .eq("id", t.id);
 

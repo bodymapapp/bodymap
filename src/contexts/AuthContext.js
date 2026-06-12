@@ -41,14 +41,19 @@ export const AuthProvider = ({ children }) => {
   const [therapist, setTherapist] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // Capture the therapist's local timezone once so notification emails can
-  // render times in their local zone instead of the server's UTC. Fire and
-  // forget; only writes when missing or changed, then stops. (HK Jun 5 2026)
+  // Capture the therapist's timezone from the browser ONCE, only when the
+  // account has none yet, so notification emails and the schedule render in
+  // their business zone. Critically we do NOT overwrite an existing value:
+  // a therapist signing in while travelling must not have their home
+  // timezone clobbered to wherever they happen to be. Google connect is the
+  // authoritative source and may correct this later. (HK Jun 5 2026,
+  // travel-safe Jun 12 2026)
   useEffect(() => {
     if (!therapist?.id) return;
+    if (therapist.timezone) return; // already set, leave it alone
     let tz = '';
     try { tz = Intl.DateTimeFormat().resolvedOptions().timeZone || ''; } catch (e) { tz = ''; }
-    if (!tz || therapist.timezone === tz) return;
+    if (!tz) return;
     supabase.from('therapists').update({ timezone: tz }).eq('id', therapist.id).then(() => {});
     setTherapist(prev => (prev && prev.id === therapist.id) ? { ...prev, timezone: tz } : prev);
   }, [therapist?.id, therapist?.timezone]);
