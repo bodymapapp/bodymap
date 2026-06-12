@@ -4,24 +4,51 @@ How every agent and human keeps the brain (this repo) true and current.
 Read this once, then follow it every session. Purpose: no agent ever acts
 on stale truth, and every change is traceable to who made it.
 
-Last updated: 2026-06-11. Canonical home for the sync and attribution rules.
+Last updated: 2026-06-12. Canonical home for the sync and attribution rules. As of Jun 12 2026 agents work on branches and merge through the gate named Deuce; they no longer push to main directly (see below, and the runbook section "Operating model: many agents, one gate named Deuce").
 
 ## The one rule
 
 The brain is not live. Git is pull-based. You only see another agent's
-work after they push and you pull. So: pull before you act, push after
-every change.
+work after it reaches main and you pull. So: pull main before you act, and
+push your branch after every change. The gate, Deuce, merges your branch
+into main. You never push to main directly.
+
+## How a change reaches main now (Deuce)
+
+Old way (solo): you pushed straight to main, and main builds the live site.
+That is off now.
+
+New way: you push a branch, open a PR, and the gate named Deuce checks it
+and merges it to main when it is clean (current with main, and the build
+passes). Main still builds the live site. The gate just sits between your
+branch and main so a broken or conflicting change cannot land. No human
+approval is in the path; clean changes merge on their own, one at a time,
+in arrival order. The one-time setup of the gate is an engineering task in
+docs/3_playbooks/DEUCE_SETUP.md.
 
 ## Every session
 
-1. Start: pull. Your startup ritual already runs git clone or git pull.
+1. Start: pull main. Your startup ritual already runs git clone or git pull.
    That is how you pull in everyone else's latest work.
-2. While working: after each meaningful change, commit and push. Do not
-   save a dozen commits for the end. Local commits are invisible to other
-   agents until they are pushed.
-3. Before you push: fetch first. If main moved, merge it in, then push.
-   Pattern: git fetch origin, then git merge origin/main, then push.
-4. End: run the WRAP_UP playbook, then push.
+2. Make a branch for your task before you touch anything:
+   git checkout -b <yourtag>/<short-task-name>
+   example: engineering/coupon-phase-2
+3. Work on your branch. Commit and push the BRANCH (never main) after each
+   meaningful change, with your [tag] message:
+   git push -u origin <branch>
+   Do not save a dozen commits for the end; pushed branch commits are how
+   other agents and the gate see your work.
+4. When the task is done, open a pull request and turn on auto-merge:
+   gh pr create --fill
+   gh pr merge --auto --squash
+   Deuce takes it from here: it waits until your branch is current and the
+   build passes, then merges it to main on its own. You never push to main.
+5. End: run the WRAP_UP playbook, add your DONE_FEED line, and make sure
+   your PR is in (auto-merge on, or already merged).
+
+If Deuce stops your change, the build failed or your branch conflicts with
+another lane. Fix it on your branch and push again. No other lane is
+affected; everyone else keeps flowing.
 
 ## Stay out of each other's way
 
@@ -29,9 +56,12 @@ every change.
   engineering rooms. Customer Support owns the support and incident drafts.
   Marketing owns the marketing docs. Strategy owns the strategy docs.
   Chief of Staff keeps the state room and the cross-agent view current.
-  Two agents almost never edit the same file, so git merges them cleanly.
-- The block plan is the one file everyone shares. Append to your own dated
-  section. Do not rewrite another agent's lines.
+  When two agents do touch the same file, Deuce catches the conflict at the
+  gate instead of letting a bad merge reach the live site. You no longer
+  merge origin/main by hand before pushing; your branch plus the gate
+  handle it.
+- The block plan and the done feed are shared. Append to your own dated
+  lines. Do not rewrite another agent's lines.
 
 ## Attribution: every change is signed
 
@@ -46,6 +76,20 @@ Set once, right after the clone line, in each agent's project instructions:
     Strategy:     git config user.name "MyBodyMap Strategy" && git config user.email "strategy@mybodymap.app"
     Chief of Staff:  git config user.name "MyBodyMap Chief of Staff" && git config user.email "chief@mybodymap.app"
     A human:      git config user.name "Your Real Name" && git config user.email "your@email"
+
+Then add this to each agent's project instructions so it works on a branch,
+never on main directly:
+
+    Start each task on a fresh branch:
+      git checkout -b <yourtag>/<short-task-name>
+    Commit and push the BRANCH as you work, with [tag] messages:
+      git push -u origin <branch>
+    When done, open a PR and enable auto-merge:
+      gh pr create --fill
+      gh pr merge --auto --squash
+    Deuce merges your branch to main once it is current and the build
+    passes. Never push to main. If Deuce reports a failure or conflict, fix
+    it on your branch and push again.
 
 Start every commit message with your tag in brackets, then keep the
 existing convention:
