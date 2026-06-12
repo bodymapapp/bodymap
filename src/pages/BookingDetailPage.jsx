@@ -13,7 +13,8 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
-import { CLIENT_COCKPIT_FIELDS } from '../lib/clientFields';
+import { ChevronButton } from '../components/ChevronIcon';
+import { formatUSPhone } from '../lib/formatters/phone';
 import AboutCard from '../components/ClientProfile/AboutCard';
 import { DetailPanel } from '../components/ScheduleDashboard';
 import CheckoutModal from '../components/CheckoutModal';
@@ -35,6 +36,7 @@ export default function BookingDetailPage({ therapist }) {
   const { bookingId } = useParams();
   const navigate = useNavigate();
   const [appt, setAppt] = useState(null);
+  const [clientOpen, setClientOpen] = useState(false);
   const [loaded, setLoaded] = useState(false);
   const [notFound, setNotFound] = useState(false);
   const [paymentsRefreshTick, setPaymentsRefreshTick] = useState(0);
@@ -352,12 +354,30 @@ export default function BookingDetailPage({ therapist }) {
 
             {clientRow && (
               <div style={{ background: '#fff', border: `1px solid ${C.line}`, borderRadius: 14, padding: '14px 18px' }}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: C.inkMute, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>Client details</div>
-                <AboutCard
-                  client={clientRow}
-                  fields={CLIENT_COCKPIT_FIELDS}
-                  onUpdated={(p) => setClientRow((r) => (r ? { ...r, ...p } : r))}
-                />
+                <button
+                  type="button"
+                  onClick={() => setClientOpen((v) => !v)}
+                  aria-expanded={clientOpen}
+                  style={{ width: '100%', background: 'transparent', border: 'none', padding: 0, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 10, fontFamily: 'inherit', textAlign: 'left' }}
+                >
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: C.inkMute, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Client details</div>
+                    {!clientOpen && (clientRow.email || clientRow.phone) && (
+                      <div style={{ fontSize: 12.5, color: C.inkSoft, marginTop: 3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {[clientRow.email, formatUSPhone(clientRow.phone)].filter(Boolean).join('  ·  ')}
+                      </div>
+                    )}
+                  </div>
+                  <ChevronButton open={clientOpen} size={30} ariaLabel="Toggle client details" />
+                </button>
+                {clientOpen && (
+                  <div style={{ marginTop: 8 }}>
+                    <AboutCard
+                      client={clientRow}
+                      onUpdated={(p) => setClientRow((r) => (r ? { ...r, ...p } : r))}
+                    />
+                  </div>
+                )}
               </div>
             )}
 

@@ -22,6 +22,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../../lib/supabase';
 import { CLIENT_FIELDS } from '../../lib/clientFields';
+import { formatUSPhone, normalizePhone } from '../../lib/formatters/phone';
 import AutoGrowingTextarea from '../AutoGrowingTextarea';
 import { ChevronButton } from '../ChevronIcon';
 import { recordFactHistory, HISTORY_FIELDS, listFactHistory, HISTORY_FIELD_LABELS, HISTORY_SOURCE_LABELS } from '../../lib/clientHistory';
@@ -53,6 +54,13 @@ export default function AboutCard({ client, onUpdated, pulse = false, readOnly =
   // When `fields` is given, only those keys render (compact reuse in the
   // schedule cockpit). Null means show everything (full profile card).
   const show = (k) => !fields || fields.includes(k);
+  const todayISO = new Date().toISOString().slice(0, 10);
+  // Phones store digits only; tolerate a leading US country code.
+  const toStoredPhone = (v) => {
+    let d = normalizePhone(v);
+    if (d.length === 11 && d.startsWith('1')) d = d.slice(1);
+    return d;
+  };
   const [name, setName] = useState(client?.name || '');
   const [email, setEmail] = useState(client?.email || '');
   const [phone, setPhone] = useState(client?.phone || '');
@@ -192,6 +200,34 @@ export default function AboutCard({ client, onUpdated, pulse = false, readOnly =
         return;
       }
     }
+    if (field === 'phone' || field === 'alt_phone') {
+      const d = toStoredPhone(value);
+      if (d && d.length !== 10) {
+        setErrorOn(field);
+        setErrorMsg('Enter a 10 digit phone number.');
+        if (field === 'phone') setPhone(client?.phone || ''); else setAltPhone(client?.alt_phone || '');
+        return;
+      }
+    }
+    if (field === 'birthday' && value) {
+      const d = new Date(value + 'T12:00:00');
+      if (isNaN(d) || d > new Date() || d.getFullYear() < 1900) {
+        setErrorOn('birthday');
+        setErrorMsg('Enter a real past date.');
+        setBirthday(client?.birthday || '');
+        return;
+      }
+    }
+    if (field === 'customer_since' && value) {
+      const d = new Date(value + 'T12:00:00');
+      const yr = d.getFullYear();
+      if (isNaN(d) || yr < 1990 || yr > new Date().getFullYear() + 1) {
+        setErrorOn('customer_since');
+        setErrorMsg('Enter a real date.');
+        setCustomerSince(client?.customer_since || '');
+        return;
+      }
+    }
 
     // Sample client: short-circuit. UI flips to saved, no DB write.
     if (isSample) {
@@ -203,7 +239,7 @@ export default function AboutCard({ client, onUpdated, pulse = false, readOnly =
     const payload = {};
     if (field === 'name')  payload.name  = value.trim();
     if (field === 'email') payload.email = value.trim().toLowerCase() || null;
-    if (field === 'phone') payload.phone = value.trim() || null;
+    if (field === 'phone') payload.phone = toStoredPhone(value) || null;
     if (field === 'notes') payload.notes = value.trim() || null;
     if (field === 'address_line1') payload.address_line1 = value.trim() || null;
     if (field === 'address_line2') payload.address_line2 = value.trim() || null;
@@ -213,7 +249,7 @@ export default function AboutCard({ client, onUpdated, pulse = false, readOnly =
     if (field === 'country') payload.country = value.trim() || null;
     if (field === 'birthday')        payload.birthday        = value.trim() || null;
     if (field === 'customer_since')  payload.customer_since  = value.trim() || null;
-    if (field === 'alt_phone')       payload.alt_phone       = value.trim() || null;
+    if (field === 'alt_phone')       payload.alt_phone       = toStoredPhone(value) || null;
     if (field === 'gender')          payload.gender          = value || null;
     if (field === 'referral_source') payload.referral_source = value || null;
     if (field === 'allergies')        payload.allergies        = value.trim() || null;
@@ -330,6 +366,7 @@ export default function AboutCard({ client, onUpdated, pulse = false, readOnly =
         onSave={(v) => saveField('birthday', v)}
         justSaved={justSaved === 'birthday'}
         error={errorOn === 'birthday' ? errorMsg : ''}
+        inputMax={todayISO}
         type="date"
         placeholder="Add birthday"
       />
@@ -339,6 +376,7 @@ export default function AboutCard({ client, onUpdated, pulse = false, readOnly =
         setValue={setCustomerSince}
         onSave={(v) => saveField('customer_since', v)}
         justSaved={justSaved === 'customer_since'}
+        inputMax={todayISO}
         type="date"
         placeholder="Add date"
       />
@@ -504,7 +542,7 @@ function prettyHistoryDate(d) {
 
 // Single-line tap-to-edit row. Click anywhere on the row body to
 // enter edit mode. Blur or Enter saves. Esc cancels.
-function Row({ label, value, setValue, onSave, justSaved, error, required, type = 'text', placeholder = 'Add value', readOnly = false, hidden = false }) {
+function Row({ label, value, setValue, onSave, justSaved, error, required, type = 'text', placeholder = 'Add value', readOnly = false, hidden = false, inputMax }) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(value);
   const inputRef = useRef(null);
@@ -530,12 +568,13 @@ function Row({ label, value, setValue, onSave, justSaved, error, required, type 
   }
 
   if (hidden) return null;
+  const displayValue = type === 'tel' ? (formatUSPhone(value) || '') : value;
   return (
     <div style={{
       display: 'grid',
       gridTemplateColumns: 'minmax(70px, 90px) 1fr',
       alignItems: 'center',
-      padding: '10px 4px',
+      padding: '7px 4px',
       borderBottom: `1px solid ${C.lineSoft}`,
       gap: 12,
     }}>
@@ -560,6 +599,7 @@ function Row({ label, value, setValue, onSave, justSaved, error, required, type 
               if (e.key === 'Escape') { e.preventDefault(); cancel(); }
             }}
             type={type}
+            max={inputMax}
             placeholder={placeholder}
             style={{
               flex: 1,
@@ -591,7 +631,7 @@ function Row({ label, value, setValue, onSave, justSaved, error, required, type 
             textOverflow: 'ellipsis',
             whiteSpace: 'nowrap',
           }}>
-            {value || 'Not set'}
+            {displayValue || 'Not set'}
           </div>
         ) : (
           <button
@@ -618,7 +658,7 @@ function Row({ label, value, setValue, onSave, justSaved, error, required, type 
             onMouseEnter={(e) => { e.currentTarget.style.background = C.hover; }}
             onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
           >
-            {value || placeholder}
+            {displayValue || placeholder}
           </button>
         )}
         {justSaved && (
@@ -671,7 +711,7 @@ function PillRow({ label, value, options, onSave, justSaved, hidden = false }) {
 
   if (hidden) return null;
   return (
-    <div style={{ padding: '12px 14px', borderBottom: `1px solid ${C.lineSoft}` }}>
+    <div style={{ padding: '8px 14px', borderBottom: `1px solid ${C.lineSoft}` }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
         <span style={{ fontSize: 12, fontWeight: 700, color: C.inkSoft, textTransform: 'uppercase', letterSpacing: '0.04em' }}>{label}</span>
         {justSaved && <span style={{ fontSize: 11, color: C.saved, fontWeight: 700 }}>Saved</span>}
@@ -771,7 +811,7 @@ function RowMultiline({ label, value, setValue, onSave, justSaved, error, placeh
       display: 'grid',
       gridTemplateColumns: 'minmax(70px, 90px) 1fr',
       alignItems: 'flex-start',
-      padding: '10px 4px',
+      padding: '7px 4px',
       gap: 12,
     }}>
       <div style={{
