@@ -1324,6 +1324,35 @@ same change that adds or alters a notification.
 
 ---
 
+## 37. One way to show each thing. A client, a booking, or a session should look and edit the same everywhere it appears.
+
+**The problem, in plain words.** The same client shows up in at least
+three places with different fields and different editing. The profile
+"Client info" card has the full set and edits inline. The "Edit client"
+slide-over only edits name, email, phone, and notes. The Schedule
+"Client details" card shows seven fields read-only and edits none. It is
+one clients row underneath, but three hand-built layouts that drift
+apart. A therapist can see a birthday in the schedule that they cannot
+edit in the edit form. That is confusing and looks unfinished.
+
+**The rule.** Each kind of thing (client, booking, session) gets ONE
+shared piece that draws its fields. Every screen that shows that thing
+uses that same piece. Add a field once and it shows everywhere. The
+form you edit in always matches what you see.
+
+**Before building or changing any screen that shows or edits one of
+these, do this first:**
+- Grep every other place that renders the same thing.
+- Compare the field list and whether each place lets you edit.
+- If they do not match, say so in the reply, even if no one asked.
+
+**Do not standardize on your own.** When drift is found, do not quietly
+rewrite it. Write down how it will look in each place, what changes, and
+what (if anything) is missing, and get HK's approval first. Good design
+comes before consistency for its own sake.
+
+---
+
 ## Risk register (current open items, as of Jun 1 2026)
 
 Items here are known live risks. Each entry: severity, what could go wrong, what's queued to mitigate.
