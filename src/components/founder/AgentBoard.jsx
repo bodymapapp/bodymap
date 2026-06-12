@@ -82,7 +82,7 @@ export function AgentBoardEmbedded() {
     setDrafts((prev) => ({ ...prev, [agentKey]: "" }));
     const { data, error } = await supabase
       .from("agent_tasks")
-      .insert({ agent: agentKey, title, detail: "", status: "open", tier: "amber", sort_order: maxOrder + 1 })
+      .insert({ agent: agentKey, title, detail: "", status: "open", sort_order: maxOrder + 1 })
       .select().single();
     if (!error && data) setTasks((prev) => prev.map((t) => (t.id === tempId ? data : t)));
     else { setTasks((prev) => prev.filter((t) => t.id !== tempId)); setDrafts((prev) => ({ ...prev, [agentKey]: title })); }
