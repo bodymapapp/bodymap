@@ -1277,10 +1277,12 @@ Customer asks that strengthen the case for an already-queued item. Append-only, 
 
 - 2026-06-11 — **[support → engineering hand-off] Client waitlist Phase 1 brief (item 45 / C2).** Captured here for the engineer agent to fold into item 45. Engineering owns the final scope; this is the support hand-off, not a rewrite of item 45.
 
-  > **Build: Client waitlist Phase 1.** When a service is full or no slot fits the client's window, offer a "join the waitlist" signup on the booking page. New table: waitlist (client_id, therapist_id, service_id, preferred_window, created_at, status). A scheduled job (follow the send-reminders pattern) watches for a newly-open matching slot and notifies the next person in line with a signed claim link (copy the unsubscribe token pattern), expires in 4 hours, first click books.
+  > **Build: Client waitlist Phase 1.** When a service is full or no slot fits the client's window, offer a "join the waitlist" signup on the booking page. New table: waitlist (client_id, therapist_id, service_id, preferred_window, priority_rank, created_at, status). A scheduled job (follow the send-reminders pattern) watches for a newly-open matching slot and notifies people in priority order (see Priority below) with a signed claim link (copy the unsubscribe token pattern), expires in 4 hours; first valid click within the window books.
   >
   > Notify through the platform's existing notification path so it sends by SMS and email. SMS is the better channel here because the claim link is time-sensitive, but it must not be a hard dependency: SMS live sends are currently not firing (separate open issue), so email is the guaranteed fallback and the feature must work end to end on email alone today. When SMS sends are healthy, the same waitlist notification should go by text automatically with no rebuild.
   >
-  > Handle the race: two clicks, one winner, link dies on claim or expiry.
+  > Handle the race: when several people share the same priority and are notified together, two clicks, one winner, link dies on claim or expiry.
   >
-  > **Out of scope for Phase 1: priority ordering beyond first-in-first-out, multi-service waitlists.**
+  > **In scope for Phase 1 (added per HK 2026-06-11):**
+  > - **Priority ordering beyond first-in-first-out.** Notify order is set by a priority rank, not just who joined first. NOTE FOR HK: the priority rule itself is not yet defined. Tell me what should rank a client higher (for example membership or loyalty tier, longest time waiting, or a manual bump by the therapist) and I will write it in. Until you define it, the engineer should default to first-in-first-out as the priority value so nothing is blocked.
+  > - **Multi-service waitlists.** A client can sit on the waitlist for more than one service at once. The table already keys on service_id per row, so the signup UI must let a client add multiple services, and the matching job must check each waitlisted service independently.
