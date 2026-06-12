@@ -297,7 +297,9 @@ const BACKUP_PATHS = [
 
 export default function FounderHub() {
   const [activeSection, setActiveSection] = useState("agent-board");
+  const [sectionsOpen, setSectionsOpen] = useState(false);
   const currentSection = SECTIONS.find((s) => s.id === activeSection);
+  const boardFull = activeSection === "agent-board" && !sectionsOpen;
 
   return (
     <>
@@ -308,7 +310,7 @@ export default function FounderHub() {
         paddingTop: 80,
       }}>
         <div style={{
-          maxWidth: 1280,
+          maxWidth: boardFull ? 1800 : 1280,
           margin: "0 auto",
           padding: "32px 24px 80px",
         }}>
@@ -341,19 +343,41 @@ export default function FounderHub() {
               Open →
             </span>
           </Link>
-          <div style={{
-            display: "grid",
-            gridTemplateColumns: "minmax(280px, 320px) 1fr",
-            gap: 24,
-            alignItems: "start",
-          }}>
-            <SectionList
-              sections={SECTIONS}
-              activeSection={activeSection}
-              onSelect={setActiveSection}
-            />
-            <SectionContent section={currentSection} />
-          </div>
+          {boardFull ? (
+            <div>
+              <button
+                onClick={() => setSectionsOpen(true)}
+                style={{
+                  background: "#fff",
+                  border: `1px solid ${C.border}`,
+                  borderRadius: 9,
+                  padding: "7px 14px",
+                  fontSize: 13,
+                  fontWeight: 600,
+                  color: C.forest,
+                  cursor: "pointer",
+                  marginBottom: 14,
+                }}
+              >
+                All sections
+              </button>
+              <SectionContent section={currentSection} />
+            </div>
+          ) : (
+            <div style={{
+              display: "grid",
+              gridTemplateColumns: "minmax(280px, 320px) 1fr",
+              gap: 24,
+              alignItems: "start",
+            }}>
+              <SectionList
+                sections={SECTIONS}
+                activeSection={activeSection}
+                onSelect={(id) => { setActiveSection(id); setSectionsOpen(false); }}
+              />
+              <SectionContent section={currentSection} />
+            </div>
+          )}
         </div>
       </div>
     </>
