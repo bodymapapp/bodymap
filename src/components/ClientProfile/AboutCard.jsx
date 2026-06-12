@@ -298,22 +298,20 @@ export default function AboutCard({ client, onUpdated, pulse = false, readOnly =
   // Address arrives as one autocomplete pick. Save every part in a
   // single write, mirror locally, notify the parent.
   async function saveAddressParts(parts) {
-    setAddressLine1(parts.street1 || '');
-    setCity(parts.city || '');
-    setState(parts.state || '');
-    setZip(parts.postal_code || '');
+    // Merge only the parts we got, so a manual one-line entry does
+    // not wipe city/state/zip from a previous pick.
+    const payload = {};
+    if ('street1' in parts) { payload.address_line1 = parts.street1 || null; setAddressLine1(parts.street1 || ''); }
+    if ('city' in parts) { payload.city = parts.city || null; setCity(parts.city || ''); }
+    if ('state' in parts) { payload.state = parts.state || null; setState(parts.state || ''); }
+    if ('postal_code' in parts) { payload.zip = parts.postal_code || null; setZip(parts.postal_code || ''); }
+    if (parts.country) payload.country = parts.country;
+    if (Object.keys(payload).length === 0) return;
     if (isSample) {
       setJustSaved('address_line1');
       setTimeout(() => setJustSaved(null), 1500);
       return;
     }
-    const payload = {
-      address_line1: parts.street1 || null,
-      city: parts.city || null,
-      state: parts.state || null,
-      zip: parts.postal_code || null,
-    };
-    if (parts.country) payload.country = parts.country;
     const { error } = await supabase.from('clients').update(payload).eq('id', client.id);
     if (error) {
       setErrorOn('address_line1');
@@ -432,7 +430,9 @@ export default function AboutCard({ client, onUpdated, pulse = false, readOnly =
       }}>
         Health and safety
       </div>
-      <RowMultiline
+      <Row
+        readOnly={readOnly}
+        autoGrow
         label="Allergies"
         value={allergies}
         setValue={setAllergies}
@@ -442,7 +442,9 @@ export default function AboutCard({ client, onUpdated, pulse = false, readOnly =
         error={errorOn === 'allergies' ? errorMsg : ''}
         placeholder="Latex, nut oils, scents"
       />
-      <RowMultiline
+      <Row
+        readOnly={readOnly}
+        autoGrow
         label="Conditions"
         value={healthConditions}
         setValue={setHealthConditions}
@@ -452,7 +454,9 @@ export default function AboutCard({ client, onUpdated, pulse = false, readOnly =
         error={errorOn === 'health_conditions' ? errorMsg : ''}
         placeholder="Injuries, pregnancy, conditions to know about"
       />
-      <RowMultiline
+      <Row
+        readOnly={readOnly}
+        autoGrow
         label="Medications"
         value={medications}
         setValue={setMedications}
@@ -462,7 +466,9 @@ export default function AboutCard({ client, onUpdated, pulse = false, readOnly =
         error={errorOn === 'medications' ? errorMsg : ''}
         placeholder="Anything relevant for bodywork"
       />
-      <RowMultiline
+      <Row
+        readOnly={readOnly}
+        autoGrow
         label="Areas to avoid"
         value={areasToAvoid}
         setValue={setAreasToAvoid}
@@ -473,6 +479,7 @@ export default function AboutCard({ client, onUpdated, pulse = false, readOnly =
         placeholder="Left shoulder, low back"
       />
       <Row readOnly={readOnly}
+        autoGrow
         label="Emergency contact"
         value={emergencyContact}
         setValue={setEmergencyContact}
@@ -551,7 +558,7 @@ function prettyHistoryDate(d) {
 
 // Single-line tap-to-edit row. Click anywhere on the row body to
 // enter edit mode. Blur or Enter saves. Esc cancels.
-function Row({ label, value, setValue, onSave, justSaved, error, required, type = 'text', placeholder = 'Add value', readOnly = false, hidden = false, inputMax }) {
+function Row({ label, value, setValue, onSave, justSaved, error, required, type = 'text', placeholder = 'Add value', readOnly = false, hidden = false, inputMax, autoGrow = false }) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(value);
   const inputRef = useRef(null);
@@ -598,6 +605,24 @@ function Row({ label, value, setValue, onSave, justSaved, error, required, type 
       </div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
         {(editing && !readOnly) ? (
+          autoGrow ? (
+            <AutoGrowingTextarea
+              ref={inputRef}
+              value={draft}
+              onChange={(e) => setDraft(e.target.value)}
+              onBlur={commit}
+              onKeyDown={(e) => { if (e.key === 'Escape') { e.preventDefault(); cancel(); } }}
+              minRows={1}
+              maxRows={8}
+              placeholder={placeholder}
+              style={{
+                flex: 1, minWidth: 0, padding: '6px 8px',
+                border: `1.5px solid ${C.focus}`, borderRadius: 8,
+                fontSize: 14, lineHeight: 1.4, fontFamily: 'inherit',
+                background: C.paper, color: C.ink, boxSizing: 'border-box',
+              }}
+            />
+          ) : (
           <input
             ref={inputRef}
             value={draft}
@@ -627,6 +652,7 @@ function Row({ label, value, setValue, onSave, justSaved, error, required, type 
             autoCapitalize={type === 'email' ? 'none' : 'sentences'}
             autoCorrect={type === 'email' ? 'off' : 'on'}
           />
+          )
         ) : readOnly ? (
           <div style={{
             flex: 1,
@@ -951,6 +977,7 @@ function AddressBlock({
             state={state}
             postal_code={zip}
             onSelect={saveAddress}
+            minimal
             placeholder="Start typing the address"
             inputStyle={{
               width: '100%', boxSizing: 'border-box',

@@ -35,6 +35,7 @@ export default function AddressAutocompleteInput({
   inputStyle,
   labelStyle,
   countries,
+  minimal = false,
 }) {
   const { placesReady, placesError } = useGooglePlaces();
   const inputRef = useRef(null);
@@ -115,6 +116,21 @@ export default function AddressAutocompleteInput({
   // small affordance so the user can still enter an address manually
   // by switching to the split-field fallback view.
   if (placesError && !placesReady) {
+    if (minimal) {
+      return (
+        <input
+          ref={inputRef}
+          type="text"
+          value={displayValue}
+          onChange={handleManualChange}
+          onBlur={() => { if (onSelect) onSelect({ street1: displayValue }); }}
+          placeholder={placeholder || 'Type the address'}
+          disabled={disabled}
+          autoComplete="off"
+          style={inputStyle}
+        />
+      );
+    }
     return (
       <ManualAddressFallback
         street1={street1}
@@ -175,6 +191,7 @@ export default function AddressAutocompleteInput({
         autoComplete="off"
         style={inputStyle}
       />
+      {!minimal && (
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 4 }}>
         <span style={{ fontSize: 11, color: '#9CA3AF', fontStyle: 'italic' }}>
           {placesReady ? 'Suggestions powered by Google' : 'Loading suggestions...'}
@@ -196,6 +213,7 @@ export default function AddressAutocompleteInput({
           Enter address manually
         </button>
       </div>
+      )}
     </div>
   );
 }
