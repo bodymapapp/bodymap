@@ -21,7 +21,7 @@
 - **Vercel:** the service that builds and serves the website. A push to the main branch deploys it.
 - **Stripe Connect / Square:** the two payment systems therapists can connect to take money.
 - **Resend:** the service that sends emails.
-- **Twilio / A2P 10DLC:** the text-message system. Client texting is currently blocked pending carrier registration; email is the live client channel.
+- **Twilio / A2P 10DLC:** the text-message system. Carrier registration is cleared as of early June 2026, so texting is no longer blocked at the carrier level (corrected 2026-06-11 per HK). Live SMS sends are not yet working for HK, a delivery issue still being chased. Until sends are confirmed healthy, email stays the proven client channel and any feature that texts must fall back to email.
 
 ## The feature taxonomy (seven categories)
 
