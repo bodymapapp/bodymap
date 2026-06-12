@@ -23,6 +23,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { supabase } from "../../lib/supabase";
+import { useMobile } from "../../hooks/useMobile";
 
 const C = { forest: "#2A5741", sage: "#6B9E80", cream: "#F5F0E8", ink: "#1F2937", gray: "#6B7280", line: "#E5E7EB" };
 
@@ -73,6 +74,8 @@ export function AgentBoardEmbedded() {
   const [briefingId, setBriefingId] = useState(null);
   const [selectMode, setSelectMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState(() => new Set());
+  const isMobile = useMobile();
+  const [activeLane, setActiveLane] = useState("engineering");
 
   const load = useCallback(async () => {
     setLoading(true); setLoadError(false);
@@ -176,23 +179,80 @@ export function AgentBoardEmbedded() {
 
   const detailTask = detailId ? tasks.find((t) => t.id === detailId) : null;
 
+  // One lane, rendered the same way on desktop and on a phone. Desktop puts
+  // several of these side by side in columns. Mobile shows one at a time.
+  const renderLane = (laneKey) => {
+    const lane = LANES[laneKey];
+    const ordered = laneOrdered(laneKey);
+    const numberOf = (id) => ordered.findIndex((t) => t.id === id) + 1;
+    const done = doneFor(laneKey);
+    return (
+      <section key={laneKey} style={laneBox}>
+        <div style={{ ...laneHead, borderTop: `3px solid ${lane.color}` }}>
+          <span style={{ fontFamily: "Georgia, serif", fontSize: 13, fontWeight: 700, color: C.ink }}>{lane.label}</span>
+          <span style={countPill}>{ordered.length}</span>
+        </div>
+        <div style={laneBody}>
+          {BUCKETS.map((bucket) => {
+            const cards = ordered.filter((t) => bucketOf(t) === bucket.key);
+            return (
+              <div key={bucket.key} style={{ marginBottom: 6 }}>
+                <div style={bucketLabel}>{bucket.label}</div>
+                {cards.length === 0 && <div style={bucketEmpty}>{"\u2014"}</div>}
+                {cards.map((task) => (
+                  <Card key={task.id} task={task} number={numberOf(task.id)}
+                    isMobile={isMobile}
+                    selectMode={selectMode} selected={selectedIds.has(task.id)}
+                    onSelect={() => toggleSelect(task.id)}
+                    onOpen={() => setDetailId(task.id)}
+                    onToggleProgress={() => toggleInProgress(task)} />
+                ))}
+                <div style={addRow}>
+                  <input value={drafts[`${laneKey}:${bucket.key}`] || ""}
+                    onChange={(e) => setDrafts((p) => ({ ...p, [`${laneKey}:${bucket.key}`]: e.target.value }))}
+                    onKeyDown={(e) => { if (e.key === "Enter") addTask(laneKey, bucket.key); }}
+                    placeholder="Add" style={isMobile ? addInputMobile : addInput} />
+                  <button onClick={() => addTask(laneKey, bucket.key)} disabled={!(drafts[`${laneKey}:${bucket.key}`] || "").trim()}
+                    style={(drafts[`${laneKey}:${bucket.key}`] || "").trim() ? (isMobile ? smallAddMobile : smallAdd) : (isMobile ? smallAddOffMobile : smallAddOff)}>+</button>
+                </div>
+              </div>
+            );
+          })}
+          {done.length > 0 && (
+            <div style={{ marginTop: 2, borderTop: `1px solid ${C.line}`, paddingTop: 6 }}>
+              <button onClick={() => setShowDoneFor((p) => ({ ...p, [laneKey]: !p[laneKey] }))} style={linkBtn}>
+                {showDoneFor[laneKey] ? "Hide completed" : `Completed (${done.length})`}
+              </button>
+              {showDoneFor[laneKey] && done.map((task) => (
+                <div key={task.id} style={doneRow}>
+                  <button onClick={() => setStatus(task, "open")} style={isMobile ? checkDoneMobile : checkDone} aria-label="Reopen">{"\u2713"}</button>
+                  <span style={{ flex: 1, fontSize: isMobile ? 14 : 12, color: C.gray, textDecoration: "line-through" }}>{task.title}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </section>
+    );
+  };
+
   return (
     <div>
-      <Legend />
-      <div style={publishBar}>
+      <Legend isMobile={isMobile} />
+      <div style={isMobile ? publishBarMobile : publishBar}>
         <span style={{ fontSize: 12, color: C.gray }}>Click a card to open it. Numbers run top to bottom in each lane.</span>
-        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+        <div style={{ display: "flex", gap: 8, alignItems: "center", ...(isMobile ? { width: "100%" } : {}) }}>
           {selectMode ? (
             <>
-              <button onClick={() => { setSelectMode(false); setSelectedIds(new Set()); }} style={ghostBtn}>Cancel</button>
-              <button onClick={() => publishTasks(Array.from(selectedIds))} disabled={publishing || selectedIds.size === 0} style={(publishing || selectedIds.size === 0) ? disabledBtn : primaryBtn}>
+              <button onClick={() => { setSelectMode(false); setSelectedIds(new Set()); }} style={isMobile ? { ...ghostBtn, ...mobileBtnGrow } : ghostBtn}>Cancel</button>
+              <button onClick={() => publishTasks(Array.from(selectedIds))} disabled={publishing || selectedIds.size === 0} style={(publishing || selectedIds.size === 0) ? (isMobile ? { ...disabledBtn, ...mobileBtnGrow } : disabledBtn) : (isMobile ? { ...primaryBtn, ...mobileBtnGrow } : primaryBtn)}>
                 {publishing ? "Publishing..." : `Publish ${selectedIds.size} selected`}
               </button>
             </>
           ) : (
             <>
-              <button onClick={() => setSelectMode(true)} style={ghostBtn}>Choose</button>
-              <button onClick={() => publishTasks(null)} disabled={publishing} style={publishing ? disabledBtn : primaryBtn}>{publishing ? "Publishing..." : "Publish all"}</button>
+              <button onClick={() => setSelectMode(true)} style={isMobile ? { ...ghostBtn, ...mobileBtnGrow } : ghostBtn}>Choose</button>
+              <button onClick={() => publishTasks(null)} disabled={publishing} style={publishing ? (isMobile ? { ...disabledBtn, ...mobileBtnGrow } : disabledBtn) : (isMobile ? { ...primaryBtn, ...mobileBtnGrow } : primaryBtn)}>{publishing ? "Publishing..." : "Publish all"}</button>
             </>
           )}
         </div>
@@ -206,64 +266,33 @@ export function AgentBoardEmbedded() {
         </div>
       )}
 
-      <div style={boardRow}>
-        {COLUMNS.map((laneKeys, ci) => (
-          <div key={ci} style={columnWrap}>
-            {laneKeys.map((laneKey) => {
+      {isMobile ? (
+        <div>
+          <div style={tabRow}>
+            {COLUMNS.flat().map((laneKey) => {
               const lane = LANES[laneKey];
-              const ordered = laneOrdered(laneKey);
-              const numberOf = (id) => ordered.findIndex((t) => t.id === id) + 1;
-              const done = doneFor(laneKey);
+              const count = laneOrdered(laneKey).length;
+              const active = activeLane === laneKey;
               return (
-                <section key={laneKey} style={laneBox}>
-                  <div style={{ ...laneHead, borderTop: `3px solid ${lane.color}` }}>
-                    <span style={{ fontFamily: "Georgia, serif", fontSize: 13, fontWeight: 700, color: C.ink }}>{lane.label}</span>
-                    <span style={countPill}>{ordered.length}</span>
-                  </div>
-                  <div style={laneBody}>
-                    {BUCKETS.map((bucket) => {
-                      const cards = ordered.filter((t) => bucketOf(t) === bucket.key);
-                      return (
-                        <div key={bucket.key} style={{ marginBottom: 6 }}>
-                          <div style={bucketLabel}>{bucket.label}</div>
-                          {cards.length === 0 && <div style={bucketEmpty}>{"\u2014"}</div>}
-                          {cards.map((task) => (
-                            <Card key={task.id} task={task} number={numberOf(task.id)}
-                              selectMode={selectMode} selected={selectedIds.has(task.id)}
-                              onSelect={() => toggleSelect(task.id)}
-                              onOpen={() => setDetailId(task.id)}
-                              onToggleProgress={() => toggleInProgress(task)} />
-                          ))}
-                          <div style={addRow}>
-                            <input value={drafts[`${laneKey}:${bucket.key}`] || ""}
-                              onChange={(e) => setDrafts((p) => ({ ...p, [`${laneKey}:${bucket.key}`]: e.target.value }))}
-                              onKeyDown={(e) => { if (e.key === "Enter") addTask(laneKey, bucket.key); }}
-                              placeholder="Add" style={addInput} />
-                            <button onClick={() => addTask(laneKey, bucket.key)} disabled={!(drafts[`${laneKey}:${bucket.key}`] || "").trim()} style={(drafts[`${laneKey}:${bucket.key}`] || "").trim() ? smallAdd : smallAddOff}>+</button>
-                          </div>
-                        </div>
-                      );
-                    })}
-                    {done.length > 0 && (
-                      <div style={{ marginTop: 2, borderTop: `1px solid ${C.line}`, paddingTop: 6 }}>
-                        <button onClick={() => setShowDoneFor((p) => ({ ...p, [laneKey]: !p[laneKey] }))} style={linkBtn}>
-                          {showDoneFor[laneKey] ? "Hide completed" : `Completed (${done.length})`}
-                        </button>
-                        {showDoneFor[laneKey] && done.map((task) => (
-                          <div key={task.id} style={doneRow}>
-                            <button onClick={() => setStatus(task, "open")} style={checkDone} aria-label="Reopen">{"\u2713"}</button>
-                            <span style={{ flex: 1, fontSize: 12, color: C.gray, textDecoration: "line-through" }}>{task.title}</span>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                </section>
+                <button key={laneKey} onClick={() => setActiveLane(laneKey)}
+                  style={active ? { ...laneTab, background: lane.color, color: "#fff", borderColor: lane.color } : laneTab}>
+                  {lane.label}
+                  <span style={active ? { ...tabCount, background: "rgba(255,255,255,.25)", color: "#fff", borderColor: "transparent" } : tabCount}>{count}</span>
+                </button>
               );
             })}
           </div>
-        ))}
-      </div>
+          <div style={{ width: "100%" }}>{renderLane(activeLane)}</div>
+        </div>
+      ) : (
+        <div style={boardRow}>
+          {COLUMNS.map((laneKeys, ci) => (
+            <div key={ci} style={columnWrap}>
+              {laneKeys.map((laneKey) => renderLane(laneKey))}
+            </div>
+          ))}
+        </div>
+      )}
 
       {detailTask && createPortal(
         <TaskDetail task={detailTask} lane={LANES[detailTask.agent]} briefing={briefingId === detailTask.id}
@@ -283,24 +312,26 @@ export function AgentBoardEmbedded() {
   );
 }
 
-function Card({ task, number, selectMode, selected, onSelect, onOpen, onToggleProgress }) {
+function Card({ task, number, isMobile, selectMode, selected, onSelect, onOpen, onToggleProgress }) {
   const tier = TIERS[tierOf(task)];
   const published = !!task.published_at;
   const inProg = task.status === "in_progress";
   const checks = published ? 2 : inProg ? 1 : 0;
+  const ring = isMobile ? emptyRingMobile : emptyRing;
+  const mark = isMobile ? checkMarkMobile : checkMark;
   return (
-    <div style={{ ...cardBase, background: tier.bg, border: `1px solid ${tier.border}`, ...(selectMode && selected ? { outline: `2px solid ${C.forest}` } : {}) }}>
-      <span style={cardNum}>{number}</span>
+    <div style={{ ...(isMobile ? cardBaseMobile : cardBase), background: tier.bg, border: `1px solid ${tier.border}`, ...(selectMode && selected ? { outline: `2px solid ${C.forest}` } : {}) }}>
+      <span style={isMobile ? cardNumMobile : cardNum}>{number}</span>
       {selectMode && (
-        <button onClick={(e) => { e.stopPropagation(); onSelect(); }} style={selected ? { ...selDot, background: C.forest, borderColor: C.forest } : selDot} aria-label="Select" />
+        <button onClick={(e) => { e.stopPropagation(); onSelect(); }} style={selected ? { ...(isMobile ? selDotMobile : selDot), background: C.forest, borderColor: C.forest } : (isMobile ? selDotMobile : selDot)} aria-label="Select" />
       )}
-      <button onClick={onOpen} style={titleBtn} title={task.title}>{task.title}</button>
-      <button onClick={(e) => { e.stopPropagation(); onToggleProgress(); }} style={checksBtn}
+      <button onClick={onOpen} style={isMobile ? titleBtnMobile : titleBtn} title={task.title}>{task.title}</button>
+      <button onClick={(e) => { e.stopPropagation(); onToggleProgress(); }} style={isMobile ? checksBtnMobile : checksBtn}
         title={checks === 0 ? "Mark in progress" : checks === 1 ? "In progress, not published" : "In progress and published"}>
-        {checks === 0 ? <span style={emptyRing} /> : (
+        {checks === 0 ? <span style={ring} /> : (
           <span style={{ display: "inline-flex" }}>
-            <span style={checkMark}>{"\u2713"}</span>
-            {checks === 2 && <span style={{ ...checkMark, marginLeft: -3 }}>{"\u2713"}</span>}
+            <span style={mark}>{"\u2713"}</span>
+            {checks === 2 && <span style={{ ...mark, marginLeft: isMobile ? -5 : -3 }}>{"\u2713"}</span>}
           </span>
         )}
       </button>
@@ -377,9 +408,9 @@ function TaskDetail({ task, lane, briefing, onClose, onSaveTitle, onSaveDetail, 
   );
 }
 
-function Legend() {
+function Legend({ isMobile }) {
   return (
-    <div style={legendWrap}>
+    <div style={isMobile ? legendWrapMobile : legendWrap}>
       <span style={legendGroup}>
         <b style={legendTitle}>Card color</b>
         <Chip color={TIERS.green.bg} border={TIERS.green.border} text="Green: runs alone" />
@@ -448,5 +479,26 @@ const segBtn = { flex: 1, background: "#fff", border: `1px solid ${C.line}`, col
 const detailArea = { width: "100%", border: `1px solid ${C.line}`, borderRadius: 8, padding: "9px 11px", fontSize: 13, color: C.ink, resize: "vertical", fontFamily: "inherit", boxSizing: "border-box", lineHeight: 1.5 };
 const briefBtn = { width: "100%", background: "#EEF4F0", color: C.forest, border: `1px solid ${C.sage}`, borderRadius: 8, padding: "9px 10px", fontSize: 13, fontWeight: 600, cursor: "pointer", marginBottom: 8 };
 const briefBtnOff = { ...briefBtn, color: C.gray, cursor: "default", borderColor: C.line, background: "#F3F4F6" };
+
+// Mobile-only style variants. Desktop never reads these. They live below the
+// base styles so their spreads resolve. Bigger tap targets for thumbs, a
+// scrollable lane-tab row, and stacked legend and publish controls.
+const tabRow = { display: "flex", gap: 6, overflowX: "auto", paddingBottom: 8, marginBottom: 10, WebkitOverflowScrolling: "touch" };
+const laneTab = { flexShrink: 0, display: "inline-flex", alignItems: "center", gap: 6, background: "#fff", border: `1px solid ${C.line}`, color: C.ink, borderRadius: 999, padding: "9px 13px", fontSize: 13, fontWeight: 700, cursor: "pointer", minHeight: 40, fontFamily: "Georgia, serif", whiteSpace: "nowrap" };
+const tabCount = { fontSize: 11, fontWeight: 700, color: C.gray, background: "#F3F4F6", border: `1px solid ${C.line}`, borderRadius: 999, padding: "0 7px", lineHeight: "16px" };
+const cardBaseMobile = { ...cardBase, gap: 10, padding: "11px 12px", marginBottom: 8, borderRadius: 9 };
+const cardNumMobile = { ...cardNum, fontSize: 15, minWidth: 18 };
+const titleBtnMobile = { ...titleBtn, fontSize: 16, whiteSpace: "normal", overflow: "visible", textOverflow: "clip", lineHeight: 1.35, padding: "2px 0" };
+const checksBtnMobile = { ...checksBtn, padding: 10, minWidth: 44, minHeight: 44, justifyContent: "center" };
+const checkMarkMobile = { ...checkMark, fontSize: 20 };
+const emptyRingMobile = { width: 22, height: 22, borderRadius: 999, border: `2px solid ${C.gray}`, display: "inline-block", opacity: 0.5 };
+const selDotMobile = { ...selDot, width: 24, height: 24 };
+const addInputMobile = { ...addInput, fontSize: 16, padding: "10px 12px" };
+const smallAddMobile = { ...smallAdd, fontSize: 20, padding: "0 14px", minHeight: 44, minWidth: 44 };
+const smallAddOffMobile = { ...smallAddMobile, background: "#D1D5DB", cursor: "default" };
+const checkDoneMobile = { ...checkDone, width: 24, height: 24, fontSize: 13 };
+const publishBarMobile = { ...publishBar, flexDirection: "column", alignItems: "stretch", gap: 10 };
+const mobileBtnGrow = { flex: 1, padding: "12px 14px", fontSize: 15 };
+const legendWrapMobile = { ...legendWrap, flexDirection: "column", alignItems: "flex-start", gap: 12 };
 
 export default AgentBoardEmbedded;
