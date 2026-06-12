@@ -40,6 +40,8 @@ export function AgentBoardEmbedded() {
   const [expandedId, setExpandedId] = useState(null);
   const [showDoneFor, setShowDoneFor] = useState({});
   const [recentlyArchived, setRecentlyArchived] = useState(null);
+  const [publishing, setPublishing] = useState(false);
+  const [publishMsg, setPublishMsg] = useState(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -132,6 +134,34 @@ export function AgentBoardEmbedded() {
     await patch(other, { sort_order: a });
   }
 
+  async function setStatus(task, status) {
+    await patch(task, { status });
+  }
+
+  async function publish() {
+    setPublishing(true);
+    setPublishMsg(null);
+    try {
+      const { data: sess } = await supabase.auth.getSession();
+      const token = sess?.session?.access_token;
+      const url = `${process.env.REACT_APP_SUPABASE_URL}/functions/v1/board-publish`;
+      const res = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      });
+      const body = await res.json().catch(() => ({}));
+      if (res.ok && body.ok) {
+        const n = body.published;
+        setPublishMsg({ ok: true, text: `Published. The agents will see ${n} task${n === 1 ? "" : "s"} the next time you open them.` });
+      } else {
+        setPublishMsg({ ok: false, text: body.error || "Publish did not go through. Your tasks are safe, try again in a moment." });
+      }
+    } catch (e) {
+      setPublishMsg({ ok: false, text: "Publish did not go through. Your tasks are safe, try again in a moment." });
+    }
+    setPublishing(false);
+  }
+
   if (loading) {
     return <div style={{ padding: 24, color: C.gray, fontSize: 14 }}>Loading the board...</div>;
   }
@@ -152,6 +182,23 @@ export function AgentBoardEmbedded() {
 
   return (
     <div style={{ padding: "4px 0 24px" }}>
+      <div style={publishBar}>
+        <div style={{ minWidth: 0 }}>
+          <div style={{ fontFamily: "Georgia, serif", fontSize: 15, fontWeight: 700, color: C.ink }}>
+            Plan here, publish to the agents
+          </div>
+          <div style={{ fontSize: 12, color: C.gray }}>
+            Publish writes the open work into the brain. Each agent reads its part next time you open it.
+          </div>
+        </div>
+        <button onClick={publish} disabled={publishing} style={publishing ? disabledBtn : primaryBtn}>
+          {publishing ? "Publishing..." : "Publish to agents"}
+        </button>
+      </div>
+      {publishMsg && (
+        <div style={publishMsg.ok ? noteOk : noteWarn}>{publishMsg.text}</div>
+      )}
+
       {recentlyArchived && (
         <div style={undoBanner}>
           <span>Task archived.</span>
@@ -161,7 +208,9 @@ export function AgentBoardEmbedded() {
       )}
 
       {AGENTS.map((agent) => {
-        const open = byAgent(agent.key, "open");
+        const active = tasks
+          .filter((t) => t.agent === agent.key && (t.status === "open" || t.status === "in_progress"))
+          .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
         const done = byAgent(agent.key, "done");
         const draft = drafts[agent.key] || "";
         return (
@@ -172,27 +221,28 @@ export function AgentBoardEmbedded() {
                 {agent.label}
               </span>
               <span style={{ marginLeft: "auto", fontSize: 12, color: C.gray }}>
-                {open.length} open
+                {active.length} active
               </span>
             </div>
 
-            {open.length === 0 && (
+            {active.length === 0 && (
               <p style={{ fontSize: 13, color: C.gray, margin: "8px 2px 12px" }}>
                 Nothing here yet. Add the first task below.
               </p>
             )}
 
-            {open.map((task, idx) => (
+            {active.map((task, idx) => (
               <TaskCard
                 key={task.id}
                 task={task}
                 isFirst={idx === 0}
-                isLast={idx === open.length - 1}
+                isLast={idx === active.length - 1}
                 expanded={expandedId === task.id}
                 onToggleExpand={() => setExpandedId(expandedId === task.id ? null : task.id)}
                 onToggleDone={() => toggleDone(task)}
                 onMove={(dir) => move(task, dir)}
                 onArchive={() => archive(task)}
+                onSetStatus={(s) => setStatus(task, s)}
                 onSaveDetail={(detail) => patch(task, { detail })}
                 onSaveTitle={(title) => patch(task, { title })}
               />
@@ -237,20 +287,22 @@ export function AgentBoardEmbedded() {
   );
 }
 
-function TaskCard({ task, isFirst, isLast, expanded, onToggleExpand, onToggleDone, onMove, onArchive, onSaveDetail, onSaveTitle }) {
+function TaskCard({ task, isFirst, isLast, expanded, onToggleExpand, onToggleDone, onMove, onArchive, onSetStatus, onSaveDetail, onSaveTitle }) {
   const [detail, setDetail] = useState(task.detail || "");
   const [title, setTitle] = useState(task.title || "");
+  const inProgress = task.status === "in_progress";
 
   useEffect(() => { setDetail(task.detail || ""); }, [task.detail]);
   useEffect(() => { setTitle(task.title || ""); }, [task.title]);
 
   return (
-    <div style={card}>
+    <div style={inProgress ? cardActive : card}>
       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
         <button onClick={onToggleDone} style={checkbox} aria-label="Mark done" />
         <button onClick={onToggleExpand} style={titleBtn}>
           {task.title}
         </button>
+        {inProgress && <span style={ipBadge}>In progress</span>}
         <div style={{ display: "flex", gap: 2, flexShrink: 0 }}>
           <button onClick={() => onMove("up")} disabled={isFirst} style={isFirst ? arrowOff : arrow} aria-label="Move up">↑</button>
           <button onClick={() => onMove("down")} disabled={isLast} style={isLast ? arrowOff : arrow} aria-label="Move down">↓</button>
@@ -274,7 +326,10 @@ function TaskCard({ task, isFirst, isLast, expanded, onToggleExpand, onToggleDon
             rows={3}
             style={detailArea}
           />
-          <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 8 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", marginTop: 8 }}>
+            <button onClick={() => onSetStatus(inProgress ? "open" : "in_progress")} style={tinyGhost}>
+              {inProgress ? "Mark not started" : "Mark in progress"}
+            </button>
             <button onClick={onArchive} style={tinyGhost}>Archive</button>
           </div>
         </div>
@@ -347,6 +402,27 @@ const undoBtn = {
 const undoDismiss = {
   marginLeft: "auto", background: "none", border: "none", color: C.gray,
   fontSize: 14, cursor: "pointer", padding: 4,
+};
+const cardActive = {
+  background: "#fff", border: `1px solid ${C.line}`, borderLeft: "3px solid #D97706",
+  borderRadius: 12, padding: "10px 12px", marginBottom: 8,
+};
+const ipBadge = {
+  flexShrink: 0, fontSize: 11, fontWeight: 700, color: "#B45309",
+  background: "#FEF3C7", border: "1px solid #FDE68A", borderRadius: 999, padding: "2px 8px",
+};
+const publishBar = {
+  display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12,
+  padding: "12px 14px", background: C.cream, border: `1px solid ${C.line}`,
+  borderRadius: 12, marginBottom: 12,
+};
+const noteOk = {
+  background: "#F0FDF4", border: "1px solid #86EFAC", color: "#166534",
+  borderRadius: 10, padding: "10px 14px", fontSize: 13, marginBottom: 12,
+};
+const noteWarn = {
+  background: "#FFF7ED", border: "1px solid #FED7AA", color: "#9A3412",
+  borderRadius: 10, padding: "10px 14px", fontSize: 13, marginBottom: 12,
 };
 
 export default AgentBoardEmbedded;
