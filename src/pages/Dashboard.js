@@ -3859,7 +3859,10 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
       window.history.replaceState({}, '', newUrl);
     } else if (sp.get('google_error')) {
       const err = sp.get('google_error');
-      setGoogleBanner({ kind: 'error', text: `Could not connect Google Calendar: ${err}` });
+      const friendly = err === 'calendar_permission_needed'
+        ? 'Almost there. On the Google screen, please leave the calendar permission checked so we can sync your schedule. Tap Connect and try again.'
+        : `Could not connect Google Calendar: ${err}`;
+      setGoogleBanner({ kind: 'error', text: friendly });
       sp.delete('google_error');
       const newUrl = window.location.pathname + (sp.toString() ? '?' + sp.toString() : '') + window.location.hash;
       window.history.replaceState({}, '', newUrl);
