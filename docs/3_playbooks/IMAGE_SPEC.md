@@ -67,3 +67,16 @@ Accuracy rules for any app mockup, the AI invented an inaccurate UI and a curvy 
 - The body diagram is the app's abstract peg/mannequin figure (pale cream, simple rounded head/torso/limbs), FRONT and BACK, with small red dots for AVOID areas and green dots for FOCUS areas. NEVER a realistic, curvy, anatomical, or nude body.
 - Show the memory/moat with a small green note, e.g. "This area has come up in 4 of the last 4 sessions" or "Welcome back after 32 days. Normal cadence ~14 days."
 - When generating, attach the real app screenshots as visual reference.
+
+---
+
+## Cover copy locked + feature naming (HK, 2026-06-11)
+
+Approved right-side copy for the product-showcase cover:
+- Headline: "Everything your practice needs, with a memory." (memory in sage italic).
+- Subline: "40+ features. Here's what no one else has:" (44 documented; 40+ is the safe claim).
+- Six differentiators: cycle and day-based smart scheduling, no dead gaps; Stripe and Square, both built in; a 4-document client journey with SOAP; pattern intelligence on every client; Ask Joy anything about your practice; 2-minute switch from any platform.
+- Corner ribbon: "Free for 6 months" (unlimited). Secondary, never the lead per positioning.
+- Strip real client contact info from any app screenshot; placeholders only, e.g. "(555) 555-0123" / "client@example.com".
+
+Feature naming: the ask-anything practice-intelligence assistant (was "PracticeIQ", which is taken; internally Platform chat 3.3 + Practice Pulse 3.5) is now named **Joy** per HK. NOTE for HK and eng: "Joy" already names the Founding Therapist persona (7.3) and pervades demo data. Recommend unifying into one Joy, the friendly MyBodyMap voice that also answers practice questions. Joy is generic externally, so it is an in-app assistant name, not a standalone trademark. Confirm unify vs separate before product copy ships. Shipped but unverified by HK.
