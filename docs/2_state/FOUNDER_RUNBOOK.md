@@ -1825,3 +1825,105 @@ This document is the operational core of MyBodyMap. Update it at the end of any 
 ## Test accounts (Jun 11 2026)
 - bodymap0n@gmail.com is a VALID test inbox HK monitors for notification testing. It is NOT a bad-email test. Do not treat it as undeliverable.
 - bodymap01@gmail.com and bodymapdemo@gmail.com (Joy therapist) are the other monitored test inboxes.
+
+---
+
+## Operating model: many agents, one gate (PROPOSED Jun 12 2026, pending HK approval)
+
+**Status: PROPOSED, not yet adopted.** This describes how MyBodyMap would run with 30+ agents building at once, and what changes for HK. Nothing here is live until HK approves it. **It contradicts the section 6 line "main only, no feature branches,"** which was written for the solo build. If HK approves this model, that line gets updated and this section moves into the table of contents. Until then both are left standing and flagged, so the brain stays honest.
+
+### What changes for the founder
+
+Today (solo): HK directs, Claude executes, push straight to main. One stream, one source of truth, HK sees everything.
+
+With 30 agents: HK stops watching code and starts setting priority and approving. The shift is from "director of one builder" to "the person who sets the order and approves what reaches the live site." HK no longer reads 30 streams. HK reads one status view from the chief and makes the calls only a founder can make. The whole point of the chief role is to keep that one view true so HK never has to rebuild it out of 30 git logs.
+
+### The picture you are drawing: lanes, one gate, one doorkeeper
+
+Your mental model is right. Many lanes feed one gate, and a doorkeeper decides what passes.
+
+- **Lanes** are the agents working in parallel, each on its own branch and its own checkout. 30 agents can all be mid-task at once without touching each other's files.
+- **The gate** is the single point where any change is allowed to join main, the one source of truth the live website is built from.
+- **The doorkeeper** is automated. It checks each change before it passes: is this branch up to date with the latest main, does the build pass, does it conflict with anything. Only green changes pass, one at a time, in order. Everything else waits or is sent back to its lane.
+
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 440" style="max-width:100%;height:auto;background:#F5F0E8;border-radius:14px;font-family:system-ui,-apple-system,sans-serif;">
+  <defs>
+    <marker id="arrowG" markerWidth="10" markerHeight="10" refX="5" refY="5" orient="auto">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#2A5741"/>
+    </marker>
+  </defs>
+  <text x="320" y="32" text-anchor="middle" font-size="19" font-weight="700" fill="#1F2937" font-family="Georgia,serif">Many lanes, one gate</text>
+  <text x="320" y="54" text-anchor="middle" font-size="12" fill="#6B7280">Agents work in parallel. One doorkeeper decides what reaches the live site.</text>
+
+  <rect x="24" y="78" width="190" height="54" rx="12" fill="#fff" stroke="#BFD8C9" stroke-width="1.5"/>
+  <text x="38" y="100" font-size="13" font-weight="700" fill="#1F2937">Agent 1 · own branch</text>
+  <text x="38" y="119" font-size="11" fill="#6B7280">has its own preview link</text>
+
+  <rect x="24" y="146" width="190" height="54" rx="12" fill="#fff" stroke="#BFD8C9" stroke-width="1.5"/>
+  <text x="38" y="168" font-size="13" font-weight="700" fill="#1F2937">Agent 2 · own branch</text>
+  <text x="38" y="187" font-size="11" fill="#6B7280">has its own preview link</text>
+
+  <rect x="24" y="214" width="190" height="54" rx="12" fill="#fff" stroke="#BFD8C9" stroke-width="1.5"/>
+  <text x="38" y="236" font-size="13" font-weight="700" fill="#1F2937">Agent 3 · own branch</text>
+  <text x="38" y="255" font-size="11" fill="#6B7280">has its own preview link</text>
+
+  <rect x="24" y="282" width="190" height="54" rx="12" fill="#fff" stroke="#BFD8C9" stroke-width="1.5"/>
+  <text x="38" y="304" font-size="13" font-weight="700" fill="#1F2937">Agent N · own branch</text>
+  <text x="38" y="323" font-size="11" fill="#6B7280">up to 30 at once</text>
+
+  <line x1="214" y1="105" x2="302" y2="198" stroke="#2A5741" stroke-width="2" marker-end="url(#arrowG)"/>
+  <line x1="214" y1="173" x2="302" y2="205" stroke="#2A5741" stroke-width="2" marker-end="url(#arrowG)"/>
+  <line x1="214" y1="241" x2="302" y2="223" stroke="#2A5741" stroke-width="2" marker-end="url(#arrowG)"/>
+  <line x1="214" y1="309" x2="302" y2="230" stroke="#2A5741" stroke-width="2" marker-end="url(#arrowG)"/>
+
+  <rect x="308" y="150" width="172" height="128" rx="14" fill="#FFFBEB" stroke="#B87840" stroke-width="2"/>
+  <text x="394" y="176" text-anchor="middle" font-size="15" font-weight="700" fill="#1F2937">Merge gate</text>
+  <text x="394" y="195" text-anchor="middle" font-size="11" fill="#374151">the doorkeeper checks:</text>
+  <text x="326" y="218" font-size="11" fill="#2A5741">up to date with main</text>
+  <text x="326" y="238" font-size="11" fill="#2A5741">build passes</text>
+  <text x="326" y="258" font-size="11" fill="#2A5741">no conflict</text>
+
+  <line x1="480" y1="214" x2="540" y2="214" stroke="#2A5741" stroke-width="2" marker-end="url(#arrowG)"/>
+
+  <rect x="544" y="150" width="80" height="58" rx="12" fill="#2A5741"/>
+  <text x="584" y="178" text-anchor="middle" font-size="14" font-weight="700" fill="#fff">main</text>
+  <text x="584" y="195" text-anchor="middle" font-size="10" fill="#CFE3D7">one truth</text>
+
+  <line x1="584" y1="208" x2="584" y2="244" stroke="#2A5741" stroke-width="2" marker-end="url(#arrowG)"/>
+  <rect x="520" y="254" width="104" height="58" rx="12" fill="#fff" stroke="#2A5741" stroke-width="1.5"/>
+  <text x="572" y="279" text-anchor="middle" font-size="12" font-weight="700" fill="#1F2937">Live site</text>
+  <text x="572" y="297" text-anchor="middle" font-size="10" fill="#6B7280">mybodymap.app</text>
+
+  <text x="320" y="372" text-anchor="middle" font-size="11" fill="#9CA3AF">Each lane has its own preview website. Only what clears the gate reaches the one live site.</text>
+  <text x="320" y="392" text-anchor="middle" font-size="11" fill="#9CA3AF">Parallel work in the lanes. Safety at the gate. One change through at a time.</text>
+</svg>
+
+Parallelism lives in the lanes, safety lives at the gate. You keep 30 agents busy without 30 agents breaking the live site.
+
+### Seeing what each agent is doing, and the result on the website
+
+Two different questions, two different surfaces.
+
+1. **What each agent is doing.** Each agent works on a named branch and opens a pull request. The status view the chief hands you lists, per agent: their lane, current branch, last commit, whether their build is green, and whether they are waiting on you. That is the "30 agents at a glance" board. You read their status, not their code.
+
+2. **The result on the website, per agent, before it goes live.** This is the part most people miss. Vercel builds a separate preview website for every branch, each at its own link. So each agent's lane has its own live preview URL you can open and click through exactly as a therapist would, while the change is still in its lane and has not touched production. The real site at mybodymap.app only ever shows what has passed the gate. You can look at any agent's work as a working website before you let it through, and production stays clean.
+
+Together: the status board tells you who is doing what, the preview links let you see each one rendered as a real website, and production is only ever the merged, gated result.
+
+### What you need to do
+
+1. **Approve or reject this model.** It is a real change from solo, main-only. If you keep direct-to-main at 30 agents, expect the live site to break several times a day. This week's lockfile break was that failure showing up at two agents.
+2. **Approve the lane map.** The chief drafts a CODEOWNERS file (which agent owns which folders) and you approve it. That is what makes "lane" a rule the system enforces, not a polite request.
+3. **Set the gate policy.** Decide what merges automatically once green and what waits for your eyes first. Recommended hold-for-HK lanes: money flows, RLS policies, database migrations, pricing, the seven-ribbon taxonomy, and customer broadcasts. These are already your "cannot without HK" items in section 16 and they carry the worst blast radius. Everything else can pass on green.
+4. **Rotate the GitHub token and give each agent its own credential.** The token pasted into chat should be treated as compromised. At 30 agents, one shared write key is a single key to the whole repo.
+5. **Keep reading the one status view.** Your job becomes priority and approval, not code review. The model fails the moment you start chasing 30 streams yourself.
+
+### The risks
+
+- **Broken live site.** Without the gate, 30 agents merging freely break main often. The lockfile incident this week was the two-agent preview of it.
+- **The brain drifting from reality.** 30 agents shipping means BLOCK_PLAN and this runbook fall out of date fast unless WRAP_UP runs after every merge. That is the chief's job, and it only works if agents append their done-work honestly.
+- **Silent conflicts.** Two agents editing the same file, or making contradictory decisions, with nobody noticing. The Design Principle #19 near-miss (a parallel session's commit almost dropped) is this risk already on the board.
+- **High-blast-radius mistakes in the wrong lane.** An agent touching money, RLS, or a migration can silently lose revenue or expose data (see the approve+deposit and blocked-day incidents). That is exactly why those lanes wait for you.
+- **Credential blast radius.** 30 agents holding write access is 30 ways for the repo to be compromised. Per-agent credentials plus a rotated token contain it.
+- **Complexity against the grain.** This runbook's whole philosophy is intentionally simple, solo, resist migrations. 30 parallel agents is a large jump in moving parts. It may be the right trade for speed, but it is a real trade against the simplicity that has kept MyBodyMap shippable. Decide it deliberately, do not drift into it.
+
