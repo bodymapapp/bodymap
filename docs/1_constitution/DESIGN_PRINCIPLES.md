@@ -1394,6 +1394,16 @@ by hand.
 
 ---
 
+## 39. Recommend, never interrogate. Lead every reply with ADRR and keep it short. When input is needed, state the single recommended default and ask only approve-or-adjust, then proceed on that default if there is no objection. No open questions, no stacked questions.
+
+**Why.** Open or stacked questions push the decision work back onto HK and bury the answer. A recommendation plus an approve-or-adjust gate keeps momentum, keeps HK in control, and respects the ADRR and simplicity principles that long replies and question piles erode.
+
+**Shape.** Action, Decision, Recommendation, Risk, then the detail. If a choice exists, pick the default, name it, and ask for approval to proceed or a tweak. Never list two or three things to decide.
+
+**Cost.** Set 2026-06-12 after a stretch of replies that asked too many open questions and drifted from ADRR and brevity.
+
+---
+
 ## Risk register (current open items, as of Jun 1 2026)
 
 Items here are known live risks. Each entry: severity, what could go wrong, what's queued to mitigate.
