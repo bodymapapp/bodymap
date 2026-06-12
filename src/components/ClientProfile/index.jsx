@@ -228,7 +228,14 @@ export default function ClientProfile({ client, therapistId, therapist, onBack, 
         profile={profile}
         onBack={clientView ? undefined : onBack}
         onEdit={() => setAboutPulse(n => n + 1)}
-        onEditClick={clientView ? undefined : () => setEditTrigger(true)}
+        onEditClick={clientView ? undefined : () => {
+          setOpenSections(s => ({ ...s, about: true }));
+          setAboutPulse(n => n + 1);
+          setTimeout(() => {
+            const el = document.querySelector('[data-section-id="client-info"]');
+            if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }, 60);
+        }}
         onBookClick={clientView ? undefined : () => setRebookTrigger(true)}
         onMergeClick={clientView ? undefined : () => setMergeTrigger(true)}
         onArchiveConfirm={clientView ? undefined : archiveClient}
@@ -316,6 +323,7 @@ export default function ClientProfile({ client, therapistId, therapist, onBack, 
             accent="about"
             order={0}
             title="Client info"
+            dataSectionId="client-info"
             trailingLabel={(profile.client?.email || profile.client?.phone)
               ? 'Name, email, phone, notes'
               : 'Add email or phone'}

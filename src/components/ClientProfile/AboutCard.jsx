@@ -61,6 +61,7 @@ export default function AboutCard({ client, onUpdated, pulse = false, readOnly =
   const [city, setCity] = useState(client?.city || '');
   const [state, setState] = useState(client?.state || '');
   const [zip, setZip] = useState(client?.zip || '');
+  const [country, setCountry] = useState(client?.country || '');
   // Scope B (HK Jun 1 2026): extra client fields
   const [birthday, setBirthday] = useState(client?.birthday || '');
   const [customerSince, setCustomerSince] = useState(client?.customer_since || '');
@@ -113,6 +114,7 @@ export default function AboutCard({ client, onUpdated, pulse = false, readOnly =
     setCity(client?.city || '');
     setState(client?.state || '');
     setZip(client?.zip || '');
+    setCountry(client?.country || '');
     setAllergies(client?.allergies || '');
     setHealthConditions(client?.health_conditions || '');
     setMedications(client?.medications || '');
@@ -136,6 +138,7 @@ export default function AboutCard({ client, onUpdated, pulse = false, readOnly =
     setCity(client?.city || '');
     setState(client?.state || '');
     setZip(client?.zip || '');
+    setCountry(client?.country || '');
     setAllergies(client?.allergies || '');
     setHealthConditions(client?.health_conditions || '');
     setMedications(client?.medications || '');
@@ -203,6 +206,7 @@ export default function AboutCard({ client, onUpdated, pulse = false, readOnly =
     if (field === 'city')  payload.city  = value.trim() || null;
     if (field === 'state') payload.state = value.trim() || null;
     if (field === 'zip')   payload.zip   = value.trim() || null;
+    if (field === 'country') payload.country = value.trim() || null;
     if (field === 'birthday')        payload.birthday        = value.trim() || null;
     if (field === 'customer_since')  payload.customer_since  = value.trim() || null;
     if (field === 'alt_phone')       payload.alt_phone       = value.trim() || null;
@@ -232,6 +236,7 @@ export default function AboutCard({ client, onUpdated, pulse = false, readOnly =
       if (field === 'city')  setCity(client?.city || '');
       if (field === 'state') setState(client?.state || '');
       if (field === 'zip')   setZip(client?.zip || '');
+      if (field === 'country') setCountry(client?.country || '');
       if (field === 'birthday')        setBirthday(client?.birthday || '');
       if (field === 'customer_since')  setCustomerSince(client?.customer_since || '');
       if (field === 'alt_phone')       setAltPhone(client?.alt_phone || '');
@@ -361,6 +366,8 @@ export default function AboutCard({ client, onUpdated, pulse = false, readOnly =
         setState={setState}
         zip={zip}
         setZip={setZip}
+        country={country}
+        setCountry={setCountry}
         saveField={saveField}
         justSaved={justSaved}
         errorOn={errorOn}
@@ -847,6 +854,7 @@ function AddressBlock({
   city, setCity,
   state, setState,
   zip, setZip,
+  country, setCountry,
   saveField, justSaved, errorOn, errorMsg,
   readOnly = false,
 }) {
@@ -952,6 +960,15 @@ function AddressBlock({
             justSaved={justSaved === 'zip'}
             error={errorOn === 'zip' ? errorMsg : ''}
             placeholder="37212"
+          />
+          <Row readOnly={readOnly}
+            label="Country"
+            value={country}
+            setValue={setCountry}
+            onSave={(v) => saveField('country', v)}
+            justSaved={justSaved === 'country'}
+            error={errorOn === 'country' ? errorMsg : ''}
+            placeholder="United States"
           />
         </div>
       )}
