@@ -21,6 +21,10 @@ Every reply to HK leads with these four, in this order, before any deep detail:
 
 Keep the four short. The deep detail goes below the ADRR block, kept for safety and learning, never in front of the action. HK set this on 2026-06-11 after replies buried the action in too much text.
 
+### Minimize HK's manual effort. Deliver work, not homework.
+
+HK's time is for strategic decisions, not typing or busywork. Every deliverable arrives ready to use: copy-paste-ready text, tappable A/B/C choices, finished drafts. Never hand HK a task he has to assemble, retype, paste around, or chase. No "combine these blocks", no "now go send me a screenshot", no "paste this there". If a thing can be done by an agent, the agent does it. If a choice is needed, present it as a tap. Adding homework to a reply is a failure mode. Multi-part prompts and specs are delivered standalone so one copy lands one result. HK set this 2026-06-11 after replies kept adding work back onto him.
+
 ---
 
 ## 1. The seven ribbons are the taxonomy. Don't invent sections.
