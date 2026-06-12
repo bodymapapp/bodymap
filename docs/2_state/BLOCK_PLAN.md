@@ -1264,3 +1264,11 @@ These are flagged here so a future session does not lose them.
 - `BLOCK_PLAN.md` — this file. Always update when shipping or adding ideas.
 - `docs/email-voice-guide.md` — canonical email broadcast voice guide. Joy persona, structure, hard rules. Reference this BEFORE drafting any broadcast template.
 - `research/noterro-competitive-analysis-2026-04.md` — full Noterro deep-dive
+
+---
+
+## [support] Demand signals
+
+Customer asks that strengthen the case for an already-queued item. Append-only, dated.
+
+- 2026-06-11 — **Client waitlist (item 45 / C2).** Jennifer Wolfe asked "does it have waiting list option?" on the FB promo thread. Second inbound ask after Lindsey (May 8). Both prospects, both framing it as an Acuity gap. Two independent asks = real pull on the Sprint 4 waitlist build. Not built yet; coaching nudge in TimeAvailableCard is wired:false, WaitlistModal.js is the platform launch list, not a client booking waitlist.
