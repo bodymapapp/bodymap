@@ -88,7 +88,7 @@ serve(async (req) => {
   const { data: therapist, error: tErr } = await supabase
     .from("therapists")
     .select(
-      "id, google_calendar_connected, google_access_token, google_refresh_token, google_token_expires_at, google_calendar_id"
+      "id, google_calendar_connected, google_access_token, google_refresh_token, google_token_expires_at, google_calendar_id, timezone"
     )
     .eq("id", booking.therapist_id)
     .single();
@@ -181,9 +181,9 @@ serve(async (req) => {
         return `${bookingDate}T${String(eh).padStart(2, '0')}:${String(em).padStart(2, '0')}:00`;
       })();
 
-  // No therapist tz column yet. UTC is the safe placeholder.
-  // TODO: read therapist.timezone when that column exists.
-  const eventTimeZone = "UTC";
+  // Wall-clock booking time interpreted in the therapist's own
+  // timezone. Falls back to UTC only if the therapist has no tz set.
+  const eventTimeZone = therapist.timezone || "UTC";
 
   if (body.action === "cancel") {
     if (!booking.google_event_id) {
