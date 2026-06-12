@@ -18,8 +18,6 @@ import CheckoutModal from '../components/CheckoutModal';
 import BookingModal from '../components/BookingModal';
 import CancellationChargeModal from '../components/CancellationChargeModal';
 import SetupCard from '../components/SetupCard';
-import ProfileSection from '../components/ClientProfile/ProfileSection';
-import AboutCard from '../components/ClientProfile/AboutCard';
 
 const C = {
   beige: '#F5F0E8',
@@ -59,7 +57,6 @@ export default function BookingDetailPage({ therapist }) {
   // HK Jun 1 2026: full client row for the richer left panel (birthday,
   // gender, referral source, customer since, alt phone, notes).
   const [clientRow, setClientRow] = useState(null);
-  const [clientInfoOpen, setClientInfoOpen] = useState(false);
   const [insight, setInsight] = useState(null);
 
   const fmt12 = (t) => {
@@ -392,25 +389,35 @@ export default function BookingDetailPage({ therapist }) {
 
             <div ref={setSessionEditorSlot} />
 
-            {clientRow && (
-              <ProfileSection
-                accent="about"
-                title="Client info"
-                trailingLabel="Name, contact, health"
-                isOpen={clientInfoOpen}
-                onToggle={() => setClientInfoOpen(o => !o)}
-              >
-                <AboutCard
-                  client={clientRow}
-                  onUpdated={(payload) => setClientRow(r => r ? ({ ...r, ...payload }) : r)}
-                />
-              </ProfileSection>
+            {detailRows.length > 0 && (
+              <div style={{ background: '#fff', border: `1px solid ${C.line}`, borderRadius: 14, padding: '14px 18px' }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: C.inkMute, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>Client details</div>
+                <div style={{ fontSize: 13 }}>
+                  {detailRows.map(([label, value]) => (
+                    <div key={label} style={{ display: 'flex', justifyContent: 'space-between', gap: 12, padding: '5px 0', borderTop: label === detailRows[0][0] ? 'none' : `1px solid ${C.line}` }}>
+                      <span style={{ color: C.inkMute, flexShrink: 0 }}>{label}</span>
+                      <span style={{ color: value ? C.ink : C.inkMute, textAlign: 'right', wordBreak: 'break-word', opacity: value ? 1 : 0.65 }}>{value || 'Not on file'}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
             )}
 
-            {appt.notes && (
+            {(clientRow?.notes || appt.notes) && (
               <div style={{ background: '#fff', border: `1px solid ${C.line}`, borderRadius: 14, padding: '14px 18px' }}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: C.inkMute, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 5 }}><span>📌</span>This booking</div>
-                <div style={{ fontSize: 13, color: '#3F4A39', lineHeight: 1.6, fontFamily: 'Georgia, serif', fontStyle: 'italic', whiteSpace: 'pre-wrap' }}>{appt.notes}</div>
+                <div style={{ fontSize: 11, fontWeight: 700, color: C.inkMute, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>Notes</div>
+                {clientRow?.notes && (
+                  <div style={{ marginBottom: appt.notes ? 12 : 0 }}>
+                    <div style={{ fontSize: 10.5, fontWeight: 700, color: '#5E7A52', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 5, display: 'flex', alignItems: 'center', gap: 5 }}><span>🌿</span>Client preferences</div>
+                    <div style={{ fontSize: 13, color: '#3F4A39', lineHeight: 1.6, fontFamily: 'Georgia, serif', fontStyle: 'italic', whiteSpace: 'pre-wrap' }}>{clientRow.notes}</div>
+                  </div>
+                )}
+                {appt.notes && (
+                  <div style={{ borderTop: clientRow?.notes ? `1px solid ${C.line}` : 'none', paddingTop: clientRow?.notes ? 12 : 0 }}>
+                    <div style={{ fontSize: 10.5, fontWeight: 700, color: '#A97D3C', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 5, display: 'flex', alignItems: 'center', gap: 5 }}><span>📌</span>This booking</div>
+                    <div style={{ fontSize: 13, color: '#3F4A39', lineHeight: 1.6, fontFamily: 'Georgia, serif', fontStyle: 'italic', whiteSpace: 'pre-wrap' }}>{appt.notes}</div>
+                  </div>
+                )}
               </div>
             )}
 
