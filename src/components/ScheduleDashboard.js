@@ -980,7 +980,7 @@ function PatternsContent({ allSessions }) {
               </div>
             </div>
             <div style={{ fontSize: 11, color: SO.inkMute, textAlign: 'center', lineHeight: 1.45 }}>
-              Darker = bigger share of this client's sessions, on the same scale for every client. Bigger circles = recurring zones.
+              Darker, bigger blooms = zones this client carries most, on the same scale for every client.
             </div>
           </div>
         </div>

@@ -11,7 +11,7 @@
 //
 // All inputs are zone-id arrays (e.g. ['f-r-shldr', 'b-lower-bk']).
 
-import React from 'react';
+import React, { useId } from 'react';
 import { ZONE_COORDS } from '../lib/sessionIntelligence';
 
 const SIZES = {
@@ -30,16 +30,14 @@ const COLORS = {
   redDeep: '#7F1D1D',
 };
 
-// Heatmap shade ramps. The dot fill is interpolated along these by the
-// zone's absolute intensity (share of the client's sessions), so a rare
-// zone reads pale and a recurring one reads deep. Size and halo are the
-// secondary cues. The count numeral flips from dark ink to white once
-// the fill is dark enough to carry white text, keeping it readable
-// across the whole ramp.
-const SAGE_RAMP = ['#E4EFE7', '#16271D']; // pale mint to deep forest
-const ROSE_RAMP = ['#F6DBE2', '#6E1326']; // pale rose to deep crimson
-const INK_FOCUS = '#16271D';
-const INK_AVOID = '#5A0F1F';
+// Heatmap bloom ramps. The center color of each zone's bloom is
+// interpolated along these by the zone's absolute intensity (share of
+// the client's sessions): a rare zone is a soft, light wash, a recurring
+// zone is a deep, saturated bloom. The bloom feathers to fully
+// transparent at the edge so overlapping zones blend into one organic
+// region instead of separate coins. Size is the secondary cue.
+const SAGE_BLOOM = ['#8FB39A', '#16271D']; // soft sage to deep forest
+const ROSE_BLOOM = ['#CE8EA1', '#6E1326']; // soft rose to deep crimson
 
 function hexToRgb(h) {
   return [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)];
@@ -65,6 +63,10 @@ export default function BodyDiagram({
   const { w, h } = SIZES[size] || SIZES.md;
   const f = COLORS.silhouetteFill;
   const s = COLORS.silhouetteStroke;
+  // Unique seed so gradient ids never collide across diagram instances
+  // (front + back, multiple cards on a page). Colons are stripped so the
+  // id is safe inside url(#...) references.
+  const uid = useId().replace(/:/g, '');
 
   return (
     <svg width={w} height={h} viewBox="0 0 170 310" aria-hidden="true">
@@ -77,42 +79,42 @@ export default function BodyDiagram({
       <path d="M60 162 Q56 195 54 232 Q52 260 56 278 Q62 284 70 282 Q76 278 76 260 L78 162 Z" fill={f} stroke={s} strokeWidth="1.5" />
       <path d="M110 162 Q114 195 116 232 Q118 260 114 278 Q108 284 100 282 Q94 278 94 260 L92 162 Z" fill={f} stroke={s} strokeWidth="1.5" />
 
-      {/* Heatmap mode: zone IS the number circle, bigger and bolder */}
-      {mode === 'heatmap' && Object.entries(heatmapFocus).map(([area, { opacity, count }]) => {
-        const c = ZONE_COORDS[area]; if (!c) return null;
-        // Zone size scales with count. Min radius 11, max 20.
-        const r = 11 + opacity * 9;
-        const fontSize = r >= 17 ? 14 : r >= 14 ? 12 : 11;
-        // Fill shade scales with intensity; numeral flips to white once
-        // the dot is dark enough to carry it.
-        const fill = lerpHex(SAGE_RAMP[0], SAGE_RAMP[1], opacity);
-        const textFill = opacity >= 0.55 ? 'white' : INK_FOCUS;
+      {/* Heatmap mode: soft heat blooms. Center color and size scale
+          with how often the zone recurs, and each bloom feathers to
+          transparent so overlapping zones blend into organic regions
+          rather than reading as separate coins. No numbers, no rings. */}
+      {mode === 'heatmap' && (() => {
+        const bloomOf = (area, opacity, ramp, kind) => {
+          const c = ZONE_COORDS[area];
+          const r = 13 + opacity * 13;        // recurring zones spread wider
+          const core = lerpHex(ramp[0], ramp[1], opacity);
+          const a = 0.45 + opacity * 0.5;     // hotter centre for recurring
+          return { c, r, core, a, gid: `${kind}-${uid}-${area}` };
+        };
+        const focusBlooms = Object.entries(heatmapFocus)
+          .filter(([area]) => ZONE_COORDS[area])
+          .map(([area, { opacity }]) => bloomOf(area, opacity, SAGE_BLOOM, 'bf'));
+        const avoidBlooms = Object.entries(heatmapAvoid)
+          .filter(([area]) => ZONE_COORDS[area] && !heatmapFocus[area])
+          .map(([area, { opacity }]) => bloomOf(area, opacity, ROSE_BLOOM, 'ba'));
+        const all = [...focusBlooms, ...avoidBlooms];
         return (
-          <g key={'hf-' + area}>
-            {/* Outer halo for emphasis on high-count zones */}
-            <circle cx={c[0]} cy={c[1]} r={r + 5} fill={`rgba(74,107,84,${(opacity * 0.15).toFixed(2)})`} />
-            {/* Main zone circle, shade scales with intensity */}
-            <circle cx={c[0]} cy={c[1]} r={r} fill={fill} stroke={COLORS.sageDeep} strokeWidth={opacity > 0.7 ? '2.5' : '1.5'} />
-            {/* Number IN the circle */}
-            <text x={c[0]} y={c[1] + fontSize / 3} textAnchor="middle" fill={textFill} fontSize={fontSize} fontWeight="800" fontFamily="Inter, sans-serif">{count}</text>
+          <g>
+            <defs>
+              {all.map(b => (
+                <radialGradient key={b.gid} id={b.gid} cx="50%" cy="50%" r="50%">
+                  <stop offset="0%" stopColor={b.core} stopOpacity={b.a.toFixed(2)} />
+                  <stop offset="55%" stopColor={b.core} stopOpacity={(b.a * 0.45).toFixed(2)} />
+                  <stop offset="100%" stopColor={b.core} stopOpacity="0" />
+                </radialGradient>
+              ))}
+            </defs>
+            {all.map(b => (
+              <circle key={'c-' + b.gid} cx={b.c[0]} cy={b.c[1]} r={b.r} fill={`url(#${b.gid})`} />
+            ))}
           </g>
         );
-      })}
-      {mode === 'heatmap' && Object.entries(heatmapAvoid).map(([area, { opacity, count }]) => {
-        if (heatmapFocus[area]) return null;
-        const c = ZONE_COORDS[area]; if (!c) return null;
-        const r = 11 + opacity * 9;
-        const fontSize = r >= 17 ? 14 : r >= 14 ? 12 : 11;
-        const fill = lerpHex(ROSE_RAMP[0], ROSE_RAMP[1], opacity);
-        const textFill = opacity >= 0.55 ? 'white' : INK_AVOID;
-        return (
-          <g key={'ha-' + area}>
-            <circle cx={c[0]} cy={c[1]} r={r + 5} fill={`rgba(185,28,28,${(opacity * 0.12).toFixed(2)})`} />
-            <circle cx={c[0]} cy={c[1]} r={r} fill={fill} stroke={COLORS.redDeep} strokeWidth={opacity > 0.7 ? '2.5' : '1.5'} />
-            <text x={c[0]} y={c[1] + fontSize / 3} textAnchor="middle" fill={textFill} fontSize={fontSize} fontWeight="800" fontFamily="Inter, sans-serif">{count}</text>
-          </g>
-        );
-      })}
+      })()}
 
       {/* Mark mode: focus = green outlined, avoid = red outlined */}
       {mode === 'mark' && focusAreas.map((area, i) => {

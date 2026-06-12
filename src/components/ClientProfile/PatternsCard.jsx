@@ -207,7 +207,7 @@ function Legend() {
         textAlign: 'center',
         lineHeight: 1.4,
       }}>
-        Darker = bigger share of this client's sessions, same scale for every client. Bigger dot = more sessions.
+        Darker, bigger blooms = zones this client carries most, same scale for every client.
       </span>
     </div>
   );
