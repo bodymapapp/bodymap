@@ -6886,6 +6886,7 @@ function MonthlyView({ therapist, appointments, today, onReschedule, onRefresh, 
                 {da.filter(a=>!a.preview&&a.status==='intake-done').length>0&&<div style={{width:5,height:5,borderRadius:'50%',background:'#3B82F6'}} title="Intake received"/>}
                 {da.filter(a=>!a.preview&&a.status==='pending-intake').length>0&&<div style={{width:5,height:5,borderRadius:'50%',background:'#F59E0B'}} title="No intake"/>}
                 {block.partial && !block.fullDay && <div style={{width:5,height:5,borderRadius:'50%',background:'#D97706'}} title="Partial block"/>}
+                {da.filter(a=>a.external).length>0&&<div style={{width:5,height:5,borderRadius:'50%',background:'#7F77DD'}} title="From Google Calendar"/>}
               </div>
             </div>
           );
