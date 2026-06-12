@@ -185,7 +185,7 @@ Capability matrix is the honesty layer: each provider declares what it supports 
 
 ### Repository
 - **GitHub:** github.com/bodymapapp/bodymap (note the recurring `cap.git` typo — always retry to `bodymap.git`)
-- **Branch strategy:** main only, no feature branches. Solo dev simplicity.
+- **Branch strategy:** branch per task, merged to main through the gate named Deuce (a permissive auto-merge queue). See "Operating model: many agents, one gate named Deuce" near the end of this runbook. Updated Jun 12 2026, superseded the solo "main only" model.
 - **Never use `git add -A` or `git add .`** — always stage explicit file paths. Container resets between Claude sessions and `npm install` modifies node_modules.
 
 ### Build commands
@@ -1828,15 +1828,15 @@ This document is the operational core of MyBodyMap. Update it at the end of any 
 
 ---
 
-## Operating model: many agents, one gate (PROPOSED Jun 12 2026, pending HK approval)
+## Operating model: many agents, one gate named Deuce (ADOPTED Jun 12 2026)
 
-**Status: PROPOSED, not yet adopted.** This describes how MyBodyMap would run with 30+ agents building at once, and what changes for HK. Nothing here is live until HK approves it. **It contradicts the section 6 line "main only, no feature branches,"** which was written for the solo build. If HK approves this model, that line gets updated and this section moves into the table of contents. Until then both are left standing and flagged, so the brain stays honest.
+**Status: ADOPTED Jun 12 2026.** This is how MyBodyMap runs with 30+ agents building at once. The gate is named **Deuce**. Deuce runs permissive: it sequences changes as they arrive and auto-passes anything that is conflict-free and builds, with no human approval in the path. It stops only a change that breaks the build or textually conflicts with another lane. Meaning-level contradictions, which a machine cannot judge, are caught by the chief reviewing the merged stream and flagged to HK, never blocked. Strictness is a dial: start with two checks (no conflict, build passes) and turn it up only if real issues appear. Section 6's old "main only, no feature branches" line was updated Jun 12 2026 to point here.
 
 ### What changes for the founder
 
 Today (solo): HK directs, Claude executes, push straight to main. One stream, one source of truth, HK sees everything.
 
-With 30 agents: HK stops watching code and starts setting priority and approving. The shift is from "director of one builder" to "the person who sets the order and approves what reaches the live site." HK no longer reads 30 streams. HK reads one status view from the chief and makes the calls only a founder can make. The whole point of the chief role is to keep that one view true so HK never has to rebuild it out of 30 git logs.
+With 30 agents: HK stops watching code and starts setting priority. The shift is from "director of one builder" to "the person who sets the order and the safeguards." Changes reach the live site on their own once they pass Deuce, no per-change approval. HK no longer reads 30 streams, HK reads one status view from the chief and makes only the calls a founder makes (priority, plus the flagged items Deuce or the chief surface). The whole point of the chief role is to keep that one view true so HK never has to rebuild it out of 30 git logs.
 
 ### The picture you are drawing: lanes, one gate, one doorkeeper
 
@@ -1844,7 +1844,7 @@ Your mental model is right. Many lanes feed one gate, and a doorkeeper decides w
 
 - **Lanes** are the agents working in parallel, each on its own branch and its own checkout. 30 agents can all be mid-task at once without touching each other's files.
 - **The gate** is the single point where any change is allowed to join main, the one source of truth the live website is built from.
-- **The doorkeeper** is automated. It checks each change before it passes: is this branch up to date with the latest main, does the build pass, does it conflict with anything. Only green changes pass, one at a time, in order. Everything else waits or is sent back to its lane.
+- **Deuce, the doorkeeper,** is automated. It sequences changes as they arrive and checks each one: is this branch up to date with the latest main, does the build pass, does it textually conflict with another lane. Anything green and conflict-free passes on its own, one at a time, in order, with no approval step. Only a change that breaks the build or conflicts is stopped and sent back to its lane.
 
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 440" style="max-width:100%;height:auto;background:#F5F0E8;border-radius:14px;font-family:system-ui,-apple-system,sans-serif;">
   <defs>
@@ -1900,6 +1900,12 @@ Your mental model is right. Many lanes feed one gate, and a doorkeeper decides w
 
 Parallelism lives in the lanes, safety lives at the gate. You keep 30 agents busy without 30 agents breaking the live site.
 
+### What Deuce can and cannot catch
+
+Deuce catches the mechanical contradictions cold: two lanes editing the same lines, or a change that breaks the build. These are most collisions, and they are stopped automatically with nobody waiting. What Deuce cannot judge is a meaning-level contradiction: two lanes that never touch the same file but disagree in intent (one charges a deposit, another ships copy saying there is none), or a change that quietly breaks a documented rule. No file conflict, build green, Deuce waves it through. That is the class that has actually cost MyBodyMap real money, the silent approve+deposit bug and the blocked-day RLS gap, both of which passed every mechanical check. The chief covers that gap by reading the merged stream and flagging anything that contradicts the brain or another lane, as a note to HK, not a block. Main stays revertible, so a flag plus a one-line revert is the safety net and nothing waits in line.
+
+**The dial.** Deuce starts permissive, two checks, no conflict and build passes. If a class of problem starts slipping through, add a check: a test, a lint rule, or a path that pings the chief before it merges. Turn it up only in response to a real issue, never preemptively.
+
 ### Seeing what each agent is doing, and the result on the website
 
 Two different questions, two different surfaces.
@@ -1910,20 +1916,25 @@ Two different questions, two different surfaces.
 
 Together: the status board tells you who is doing what, the preview links let you see each one rendered as a real website, and production is only ever the merged, gated result.
 
-### What you need to do
+### Setup checklist to make Deuce real
 
-1. **Approve or reject this model.** It is a real change from solo, main-only. If you keep direct-to-main at 30 agents, expect the live site to break several times a day. This week's lockfile break was that failure showing up at two agents.
-2. **Approve the lane map.** The chief drafts a CODEOWNERS file (which agent owns which folders) and you approve it. That is what makes "lane" a rule the system enforces, not a polite request.
-3. **Set the gate policy.** Decide what merges automatically once green and what waits for your eyes first. Recommended hold-for-HK lanes: money flows, RLS policies, database migrations, pricing, the seven-ribbon taxonomy, and customer broadcasts. These are already your "cannot without HK" items in section 16 and they carry the worst blast radius. Everything else can pass on green.
-4. **Rotate the GitHub token and give each agent its own credential.** The token pasted into chat should be treated as compromised. At 30 agents, one shared write key is a single key to the whole repo.
-5. **Keep reading the one status view.** Your job becomes priority and approval, not code review. The model fails the moment you start chasing 30 streams yourself.
+This is the work beyond the docs. Most of it is engineering and admin, not the chief's lane.
+
+1. **Update the agents first, then protect main, in that order.** Today every agent is told to push straight to main. The moment main is protected, those pushes are rejected and all 30 agents wedge at once. So the agents' instructions move to "branch, push, open PR, auto-merge" BEFORE protection flips on. (Chief writes the instruction change, eng/HK sequences the flip.)
+2. **Protect main and turn on the merge queue (this is Deuce).** Disable direct pushes, require the queue as the only path onto main. (GitHub repo setting, eng or HK.)
+3. **Wire the build check.** Deuce needs a "build passes" signal per change. Simplest path: use Vercel's existing preview build as the required check, no new code. (Eng.)
+4. **One checkout per agent.** Give each agent its own worktree or clone so installs stop thrashing each other. This is the lockfile incident's actual root cause. (Eng, or however agents are launched.)
+5. **Rotate the GitHub token, issue per-agent credentials.** The token pasted in chat is compromised. One shared write key for 30 agents is one key to the whole repo. (HK, security.)
+6. **Keep reading the one status view.** Your job is priority plus the flagged items, not code review. (HK.)
+
+Writing still owed beyond this runbook: SYNC.md push discipline (branch + PR + auto-merge, not push-to-main) and each agent's standing instructions. The chief owns those.
 
 ### The risks
 
-- **Broken live site.** Without the gate, 30 agents merging freely break main often. The lockfile incident this week was the two-agent preview of it.
+- **Broken live site if Deuce is bypassed.** Direct pushes to main must be off, or a change skips the checks entirely. This is why protecting main (checklist item 2) is not optional.
 - **The brain drifting from reality.** 30 agents shipping means BLOCK_PLAN and this runbook fall out of date fast unless WRAP_UP runs after every merge. That is the chief's job, and it only works if agents append their done-work honestly.
 - **Silent conflicts.** Two agents editing the same file, or making contradictory decisions, with nobody noticing. The Design Principle #19 near-miss (a parallel session's commit almost dropped) is this risk already on the board.
-- **High-blast-radius mistakes in the wrong lane.** An agent touching money, RLS, or a migration can silently lose revenue or expose data (see the approve+deposit and blocked-day incidents). That is exactly why those lanes wait for you.
+- **High-blast-radius mistakes that pass clean.** An agent touching money, RLS, or a migration can silently lose revenue or expose data and still pass every mechanical check (see the approve+deposit and blocked-day incidents). Deuce will not catch these. The chief reading the merged stream is the only net, so the highest-risk paths are where chief review matters most, and the dial (add a check on those paths) is the lever if they keep slipping.
 - **Credential blast radius.** 30 agents holding write access is 30 ways for the repo to be compromised. Per-agent credentials plus a rotated token contain it.
 - **Complexity against the grain.** This runbook's whole philosophy is intentionally simple, solo, resist migrations. 30 parallel agents is a large jump in moving parts. It may be the right trade for speed, but it is a real trade against the simplicity that has kept MyBodyMap shippable. Decide it deliberately, do not drift into it.
 
