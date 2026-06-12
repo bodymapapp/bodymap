@@ -750,6 +750,9 @@ export default function BookingModal({ therapist, mode = 'create', existingBooki
       // above is the single source of truth for reschedule
       // notifications.
       if (bookingId && !isReschedule) fireBookingConfirmation(bookingId, eventType);
+      // Instant Google Calendar push so a therapist-created session shows
+      // on their Google Calendar right away, not on the next sync cycle.
+      if (bookingId) fireGooglePush(bookingId, isReschedule ? 'update' : 'create');
 
       onSuccess?.();
       onClose();
@@ -783,6 +786,29 @@ export default function BookingModal({ therapist, mode = 'create', existingBooki
       });
     } catch (e) {
       console.warn('send-booking-confirmation invocation failed:', e);
+    }
+  }
+
+  // Instant Google Calendar push for therapist-created bookings. Fire and
+  // forget; the forward-sync cron is the backstop if this misses. Only
+  // fires when the therapist has Google connected. push accepts the anon
+  // key (verify_jwt), same as the cron.
+  async function fireGooglePush(theBookingId, action) {
+    if (!theBookingId || !therapist?.google_calendar_connected) return;
+    try {
+      const supabaseUrl = process.env.REACT_APP_SUPABASE_URL;
+      const anonKey = process.env.REACT_APP_SUPABASE_ANON_KEY;
+      await fetch(`${supabaseUrl}/functions/v1/google-calendar-push`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${anonKey}`,
+          'apikey': anonKey,
+        },
+        body: JSON.stringify({ booking_id: theBookingId, action: action || 'create' }),
+      });
+    } catch (e) {
+      console.warn('google-calendar-push invocation failed:', e);
     }
   }
 

@@ -8307,6 +8307,7 @@ export default function ScheduleDashboard({ therapist }) {
   const [showCreate, setShowCreate] = useState(false);
   // Read-only peek for a tapped Google calendar event (not a booking).
   const [externalPeek, setExternalPeek] = useState(null);
+  const [syncingNow, setSyncingNow] = useState(false);
   // HK May 29 2026: top-level "Block time" modal so the therapist can
   // block off personal/admin time without long-pressing the timeline.
   // Was previously only reachable via long-press, which HK lost.
@@ -8362,6 +8363,29 @@ export default function ScheduleDashboard({ therapist }) {
       return;
     }
     routeNavigate(`/dashboard/schedule/booking/${id}`);
+  };
+
+  // Sync now from the schedule itself (mirrors the Settings button) so a
+  // therapist can pull fresh Google events without leaving the calendar.
+  const syncGoogleNowFromSchedule = async () => {
+    if (syncingNow) return;
+    setSyncingNow(true);
+    try {
+      const SUPABASE_URL = process.env.REACT_APP_SUPABASE_URL;
+      const ANON = process.env.REACT_APP_SUPABASE_ANON_KEY;
+      await fetch(`${SUPABASE_URL}/functions/v1/google-calendar-sync`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${ANON}` },
+        body: JSON.stringify({ therapist_id: therapist.id }),
+      });
+      try { await refreshTherapist?.(); } catch (_) {}
+      await fetchBookings();
+      showScheduleToast('Google calendar synced');
+    } catch (_e) {
+      showScheduleToast('Could not sync. Please try again.');
+    } finally {
+      setSyncingNow(false);
+    }
   };
 
   // Preview-data toggle (HK May 18 2026, simplified per HK May 18
@@ -9575,7 +9599,15 @@ export default function ScheduleDashboard({ therapist }) {
         <div style={{display:'flex',alignItems:'center',justifyContent:'center',flexWrap:'wrap',gap:8,marginTop:-6,marginBottom:14,fontSize:11.5,color:'#94A3B8',fontWeight:600}}>
           {tzShort && <span title={therapist.timezone || ''}>🕐 Times shown in {tzShort}</span>}
           {tzShort && therapist.google_calendar_connected && <span style={{color:'#E2E8F0'}}>·</span>}
-          {therapist.google_calendar_connected && <span>📅 Google synced {syncedAgo}</span>}
+          {therapist.google_calendar_connected && (
+            <span>
+              📅 Google synced {syncedAgo}
+              <button onClick={syncGoogleNowFromSchedule} disabled={syncingNow}
+                style={{ marginLeft:6, background:'none', border:'none', color:'#5C7A4F', fontWeight:700, fontSize:11.5, cursor:syncingNow?'default':'pointer', padding:0, textDecoration:'underline' }}>
+                {syncingNow ? 'Syncing...' : 'Sync now'}
+              </button>
+            </span>
+          )}
         </div>
       )}
 
