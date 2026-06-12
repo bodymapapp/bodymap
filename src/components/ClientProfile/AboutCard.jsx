@@ -22,6 +22,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../../lib/supabase';
 import { CLIENT_FIELDS } from '../../lib/clientFields';
+import { formatUSPhone, normalizePhone } from '../../lib/formatters/phone';
 import AutoGrowingTextarea from '../AutoGrowingTextarea';
 import { ChevronButton } from '../ChevronIcon';
 import { recordFactHistory, HISTORY_FIELDS, listFactHistory, HISTORY_FIELD_LABELS, HISTORY_SOURCE_LABELS } from '../../lib/clientHistory';
@@ -47,9 +48,19 @@ const F = {
   serif: 'Georgia, "Times New Roman", serif',
 };
 
-export default function AboutCard({ client, onUpdated, pulse = false, readOnly = false }) {
+export default function AboutCard({ client, onUpdated, pulse = false, readOnly = false, fields = null }) {
   // Local mirror of the values shown. Updates after save so the
   // cell shows the new value without a re-fetch.
+  // When `fields` is given, only those keys render (compact reuse in the
+  // schedule cockpit). Null means show everything (full profile card).
+  const show = (k) => !fields || fields.includes(k);
+  const todayISO = new Date().toISOString().slice(0, 10);
+  // Phones store digits only; tolerate a leading US country code.
+  const toStoredPhone = (v) => {
+    let d = normalizePhone(v);
+    if (d.length === 11 && d.startsWith('1')) d = d.slice(1);
+    return d;
+  };
   const [name, setName] = useState(client?.name || '');
   const [email, setEmail] = useState(client?.email || '');
   const [phone, setPhone] = useState(client?.phone || '');
@@ -189,6 +200,34 @@ export default function AboutCard({ client, onUpdated, pulse = false, readOnly =
         return;
       }
     }
+    if (field === 'phone' || field === 'alt_phone') {
+      const d = toStoredPhone(value);
+      if (d && d.length !== 10) {
+        setErrorOn(field);
+        setErrorMsg('Enter a 10 digit phone number.');
+        if (field === 'phone') setPhone(client?.phone || ''); else setAltPhone(client?.alt_phone || '');
+        return;
+      }
+    }
+    if (field === 'birthday' && value) {
+      const d = new Date(value + 'T12:00:00');
+      if (isNaN(d) || d > new Date() || d.getFullYear() < 1900) {
+        setErrorOn('birthday');
+        setErrorMsg('Enter a real past date.');
+        setBirthday(client?.birthday || '');
+        return;
+      }
+    }
+    if (field === 'customer_since' && value) {
+      const d = new Date(value + 'T12:00:00');
+      const yr = d.getFullYear();
+      if (isNaN(d) || yr < 1990 || yr > new Date().getFullYear() + 1) {
+        setErrorOn('customer_since');
+        setErrorMsg('Enter a real date.');
+        setCustomerSince(client?.customer_since || '');
+        return;
+      }
+    }
 
     // Sample client: short-circuit. UI flips to saved, no DB write.
     if (isSample) {
@@ -200,7 +239,7 @@ export default function AboutCard({ client, onUpdated, pulse = false, readOnly =
     const payload = {};
     if (field === 'name')  payload.name  = value.trim();
     if (field === 'email') payload.email = value.trim().toLowerCase() || null;
-    if (field === 'phone') payload.phone = value.trim() || null;
+    if (field === 'phone') payload.phone = toStoredPhone(value) || null;
     if (field === 'notes') payload.notes = value.trim() || null;
     if (field === 'address_line1') payload.address_line1 = value.trim() || null;
     if (field === 'address_line2') payload.address_line2 = value.trim() || null;
@@ -210,7 +249,7 @@ export default function AboutCard({ client, onUpdated, pulse = false, readOnly =
     if (field === 'country') payload.country = value.trim() || null;
     if (field === 'birthday')        payload.birthday        = value.trim() || null;
     if (field === 'customer_since')  payload.customer_since  = value.trim() || null;
-    if (field === 'alt_phone')       payload.alt_phone       = value.trim() || null;
+    if (field === 'alt_phone')       payload.alt_phone       = toStoredPhone(value) || null;
     if (field === 'gender')          payload.gender          = value || null;
     if (field === 'referral_source') payload.referral_source = value || null;
     if (field === 'allergies')        payload.allergies        = value.trim() || null;
@@ -284,6 +323,7 @@ export default function AboutCard({ client, onUpdated, pulse = false, readOnly =
         label="Name"
         value={name}
         setValue={setName}
+        hidden={!show('name')}
         onSave={(v) => saveField('name', v)}
         justSaved={justSaved === 'name'}
         error={errorOn === 'name' ? errorMsg : ''}
@@ -326,6 +366,7 @@ export default function AboutCard({ client, onUpdated, pulse = false, readOnly =
         onSave={(v) => saveField('birthday', v)}
         justSaved={justSaved === 'birthday'}
         error={errorOn === 'birthday' ? errorMsg : ''}
+        inputMax={todayISO}
         type="date"
         placeholder="Add birthday"
       />
@@ -335,6 +376,7 @@ export default function AboutCard({ client, onUpdated, pulse = false, readOnly =
         setValue={setCustomerSince}
         onSave={(v) => saveField('customer_since', v)}
         justSaved={justSaved === 'customer_since'}
+        inputMax={todayISO}
         type="date"
         placeholder="Add date"
       />
@@ -356,6 +398,7 @@ export default function AboutCard({ client, onUpdated, pulse = false, readOnly =
           therapists don't need to see it at a glance for every client.
           Tap "Address" header to expand; tap a field to edit. */}
       <AddressBlock
+        hidden={!show('address')}
         readOnly={readOnly}
         line1={addressLine1}
         setLine1={setAddressLine1}
@@ -384,6 +427,7 @@ export default function AboutCard({ client, onUpdated, pulse = false, readOnly =
         label="Allergies"
         value={allergies}
         setValue={setAllergies}
+        hidden={!show('allergies')}
         onSave={(v) => saveField('allergies', v)}
         justSaved={justSaved === 'allergies'}
         error={errorOn === 'allergies' ? errorMsg : ''}
@@ -393,6 +437,7 @@ export default function AboutCard({ client, onUpdated, pulse = false, readOnly =
         label="Conditions"
         value={healthConditions}
         setValue={setHealthConditions}
+        hidden={!show('health_conditions')}
         onSave={(v) => saveField('health_conditions', v)}
         justSaved={justSaved === 'health_conditions'}
         error={errorOn === 'health_conditions' ? errorMsg : ''}
@@ -402,6 +447,7 @@ export default function AboutCard({ client, onUpdated, pulse = false, readOnly =
         label="Medications"
         value={medications}
         setValue={setMedications}
+        hidden={!show('medications')}
         onSave={(v) => saveField('medications', v)}
         justSaved={justSaved === 'medications'}
         error={errorOn === 'medications' ? errorMsg : ''}
@@ -411,6 +457,7 @@ export default function AboutCard({ client, onUpdated, pulse = false, readOnly =
         label="Areas to avoid"
         value={areasToAvoid}
         setValue={setAreasToAvoid}
+        hidden={!show('areas_to_avoid')}
         onSave={(v) => saveField('areas_to_avoid', v)}
         justSaved={justSaved === 'areas_to_avoid'}
         error={errorOn === 'areas_to_avoid' ? errorMsg : ''}
@@ -420,6 +467,7 @@ export default function AboutCard({ client, onUpdated, pulse = false, readOnly =
         label="Emergency contact"
         value={emergencyContact}
         setValue={setEmergencyContact}
+        hidden={!show('emergency_contact')}
         onSave={(v) => saveField('emergency_contact', v)}
         justSaved={justSaved === 'emergency_contact'}
         error={errorOn === 'emergency_contact' ? errorMsg : ''}
@@ -464,7 +512,7 @@ export default function AboutCard({ client, onUpdated, pulse = false, readOnly =
           )}
         </div>
       )}
-      {!readOnly && (
+      {!readOnly && show('notes') && (
         <RowMultiline
           label="Notes"
           value={notes}
@@ -494,7 +542,7 @@ function prettyHistoryDate(d) {
 
 // Single-line tap-to-edit row. Click anywhere on the row body to
 // enter edit mode. Blur or Enter saves. Esc cancels.
-function Row({ label, value, setValue, onSave, justSaved, error, required, type = 'text', placeholder = 'Add value', readOnly = false }) {
+function Row({ label, value, setValue, onSave, justSaved, error, required, type = 'text', placeholder = 'Add value', readOnly = false, hidden = false, inputMax }) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(value);
   const inputRef = useRef(null);
@@ -519,12 +567,14 @@ function Row({ label, value, setValue, onSave, justSaved, error, required, type 
     setEditing(false);
   }
 
+  if (hidden) return null;
+  const displayValue = type === 'tel' ? (formatUSPhone(value) || '') : value;
   return (
     <div style={{
       display: 'grid',
       gridTemplateColumns: 'minmax(70px, 90px) 1fr',
       alignItems: 'center',
-      padding: '10px 4px',
+      padding: '7px 4px',
       borderBottom: `1px solid ${C.lineSoft}`,
       gap: 12,
     }}>
@@ -549,6 +599,7 @@ function Row({ label, value, setValue, onSave, justSaved, error, required, type 
               if (e.key === 'Escape') { e.preventDefault(); cancel(); }
             }}
             type={type}
+            max={inputMax}
             placeholder={placeholder}
             style={{
               flex: 1,
@@ -580,7 +631,7 @@ function Row({ label, value, setValue, onSave, justSaved, error, required, type 
             textOverflow: 'ellipsis',
             whiteSpace: 'nowrap',
           }}>
-            {value || 'Not set'}
+            {displayValue || 'Not set'}
           </div>
         ) : (
           <button
@@ -607,7 +658,7 @@ function Row({ label, value, setValue, onSave, justSaved, error, required, type 
             onMouseEnter={(e) => { e.currentTarget.style.background = C.hover; }}
             onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
           >
-            {value || placeholder}
+            {displayValue || placeholder}
           </button>
         )}
         {justSaved && (
@@ -642,7 +693,7 @@ function Row({ label, value, setValue, onSave, justSaved, error, required, type 
 // HK Jun 1 2026 Scope B: no dropdowns, no free-text-only fields.
 // A stored value that is not one of the options (e.g. an imported
 // "Other: ..." value) shows as the Other pill pre-filled.
-function PillRow({ label, value, options, onSave, justSaved }) {
+function PillRow({ label, value, options, onSave, justSaved, hidden = false }) {
   const isKnown = options.includes(value);
   const otherText = (!isKnown && value) ? value.replace(/^Other:\s*/i, '') : '';
   const [showOther, setShowOther] = useState(!isKnown && !!value);
@@ -658,8 +709,9 @@ function PillRow({ label, value, options, onSave, justSaved }) {
 
   const otherSelected = showOther || (!isKnown && !!value);
 
+  if (hidden) return null;
   return (
-    <div style={{ padding: '12px 14px', borderBottom: `1px solid ${C.lineSoft}` }}>
+    <div style={{ padding: '8px 14px', borderBottom: `1px solid ${C.lineSoft}` }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
         <span style={{ fontSize: 12, fontWeight: 700, color: C.inkSoft, textTransform: 'uppercase', letterSpacing: '0.04em' }}>{label}</span>
         {justSaved && <span style={{ fontSize: 11, color: C.saved, fontWeight: 700 }}>Saved</span>}
@@ -726,7 +778,7 @@ function PillRow({ label, value, options, onSave, justSaved }) {
   );
 }
 
-function RowMultiline({ label, value, setValue, onSave, justSaved, error, placeholder = 'Add notes' }) {
+function RowMultiline({ label, value, setValue, onSave, justSaved, error, placeholder = 'Add notes', hidden = false }) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(value);
   const inputRef = useRef(null);
@@ -753,12 +805,13 @@ function RowMultiline({ label, value, setValue, onSave, justSaved, error, placeh
     setEditing(false);
   }
 
+  if (hidden) return null;
   return (
     <div style={{
       display: 'grid',
       gridTemplateColumns: 'minmax(70px, 90px) 1fr',
       alignItems: 'flex-start',
-      padding: '10px 4px',
+      padding: '7px 4px',
       gap: 12,
     }}>
       <div style={{
@@ -858,6 +911,7 @@ function AddressBlock({
   country, setCountry,
   saveField, justSaved, errorOn, errorMsg,
   readOnly = false,
+  hidden = false,
 }) {
   const [open, setOpen] = useState(false);
   const hasAny = !!(line1 || line2 || city || state || zip);
@@ -865,6 +919,7 @@ function AddressBlock({
     ? [city, state].filter(Boolean).join(', ') + (zip ? ` ${zip}` : '')
     : '';
 
+  if (hidden) return null;
   return (
     <div style={{
       borderRadius: 10,

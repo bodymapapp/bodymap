@@ -13,7 +13,9 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
-import { CLIENT_FIELDS, CLIENT_COCKPIT_FIELDS } from '../lib/clientFields';
+import { ChevronButton } from '../components/ChevronIcon';
+import { formatUSPhone } from '../lib/formatters/phone';
+import AboutCard from '../components/ClientProfile/AboutCard';
 import { DetailPanel } from '../components/ScheduleDashboard';
 import CheckoutModal from '../components/CheckoutModal';
 import BookingModal from '../components/BookingModal';
@@ -34,6 +36,7 @@ export default function BookingDetailPage({ therapist }) {
   const { bookingId } = useParams();
   const navigate = useNavigate();
   const [appt, setAppt] = useState(null);
+  const [clientOpen, setClientOpen] = useState(false);
   const [loaded, setLoaded] = useState(false);
   const [notFound, setNotFound] = useState(false);
   const [paymentsRefreshTick, setPaymentsRefreshTick] = useState(0);
@@ -261,50 +264,6 @@ export default function BookingDetailPage({ therapist }) {
     : '';
   const canAct = !['cancelled', 'no_show', 'refunded'].includes(appt.status);
 
-  // HK Jun 1 2026: formatters for the richer left panel.
-  const fmtLongDate = (d) => {
-    if (!d) return null;
-    const dt = new Date(d + 'T12:00:00');
-    if (isNaN(dt)) return null;
-    return dt.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
-  };
-  const fmtBirthday = (d) => {
-    if (!d) return null;
-    const dt = new Date(d + 'T12:00:00');
-    if (isNaN(dt)) return null;
-    const age = Math.floor((Date.now() - dt.getTime()) / (365.25 * 24 * 3600 * 1000));
-    const md = dt.toLocaleDateString('en-US', { month: 'long', day: 'numeric' });
-    return age > 0 && age < 120 ? `${md} (${age})` : md;
-  };
-  const genderLabel = (g) => {
-    if (!g) return null;
-    const map = { female: 'Female', male: 'Male', non_binary: 'Non-binary', nonbinary: 'Non-binary', prefer_not_to_say: 'Prefer not to say' };
-    const key = String(g).toLowerCase().replace(/[\s-]+/g, '_');
-    if (map[key]) return map[key];
-    if (key.startsWith('other')) return g.replace(/^other:?\s*/i, '').trim() || 'Other';
-    return g;
-  };
-  const referralLabel = (r) => {
-    if (!r) return null;
-    const map = { referred_by_someone: 'Referred by someone', found_online: 'Found online', social_media: 'Social media', returning_client: 'Returning client', walk_in: 'Walk-in' };
-    const key = String(r).toLowerCase().replace(/[\s-]+/g, '_');
-    if (map[key]) return map[key];
-    if (key.startsWith('other')) return r.replace(/^other:?\s*/i, '').trim() || 'Other';
-    return r;
-  };
-  const fieldDisplay = {
-    email: clientRow?.email || null,
-    phone: clientRow?.phone || null,
-    alt_phone: clientRow?.alt_phone || null,
-    birthday: fmtBirthday(clientRow?.birthday),
-    gender: genderLabel(clientRow?.gender),
-    referral_source: referralLabel(clientRow?.referral_source),
-    customer_since: fmtLongDate(clientRow?.customer_since),
-  };
-  const detailRows = clientRow
-    ? CLIENT_COCKPIT_FIELDS.map((k) => [CLIENT_FIELDS[k].label, fieldDisplay[k]])
-    : [];
-
   const _sqCard = !!(clientRow && clientRow.square_customer_id && clientRow.square_card_id);
   const _stCard = !!(clientRow && clientRow.stripe_customer_id && clientRow.payment_method_id && clientRow.card_last4);
   const hasCardOnFile = _sqCard || _stCard;
@@ -393,17 +352,32 @@ export default function BookingDetailPage({ therapist }) {
 
             <div ref={setSessionEditorSlot} />
 
-            {detailRows.length > 0 && (
+            {clientRow && (
               <div style={{ background: '#fff', border: `1px solid ${C.line}`, borderRadius: 14, padding: '14px 18px' }}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: C.inkMute, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>Client details</div>
-                <div style={{ fontSize: 13 }}>
-                  {detailRows.map(([label, value]) => (
-                    <div key={label} style={{ display: 'flex', justifyContent: 'space-between', gap: 12, padding: '5px 0', borderTop: label === detailRows[0][0] ? 'none' : `1px solid ${C.line}` }}>
-                      <span style={{ color: C.inkMute, flexShrink: 0 }}>{label}</span>
-                      <span style={{ color: value ? C.ink : C.inkMute, textAlign: 'right', wordBreak: 'break-word', opacity: value ? 1 : 0.65 }}>{value || 'Not on file'}</span>
-                    </div>
-                  ))}
-                </div>
+                <button
+                  type="button"
+                  onClick={() => setClientOpen((v) => !v)}
+                  aria-expanded={clientOpen}
+                  style={{ width: '100%', background: 'transparent', border: 'none', padding: 0, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 10, fontFamily: 'inherit', textAlign: 'left' }}
+                >
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: C.inkMute, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Client details</div>
+                    {!clientOpen && (clientRow.email || clientRow.phone) && (
+                      <div style={{ fontSize: 12.5, color: C.inkSoft, marginTop: 3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {[clientRow.email, formatUSPhone(clientRow.phone)].filter(Boolean).join('  ·  ')}
+                      </div>
+                    )}
+                  </div>
+                  <ChevronButton open={clientOpen} size={30} ariaLabel="Toggle client details" />
+                </button>
+                {clientOpen && (
+                  <div style={{ marginTop: 8 }}>
+                    <AboutCard
+                      client={clientRow}
+                      onUpdated={(p) => setClientRow((r) => (r ? { ...r, ...p } : r))}
+                    />
+                  </div>
+                )}
               </div>
             )}
 
