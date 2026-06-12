@@ -6860,7 +6860,7 @@ function MonthlyView({ therapist, appointments, today, onReschedule, onRefresh, 
         {calDays.map((d,i)=>{
           if(!d) return <div key={i}/>;
           const da=APPTS.filter(a=>sameDay(a.date,d));
-          const ra=da.filter(a=>!a.preview);
+          const ra=da.filter(a=>!a.preview && !a.external);
           const isToday=sameDay(d,today),isSel=sameDay(d,selDate);
           const block = blockedFor(d);
           // HK May 27 2026: selection state visually softened. Tapping
@@ -8305,6 +8305,8 @@ export default function ScheduleDashboard({ therapist }) {
   const [loading,setLoading]=useState(true);
   const SAMPLE = makeSample(today);
   const [showCreate, setShowCreate] = useState(false);
+  // Read-only peek for a tapped Google calendar event (not a booking).
+  const [externalPeek, setExternalPeek] = useState(null);
   // HK May 29 2026: top-level "Block time" modal so the therapist can
   // block off personal/admin time without long-pressing the timeline.
   // Was previously only reachable via long-press, which HK lost.
@@ -8352,9 +8354,13 @@ export default function ScheduleDashboard({ therapist }) {
   const openBooking = (id) => {
     if (!id) return;
     // External calendar events (Google) are reference blocks, not
-    // bookings. They have no detail page, so tapping one must never
-    // navigate to a booking-not-found screen.
-    if (String(id).startsWith('ext_')) return;
+    // bookings. Tapping one opens a small read-only peek, never the
+    // booking detail page (which would 404).
+    if (String(id).startsWith('ext_')) {
+      const ev = (realBookings || []).find(a => a.id === id);
+      if (ev) setExternalPeek(ev);
+      return;
+    }
     routeNavigate(`/dashboard/schedule/booking/${id}`);
   };
 
@@ -9244,6 +9250,34 @@ export default function ScheduleDashboard({ therapist }) {
     <div style={{width:'100%', paddingBottom: isMobileW ? 'calc(74px + env(safe-area-inset-bottom, 0px) + 24px)' : 0}}>
       {showCreate && (
         <BookingModal therapist={therapist} mode="create" onClose={() => setShowCreate(false)} onSuccess={fetchBookings} />
+      )}
+      {externalPeek && createPortal(
+        <div onClick={() => setExternalPeek(null)} style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.4)', backdropFilter:'blur(2px)', zIndex:400, display:'flex', alignItems:'flex-end', justifyContent:'center' }}>
+          <div onClick={e => e.stopPropagation()} style={{ background:'#fff', borderRadius:'18px 18px 0 0', width:'100%', maxWidth:480, padding:'22px 22px calc(env(safe-area-inset-bottom,0px) + 26px)', boxShadow:'0 -8px 40px rgba(0,0,0,0.2)' }}>
+            <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:14 }}>
+              <div style={{ width:42, height:42, borderRadius:'50%', background:'#EFEAFD', color:'#5B4DC8', display:'flex', alignItems:'center', justifyContent:'center', fontSize:20, flexShrink:0 }}>📅</div>
+              <div style={{ flex:1, minWidth:0 }}>
+                <div style={{ fontSize:10, fontWeight:700, letterSpacing:'0.08em', textTransform:'uppercase', color:'#7F77DD' }}>From your Google Calendar</div>
+                <div style={{ fontSize:18, fontWeight:700, color:'#1F2937', fontFamily:'Georgia,serif', lineHeight:1.25, wordBreak:'break-word' }}>{externalPeek.client || 'Calendar event'}</div>
+              </div>
+            </div>
+            <div style={{ background:'#F8FAFC', border:'1px solid #EEF2F7', borderRadius:12, padding:'12px 14px', marginBottom:16 }}>
+              <div style={{ fontSize:13, color:'#475569', fontWeight:600 }}>
+                {externalPeek.date instanceof Date ? externalPeek.date.toLocaleDateString('en-US', { weekday:'long', month:'long', day:'numeric' }) : ''}
+              </div>
+              <div style={{ fontSize:13, color:'#475569', marginTop:4 }}>
+                {externalPeek.isAllDay ? 'All day' : `${externalPeek.time}${externalPeek.duration ? ` · ${externalPeek.duration} min` : ''}`}
+                {tzShort ? ` · ${tzShort}` : ''}
+              </div>
+              <div style={{ fontSize:12, color:'#94A3B8', marginTop:8, lineHeight:1.5 }}>This time is blocked on your schedule. Edit it in Google Calendar.</div>
+            </div>
+            <div style={{ display:'flex', gap:8 }}>
+              <a href="https://calendar.google.com" target="_blank" rel="noreferrer" style={{ flex:1, textAlign:'center', background:'#fff', color:'#5B4DC8', border:'1.5px solid #D9D2F5', borderRadius:10, padding:'11px', fontSize:13, fontWeight:700, textDecoration:'none' }}>Open Google Calendar</a>
+              <button onClick={() => setExternalPeek(null)} style={{ flex:1, background:'#1F3A2C', color:'#fff', border:'none', borderRadius:10, padding:'11px', fontSize:13, fontWeight:700, cursor:'pointer' }}>Close</button>
+            </div>
+          </div>
+        </div>,
+        document.body
       )}
       {showBlockTime && (
         <BlockTimeModal
