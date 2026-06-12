@@ -52,26 +52,24 @@ function fromBase64(b64: string): string {
 function buildBlock(tasks: any[]): string {
   const when = new Date().toISOString().slice(0, 16).replace("T", " ");
   let md = "## Assignments by agent\n\n";
-  md += "Published from the Agent Board. Each agent reads its own section and ";
-  md += "works the top open item by number. [ ] is open, [~] is in progress. ";
-  md += "This block is written by the board, do not hand-edit it.\n\n";
+  md += "Published from the Agent Board. Each agent works the items under its own name, by number. ";
+  md += 'When HK says "run [agent] [number]" or "complete [agent] [number]", find that exact heading below ';
+  md += "and do what its prompt says. [ ] is open, [~] is in progress. The tag is how it should run: ";
+  md += "GREEN safe to run alone, AMBER draft for HK, RED HK does it. Do not hand-edit this block.\n\n";
   md += `Last published: ${when} (UTC).\n\n`;
   for (const [key, label] of AGENTS) {
     const rows = tasks
       .filter((t) => t.agent === key)
       .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
-    md += `### ${label}\n`;
-    if (rows.length === 0) {
-      md += "- No open assignment.\n\n";
-      continue;
-    }
+    md += `### ${label}\n\n`;
+    if (rows.length === 0) { md += "No open assignment.\n\n"; continue; }
     rows.forEach((t, i) => {
       const box = t.status === "in_progress" ? "[~]" : "[ ]";
-      let line = `${i + 1}. ${box} ${t.title}`;
-      if (t.detail && String(t.detail).trim()) line += `: ${String(t.detail).trim()}`;
-      md += line + "\n";
+      const tier = ["green", "amber", "red"].includes(String(t.tier)) ? String(t.tier).toUpperCase() : "AMBER";
+      md += `**${label} ${i + 1}** ${box} [${tier}] ${t.title}\n`;
+      const d = (t.detail && String(t.detail).trim()) ? String(t.detail).trim() : "";
+      md += d ? `${d}\n\n` : "(No prompt written yet. Use the title as the goal, or ask HK.)\n\n";
     });
-    md += "\n";
   }
   return md.trimEnd();
 }

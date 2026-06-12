@@ -64,3 +64,33 @@ existing convention:
   agent, the message, and the time. Tap one to see the files it changed.
 - One suspect fact: ask "who last changed this line, and when." Git points
   to the exact commit and the agent behind it.
+
+## The done feed: how agents tell each other what got done
+
+We keep it simple. No agent has to figure out who needs what. When you
+finish a task, add ONE line to the top of docs/2_state/DONE_FEED.md:
+
+    2026-06-12  [engineering]  Coupon Phase 2 shipped, referral codes live.
+
+Then read the recent lines in DONE_FEED.md at the start of every session,
+so you always know what the other agents have shipped. That is the whole
+mechanism: everyone writes one line when done, everyone reads the feed at
+the start. Keep each line short and plain.
+
+## Running a numbered task: "run engineering 1"
+
+When HK opens the Agent Board and publishes, the numbered tasks and their
+full prompts get written into the "Assignments by agent" block at the top
+of docs/2_state/BLOCK_PLAN.md.
+
+When HK says "run engineering 1" or "complete marketing 2" (your own name
+and a number), find that exact heading, for example "**Engineering 1**",
+in the assignments block, and do what the prompt under it says. The tag in
+brackets is how it should run:
+
+- GREEN: safe to run on its own. Do it and report back.
+- AMBER: draft it and bring it to HK before anything goes live.
+- RED: HK does this one. Do not run it yourself.
+
+If there is no prompt written under the heading, use the title as the goal
+and ask HK for anything you need.
