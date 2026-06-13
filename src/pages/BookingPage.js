@@ -6,6 +6,7 @@ import { isTestMode, getStripePublishableKey } from '../lib/paymentMode';
 import { findOrCreateClient } from '../lib/findOrCreateClient';
 import CloseButton from '../components/CloseButton';
 import AddressAutocompleteInput from '../components/AddressAutocompleteInput';
+import LocationMapPreview from '../components/LocationMapPreview';
 import { milesBetween } from '../lib/googlePlaces';
 import ResultScreen from '../components/ResultScreen';
 import { PolicyDisplay } from '../components/BookingPolicies';
@@ -3410,6 +3411,7 @@ export default function BookingPage() {
                 onChange={(v)=>{setServiceAddress(a=>({...(a||{}),street1:v}));}}
                 placeholder="Street address where I should come"
               />
+              <LocationMapPreview lat={serviceAddress?.lat} lng={serviceAddress?.lng} />
               {(() => {
                 const radius=therapist?.travel_radius_miles;
                 const dist=serviceAddress?.distance_miles;
