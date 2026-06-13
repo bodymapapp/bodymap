@@ -9076,6 +9076,7 @@ export default function ScheduleDashboard({ therapist }) {
           addon_ids: b.addon_ids || [],
           addon_total_price: b.addon_total_price || 0,
           discount_cents: b.discount_cents || 0,
+          service_address: b.service_address || null,
           addon_extra_minutes: b.addon_extra_minutes || 0,
           booking_date: b.booking_date,
           // HK May 31 2026: package_purchase_id MUST be on the appt
@@ -9522,6 +9523,9 @@ export default function ScheduleDashboard({ therapist }) {
                       <div style={{fontSize:14,fontWeight:700,color:'#1F2937',fontFamily:'Georgia,serif'}}>{req.client}</div>
                       <div style={{fontSize:12,color:'#6B7280',marginTop:1}}>{dateLabel} at {req.time} · {req.service} ({req.duration} min)</div>
                       <div style={{fontSize:11,color:'#9CA3AF',marginTop:1}}>{req.email}{req.phone ? ` · ${req.phone}` : ''}</div>
+                      {req.service_address && (req.service_address.formatted || req.service_address.street1) && (
+                        <div style={{fontSize:12,color:'#2A5741',fontWeight:600,marginTop:4}}>📍 {req.service_address.formatted || [req.service_address.street1, req.service_address.city, req.service_address.state, req.service_address.postal_code].filter(Boolean).join(', ')}</div>
+                      )}
                     </div>
                   </div>
                   {!isDeclining ? (

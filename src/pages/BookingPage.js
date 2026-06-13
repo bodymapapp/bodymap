@@ -5,6 +5,7 @@ import { applyCycleFilter, phaseFromDate } from '../lib/cycleScheduling';
 import { isTestMode, getStripePublishableKey } from '../lib/paymentMode';
 import { findOrCreateClient } from '../lib/findOrCreateClient';
 import CloseButton from '../components/CloseButton';
+import AddressAutocompleteInput from '../components/AddressAutocompleteInput';
 import ResultScreen from '../components/ResultScreen';
 import { PolicyDisplay } from '../components/BookingPolicies';
 import PublicCheckout from '../components/PublicCheckout';
@@ -710,6 +711,9 @@ export default function BookingPage() {
     };
   });
   const [partner,setPartner]=useState({name:'',email:''});
+  // F1 (HK Jun 12 2026): captured when the chosen service is performed at the
+  // client's location. { street1, city, state, postal_code, country, formatted }
+  const [serviceAddress,setServiceAddress]=useState(null);
   const [partnerErrors,setPartnerErrors]=useState({});
   const [errors,setErrors]=useState({});
   const [submitError,setSubmitError]=useState(null);
@@ -1946,6 +1950,9 @@ export default function BookingPage() {
       addon_ids: chosenAddons.map(a => a.id),
       addon_total_price: addonTotalPrice,
       addon_extra_minutes: addonExtraMinutes,
+      // F1 (HK Jun 12 2026): client-entered address for a mobile service,
+      // captured per booking since the location can change visit to visit.
+      service_address: svc?.performed_at_client_location ? serviceAddress : null,
       notes: giftCert ? `🎁 Gift certificate applied: ${giftCert.code} ($${giftCert.remaining?.toFixed(0)} credit)` : '',
       status: redeemContext ? 'confirmed' : (requiresApproval ? 'pending-approval' : ((depositRequired || paymentMode === 'full') ? 'pending-deposit' : 'confirmed')),
       deposit_required: redeemContext ? false : (requiresApproval ? false : depositRequired),
@@ -3529,6 +3536,21 @@ export default function BookingPage() {
                   {errors[k]&&<div style={{fontSize:11,color:C.danger,marginTop:4}}>{errors[k]}</div>}
                 </div>
               ))}
+              {svc?.performed_at_client_location && (
+                <div>
+                  <div style={{fontSize:13,fontWeight:600,color:C.gray,marginBottom:6}}>Where should the session take place?</div>
+                  <AddressAutocompleteInput
+                    street1={serviceAddress?.street1 || ''}
+                    city={serviceAddress?.city || ''}
+                    state={serviceAddress?.state || ''}
+                    postal_code={serviceAddress?.postal_code || ''}
+                    onSelect={(parts)=>{setServiceAddress(parts);setErrors(er=>({...er,service_address:''}));}}
+                    onChange={(v)=>{setServiceAddress(a=>({...(a||{}),street1:v}));setErrors(er=>({...er,service_address:''}));}}
+                    placeholder="Street address where I should come"
+                  />
+                  {errors.service_address&&<div style={{fontSize:11,color:C.danger,marginTop:4}}>{errors.service_address}</div>}
+                </div>
+              )}
               {/* SMS consent (TCPA + Twilio 10DLC compliance).
                   Names MyBodyMap as the platform sender, includes HELP/STOP language,
                   and links Privacy Policy + Terms inline at the consent moment. */}
@@ -3586,6 +3608,7 @@ export default function BookingPage() {
               // record. Better to fail fast than to silently let the
               // checkbox slip.
               if(!form.platform_terms_accepted) errs.platform_terms_accepted='Please accept MyBodyMap\'s Terms of Service to continue.';
+              if(svc?.performed_at_client_location && !(serviceAddress && serviceAddress.street1 && serviceAddress.street1.trim())) errs.service_address='Please enter the address where the session will take place.';
               if(Object.keys(errs).length){setErrors(errs);return;}
               if(svc?.is_couples){
                 const perrs={};
