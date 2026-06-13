@@ -13,8 +13,15 @@ import React from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 
+// HK's canonical founder account is bodymapdemo@gmail.com, but that is also
+// the live demo account, so we are moving founder access onto a private
+// email. During the transition both are allowed; once HK confirms he can
+// sign in as harshk.mba@gmail.com, drop bodymapdemo from this list so the
+// demo account no longer carries founder powers. (bodymap01@gmail.com has
+// no auth login, so it is intentionally not here.)
 export const FOUNDER_EMAILS = [
   'bodymapdemo@gmail.com',
+  'harshk.mba@gmail.com',
 ];
 
 export default function FounderRoute({ children }) {
