@@ -113,13 +113,20 @@ export function parsePlaceAddress(place) {
     }
   } catch (_e) { /* coords optional */ }
 
+  // For a named place (hotel, office), prepend the name so the therapist
+  // sees "Grand Hotel, 123 Main St" rather than just the street.
+  const placeName = place.name || '';
+  const fa = place.formatted_address || '';
+  const formatted = (placeName && fa && !fa.startsWith(placeName)) ? `${placeName}, ${fa}` : (fa || placeName);
+
   return {
-    street1: street1 || '',
+    street1: street1 || placeName || '',
     city: parts.city || '',
     state: parts.state || '',
     postal_code: parts.postal_code || '',
     country: parts.country || 'US',
-    formatted: place.formatted_address || '',
+    formatted: formatted,
+    name: placeName,
     lat: (typeof lat === 'number' && !isNaN(lat)) ? lat : null,
     lng: (typeof lng === 'number' && !isNaN(lng)) ? lng : null,
   };

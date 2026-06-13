@@ -1408,6 +1408,9 @@ by hand.
 
 Our primary user is a ~70-year-old, non-technical solo massage therapist. If she cannot understand what something costs, or what a choice means, in about 5 seconds, it is wrong no matter how elegant the underlying model. For pricing specifically: state it as a single plain sentence with at most one or two numbers. Never a band table she has to locate herself in, never a percentage she has to compute, never per-unit math she has to run. Usage-based pricing must read as "free up to N, then $X each" plus a live "where you stand this month" counter, not a formula. A safety mechanism like a spend cap is a reassurance we state for her, not a third number she tracks. Applies to all product, design, and copy, not just pricing. HK flagged this on 2026-06-12 after a pricing-options reply ignored the persona and offered tiered bands and a percent-of-payments model the persona could not parse at a glance.
 
+## 41. 10X the experience every time. For every screen and flow, do not ship the first thing that works. Ask what a ten times better version looks like for the seventy year old practitioner and the client, then build that: fewer steps, nothing that strands the user, clear labels, the location or status shown plainly, and a way out of every screen. Polish is the product.
+
+## 42. Use modern and future technology to leapfrog, not match, competitors. Reach for maps, autocomplete, tap to pay, AI, and whatever is newest to make the simple thing feel effortless and a step ahead of Vagaro, Mindbody, and the rest. The bar is to beat them on experience, not to copy their feature list.
 
 ## Risk register (current open items, as of Jun 1 2026)
 
