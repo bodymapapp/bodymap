@@ -1,0 +1,142 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MyBodyMap pricing revenue simulator</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  :root{ --green:#3a5a40; --green2:#588157; --sand:#f6f5f1; --ink:#23291f; --line:#e3e1d8; }
+  *{box-sizing:border-box}
+  body{margin:0;font:15px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;color:var(--ink);background:var(--sand)}
+  .wrap{max-width:1000px;margin:0 auto;padding:24px}
+  h1{font-size:22px;margin:0 0 2px}
+  .sub{color:#6b7164;margin:0 0 20px}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  @media(max-width:760px){.grid{grid-template-columns:1fr}}
+  .card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:16px}
+  .card h2{font-size:13px;text-transform:uppercase;letter-spacing:.04em;color:#6b7164;margin:0 0 12px}
+  label{display:flex;justify-content:space-between;align-items:center;gap:10px;margin:7px 0;font-size:14px}
+  label span{color:#444}
+  input[type=number]{width:92px;padding:6px 8px;border:1px solid var(--line);border-radius:8px;font:inherit;text-align:right}
+  .strat{border-left:4px solid var(--green2);padding-left:12px;margin:14px 0}
+  .strat.s1{border-color:#6b7164}.strat.s2{border-color:var(--green2)}.strat.s3{border-color:#bc6c25}
+  .strat b{font-size:14px}
+  table{width:100%;border-collapse:collapse;margin-top:6px;font-variant-numeric:tabular-nums}
+  th,td{padding:8px 6px;text-align:right;border-bottom:1px solid var(--line)}
+  th:first-child,td:first-child{text-align:left}
+  thead th{font-size:12px;color:#6b7164;font-weight:600}
+  .arpu{font-weight:700}
+  .note{font-size:12.5px;color:#6b7164;margin-top:10px}
+  canvas{margin-top:8px}
+  .full{grid-column:1/-1}
+</style>
+<div class="wrap">
+  <h1>MyBodyMap pricing revenue simulator</h1>
+  <p class="sub">Usage meter is completed sessions. Edit any number; the table and chart update live. Internal tool, not therapist-facing.</p>
+
+  <div class="grid">
+    <div class="card">
+      <h2>Customer assumptions</h2>
+      <label><span>% on Bronze</span><input type="number" id="mixB" value="70" min="0" max="100" step="1"></label>
+      <label><span>% on Silver (auto)</span><input type="number" id="mixS" value="30" disabled></label>
+      <label><span>Bronze avg completed sessions / mo</span><input type="number" id="sessB" value="20" min="0" step="1"></label>
+      <label><span>Silver avg completed sessions / mo</span><input type="number" id="sessS" value="50" min="0" step="1"></label>
+      <label><span>Max customers on chart</span><input type="number" id="maxN" value="1000" min="50" step="50"></label>
+    </div>
+
+    <div class="card">
+      <h2>Pricing strategies</h2>
+      <div class="strat s1">
+        <b>1. Flat monthly</b>
+        <label><span>Bronze $/mo</span><input type="number" id="s1b" value="9" min="0" step="0.5"></label>
+        <label><span>Silver $/mo</span><input type="number" id="s1s" value="19" min="0" step="0.5"></label>
+      </div>
+      <div class="strat s2">
+        <b>2. Per completed session</b>
+        <label><span>Bronze $/session</span><input type="number" id="s2b" value="0.75" min="0" step="0.05"></label>
+        <label><span>Silver $/session</span><input type="number" id="s2s" value="0.50" min="0" step="0.05"></label>
+      </div>
+      <div class="strat s3">
+        <b>3. Base + per session</b>
+        <label><span>Bronze base $/mo</span><input type="number" id="s3bb" value="5" min="0" step="0.5"></label>
+        <label><span>Bronze $/session</span><input type="number" id="s3bp" value="0.40" min="0" step="0.05"></label>
+        <label><span>Silver base $/mo</span><input type="number" id="s3sb" value="10" min="0" step="0.5"></label>
+        <label><span>Silver $/session</span><input type="number" id="s3sp" value="0.30" min="0" step="0.05"></label>
+      </div>
+    </div>
+
+    <div class="card full">
+      <h2>Monthly revenue by customer count</h2>
+      <table id="tbl"></table>
+      <p class="note" id="arpuNote"></p>
+    </div>
+
+    <div class="card full">
+      <h2>Monthly revenue as customers grow</h2>
+      <canvas id="chart" height="120"></canvas>
+    </div>
+  </div>
+</div>
+
+<script>
+const $=id=>document.getElementById(id);
+const milestones=[25,50,100,250,500,1000];
+const colors=['#6b7164','#588157','#bc6c25'];
+let chart;
+
+function v(id){return parseFloat($(id).value)||0;}
+
+function rates(){
+  const sb=v('sessB'), ss=v('sessS');
+  return [
+    { name:'1 Flat monthly',        b:v('s1b'),                 s:v('s1s') },
+    { name:'2 Per session',         b:sb*v('s2b'),              s:ss*v('s2s') },
+    { name:'3 Base + per session',  b:v('s3bb')+sb*v('s3bp'),   s:v('s3sb')+ss*v('s3sp') },
+  ];
+}
+
+function arpu(r){
+  const mb=v('mixB')/100, ms=1-mb;
+  return mb*r.b + ms*r.s;
+}
+
+function fmt(n){return '$'+Math.round(n).toLocaleString();}
+
+function render(){
+  $('mixS').value=(100-v('mixB')).toFixed(0);
+  const rs=rates();
+  const a=rs.map(arpu);
+
+  // table
+  let h='<thead><tr><th>Strategy</th><th>ARPU</th>'+milestones.map(m=>'<th>'+m+'</th>').join('')+'</tr></thead><tbody>';
+  rs.forEach((r,i)=>{
+    h+='<tr><td>'+r.name+'</td><td class="arpu">'+fmt(a[i])+'</td>'+
+       milestones.map(m=>'<td>'+fmt(a[i]*m)+'</td>').join('')+'</tr>';
+  });
+  h+='</tbody>';
+  $('tbl').innerHTML=h;
+  $('arpuNote').textContent='ARPU = blended average revenue per customer per month at the current mix and session assumptions. Revenue shown is expected monthly recurring at each customer count.';
+
+  // chart
+  const maxN=Math.max(50,v('maxN'));
+  const step=Math.max(1,Math.round(maxN/40));
+  const xs=[]; for(let n=0;n<=maxN;n+=step) xs.push(n); if(xs[xs.length-1]!==maxN) xs.push(maxN);
+  const data={labels:xs,datasets:rs.map((r,i)=>({
+    label:r.name,data:xs.map(n=>Math.round(a[i]*n)),
+    borderColor:colors[i],backgroundColor:colors[i],borderWidth:2,pointRadius:0,tension:.05
+  }))};
+  if(chart){chart.data=data;chart.update();}
+  else{
+    chart=new Chart($('chart'),{type:'line',data,options:{
+      responsive:true,interaction:{mode:'index',intersect:false},
+      plugins:{legend:{labels:{boxWidth:14}},tooltip:{callbacks:{
+        title:i=>i[0].label+' customers',
+        label:c=>c.dataset.label+': '+fmt(c.parsed.y)+'/mo'}}},
+      scales:{x:{title:{display:true,text:'Customers'}},
+              y:{title:{display:true,text:'Monthly revenue'},ticks:{callback:v=>'$'+Number(v).toLocaleString()}}}
+    }});
+  }
+}
+
+document.querySelectorAll('input').forEach(el=>el.addEventListener('input',render));
+render();
+</script>

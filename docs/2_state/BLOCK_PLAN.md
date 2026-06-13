@@ -45,6 +45,19 @@ Published from the Agent Board. Each agent reads its own section and works the t
 - OPEN QUESTION blocking detailed design: what is the usage meter / value metric? Candidates: per booking or session, per active client, percent of payments processed, SMS or AI units, or a hybrid. The meter choice drives the save offers, the free floor, and the metering build.
 
 
+### Pricing simulation and the open strategic question (2026-06-12)
+- Meter decided: completed sessions (a past, non-cancelled, non-no-show appointment). Bronze will be priced too, so no free floor in the current models.
+- Three candidate strategies modelled (numbers are placeholders to calibrate):
+  1. Flat monthly: Bronze $9, Silver $19. Blended ARPU about $12.
+  2. Per completed session: Bronze $0.75, Silver $0.50. Blended ARPU about $18.
+  3. Base plus per session: Bronze $5 + $0.40/session, Silver $10 + $0.30/session. Blended ARPU about $16.60.
+- Assumptions: 70 percent Bronze / 30 percent Silver; Bronze averages 20 completed sessions/month, Silver 50.
+- Expected monthly revenue (Flat / Per-session / Hybrid): at 100 customers about $1,200 / $1,800 / $1,660; at 500 about $6,000 / $9,000 / $8,300; at 1,000 about $12,000 / $18,000 / $16,600. The usage models earn roughly 40 to 50 percent more, driven entirely by the assumed session volumes, so the ranking flips if therapists do fewer sessions.
+- Interactive simulator preserved at `docs/2_state/pricing-simulator.html` (open in a browser; edit the mix, session volumes, and every rate to see the table and curves update live).
+- Persona check (principle #40): only the flat model is 5-second-simple as-is. The usage models are more profitable but only pass the persona bar if shown as one plain line plus a live "this month: N sessions, $X so far" counter and a stated spend cap.
+- OPEN STRATEGIC QUESTION (HK is taking this to the chief of strategy): how to maximize revenue without hurting therapists, balancing value alignment, predictability and no bill shock, the persona's 5-second comprehension, Bronze vs Silver differentiation, a possible free floor or minimum, fairness levers (caps, slow-season dormancy, grandfathering founders), monthly vs annual, and competitor framing (flat-fee tools charge the same no matter how busy you are).
+
+
 ## Priority 0 — legal protection and data safeguards
 
 *Carried forward from the June 1 plan during the 2026-06-11 brain cleanup. Statuses below are as of June 1; confirm any that have shipped since. For example, the audit log and the confirmation gate shipped May 24. The June 1 "Terra triage" sub-block (0b) was left in the archive because it was already resolved.*
