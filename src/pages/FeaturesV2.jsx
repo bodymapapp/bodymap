@@ -102,6 +102,17 @@ export default function FeaturesV2() {
         </div>
       </section>
 
+      <header className="bm-features-v2-head">
+        <div className="bm-features-v2-eyebrow">Everything in one place</div>
+        <h2 className="bm-features-v2-title">
+          Keep every client <em>coming back.</em>
+        </h2>
+        <p className="bm-features-v2-sub">
+          One quiet platform built for therapists who would rather spend the
+          hour on the table than at the desk.
+        </p>
+      </header>
+
       <main className="bm-features-v2-body">
         {RIBBONS.map((ribbon) => (
           <FeatureRibbon
