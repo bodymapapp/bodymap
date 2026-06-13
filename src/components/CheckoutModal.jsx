@@ -1812,7 +1812,7 @@ function AddOnPicker({ appt, therapist, onApplied }) {
       try {
         const { data } = await supabase
           .from('service_addons')
-          .select('id, name, price, extra_minutes, applicable_service_ids')
+          .select('id, name, price, extra_minutes')
           .eq('therapist_id', therapist.id)
           .eq('active', true)
           .order('display_order');
@@ -1822,12 +1822,9 @@ function AddOnPicker({ appt, therapist, onApplied }) {
     return () => { alive = false; };
   }, [therapist && therapist.id]);
 
-  const applicable = (catalog || []).filter((a) => {
-    const apply = a.applicable_service_ids;
-    if (!apply || (Array.isArray(apply) && apply.length === 0)) return true;
-    if (Array.isArray(apply)) return apply.includes(appt && appt.service_id);
-    return true;
-  });
+  // service_addons has no per-service applicability column, so every active
+  // add-on the therapist offers is available here.
+  const applicable = catalog || [];
   if (applicable.length === 0) return null;
 
   const toggle = async (a) => {
