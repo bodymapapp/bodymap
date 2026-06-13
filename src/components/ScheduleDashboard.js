@@ -2301,7 +2301,14 @@ export function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelle
       appt: displayAppt,
       client: clientRow,
       defaultAmountCents,
-      breakdown: { totalCents: sessionTotalCents, paidCents: paidTowardCents, depositCents },
+      breakdown: {
+        serviceCents: appt?.service_price_cents || 0,
+        addonCents,
+        discountCents,
+        totalCents: sessionTotalCents,
+        paidCents: paidTowardCents,
+        depositCents,
+      },
     });
   };
 

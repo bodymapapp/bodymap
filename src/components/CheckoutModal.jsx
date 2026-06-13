@@ -1736,16 +1736,35 @@ export default function CheckoutModal({
 // a remaining balance is shown; omitted where the charge is a fixed full amount.
 function BalanceBreakdown({ breakdown }) {
   const fmt = (c) => `$${(Math.max(0, c || 0) / 100).toFixed(2)}`;
+  const service = breakdown.serviceCents || 0;
+  const addon = breakdown.addonCents || 0;
+  const discount = breakdown.discountCents || 0;
   const total = breakdown.totalCents || 0;
   const paid = breakdown.paidCents || 0;
   const deposit = breakdown.depositCents || 0;
   const balance = Math.max(0, total - paid);
+  // Itemize the components only when there is something beyond the base
+  // service to explain (an add-on or a coupon). A plain session stays clean
+  // with a single "Session total" line.
+  const itemized = addon > 0 || discount > 0;
   const lbl = { fontSize: 13, color: '#6B7280', fontWeight: 500 };
   const val = { fontSize: 13.5, color: C.ink, fontWeight: 600, fontVariantNumeric: 'tabular-nums' };
   const rowWrap = { display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', padding: '3px 0' };
   return (
     <div style={{ background: '#fff', border: `1px solid ${C.border}`, borderRadius: 14, padding: '14px 16px', marginBottom: 12 }}>
-      <div style={rowWrap}><span style={lbl}>Session total</span><span style={val}>{fmt(total)}</span></div>
+      {itemized && (
+        <>
+          <div style={rowWrap}><span style={lbl}>Service</span><span style={val}>{fmt(service)}</span></div>
+          {addon > 0 && (
+            <div style={rowWrap}><span style={lbl}>Add-ons</span><span style={val}>{fmt(addon)}</span></div>
+          )}
+          {discount > 0 && (
+            <div style={rowWrap}><span style={lbl}>Coupon</span><span style={{ ...val, color: '#2A5741' }}>{`\u2212${fmt(discount)}`}</span></div>
+          )}
+          <div style={{ height: 1, background: C.border, margin: '7px 0' }} />
+        </>
+      )}
+      <div style={rowWrap}><span style={{ ...lbl, color: C.ink, fontWeight: 700 }}>Session total</span><span style={{ ...val, fontWeight: 700 }}>{fmt(total)}</span></div>
       <div style={rowWrap}><span style={lbl}>Paid so far</span><span style={val}>{paid > 0 ? `\u2212${fmt(paid)}` : fmt(0)}</span></div>
       {deposit > 0 && (
         <div style={{ textAlign: 'right', marginTop: -1, marginBottom: 1, fontSize: 11.5, color: '#9AA0A6' }}>includes {fmt(deposit)} deposit</div>
