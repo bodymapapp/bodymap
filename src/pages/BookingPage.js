@@ -3208,6 +3208,34 @@ export default function BookingPage() {
               </div>
             )}
 
+            {/* F1 (HK Jun 12 2026): mobile services come to the client, so they
+                must not be trapped behind the studio picker. Surface them as a
+                "come to you" option at the location step. Gated by the mobile
+                flag, so therapists with no mobile service see no change. */}
+            {locations.length >= 2 && !selectedLocation && services.some(s => s.performed_at_client_location) && (
+              <div style={{ marginBottom: 18 }}>
+                <div style={{ fontSize: 13, color: C.gray, fontWeight: 600, marginBottom: 10 }}>
+                  Or have me come to you
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  {services.filter(s => s.performed_at_client_location).map(s => (
+                    <button key={s.id} onClick={() => { setSelectedLocation(null); setSvc(s); setStep(2); }}
+                      style={{ background: C.white, border: `2px solid ${C.light}`, borderRadius: 16, padding: '16px 18px', textAlign: 'left', cursor: 'pointer', width: '100%', transition: 'all 0.15s', outline: 'none' }}
+                      onMouseEnter={e=>{e.currentTarget.style.borderColor=C.forest;e.currentTarget.style.transform='translateY(-1px)';e.currentTarget.style.boxShadow='0 4px 16px rgba(42,87,65,0.12)';}}
+                      onMouseLeave={e=>{e.currentTarget.style.borderColor=C.light;e.currentTarget.style.transform='none';e.currentTarget.style.boxShadow='none';}}>
+                      <div style={{ display:'flex', alignItems:'flex-start', gap:12 }}>
+                        <span style={{ fontSize: 22, lineHeight: 1 }}>🏠</span>
+                        <div style={{ flex:1, minWidth:0 }}>
+                          <div style={{ fontSize:15, fontWeight:700, color:C.dark, marginBottom:4 }}>{s.name}</div>
+                          <div style={{ fontSize:13, color:C.gray }}>{s.duration} min · ${s.price} · I come to you</div>
+                        </div>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* Selected location chip with Change affordance. Sits
                 above the service list once a location is picked. */}
             {locations.length >= 2 && selectedLocation && (
