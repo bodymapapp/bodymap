@@ -37,6 +37,11 @@ export default function AddressAutocompleteInput({
   countries,
   minimal = false,
 }) {
+  // When the parent does not pass an inputStyle, fall back to a full-width
+  // field so the address never renders as a narrow, truncated box.
+  if (!inputStyle) {
+    inputStyle = { width: '100%', padding: '13px 14px', border: '1.5px solid #E5E7EB', borderRadius: 10, fontSize: 15, boxSizing: 'border-box', outline: 'none', fontFamily: 'system-ui' };
+  }
   const { placesReady, placesError } = useGooglePlaces();
   const inputRef = useRef(null);
   const autocompleteRef = useRef(null);

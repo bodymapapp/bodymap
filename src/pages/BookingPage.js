@@ -3411,7 +3411,7 @@ export default function BookingPage() {
                 onChange={(v)=>{setServiceAddress(a=>({...(a||{}),street1:v}));}}
                 placeholder="Street address where I should come"
               />
-              <LocationMapPreview lat={serviceAddress?.lat} lng={serviceAddress?.lng} />
+              <LocationMapPreview lat={serviceAddress?.lat} lng={serviceAddress?.lng} baseLat={therapist?.travel_base_lat} baseLng={therapist?.travel_base_lng} radiusMiles={therapist?.travel_radius_miles} />
               {(() => {
                 const radius=therapist?.travel_radius_miles;
                 const dist=serviceAddress?.distance_miles;
