@@ -9,6 +9,8 @@ Format:  YYYY-MM-DD  [agent]  one plain sentence.
 
 ---
 
+2026-06-12  [engineering]  Google OAuth Step B blocked again: YouTube removed the demo video citing the harassment/PII policy (medical records, email, phone), most likely because real client intake/booking data was visible in the recording. The link saved in Data Access is now dead. Next: re-record using only dummy test data (fake therapist and client, no real PII or medical notes), re-upload unlisted, update the link in Data Access, then submit. Do not submit with the dead link. App, domain, scope, privacy, and justification are all still fine; only the video needs a clean redo.
+
 2026-06-12  [engineering]  Google OAuth Step B: demo video recorded (Loom) and uploaded to YouTube as unlisted by HK, so all prerequisites are done (domain verified, authorized domain added, calendar.events declared, privacy disclosure live, two-way justification ready). Remaining action is HK pasting the justification plus the video link into Data Access and submitting in the Verification Center. The unlisted video URL is not stored here since the repo is public.
 
 2026-06-12  [engineering]  Correction: a code audit showed the Google Calendar integration is two-way (google-calendar-sync READS the therapist's upcoming events, about 60 days, and stores title/start/end in external_calendar_events to block slots), so the earlier privacy section 5b and the OAuth scope justification were inaccurate in saying we never read calendar data. Fixed privacy 5b to disclose the read and store, and rewrote the justification to explain the two-way use (which is why a write-only or app-created-only scope would break the reverse sync). Build clean.
