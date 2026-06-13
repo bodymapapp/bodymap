@@ -924,6 +924,46 @@ export default function BookingPage() {
     return () => { alive = false; };
   }, [form.email, therapist?.id, redeemContext, purchaseSuccess]);
 
+  // F1 (HK Jun 13 2026): when we know the client's email up front (a
+  // returning-client link prefill) and they are booking a come-to-you
+  // service, pre-fill the address from their saved record so they do not
+  // retype it. Only fills an empty field, so a guest who typed their email
+  // after entering an address is never overwritten. No coordinates are
+  // stored on the client row, so picking from the suggestions again will
+  // refresh the distance check.
+  useEffect(() => {
+    const email = (form.email || '').trim().toLowerCase();
+    if (!email || !email.includes('@') || !therapist?.id) return;
+    if (!svc?.performed_at_client_location) return;
+    if (serviceAddress && serviceAddress.street1 && serviceAddress.street1.trim()) return;
+    let alive = true;
+    (async () => {
+      try {
+        const { data } = await supabase
+          .from('clients')
+          .select('address_line1,address_line2,city,state,zip')
+          .eq('therapist_id', therapist.id)
+          .eq('email', email)
+          .limit(1)
+          .maybeSingle();
+        if (!alive || !data) return;
+        if (data.address_line1 || data.city) {
+          setServiceAddress({
+            street1: [data.address_line1, data.address_line2].filter(Boolean).join(', '),
+            city: data.city || '',
+            state: data.state || '',
+            postal_code: data.zip || '',
+            country: 'US',
+            formatted: [data.address_line1, data.city, data.state].filter(Boolean).join(', '),
+            lat: null,
+            lng: null,
+          });
+        }
+      } catch (_e) { /* prefill is a convenience; ignore failures */ }
+    })();
+    return () => { alive = false; };
+  }, [form.email, svc?.id, therapist?.id]);
+
 
   // Redirect handlers for payment flows. Three distinct return paths:
   //
@@ -2015,6 +2055,23 @@ export default function BookingPage() {
     }
     const bid=newBooking?.id||null;
     setBookingId(bid);
+
+    // F1 (HK Jun 13 2026): remember a mobile client's address on their
+    // record so a future booking can pre-fill it. Non-blocking, and only
+    // writes when the client has no address yet, so it never overwrites
+    // one they set elsewhere.
+    if (svc?.performed_at_client_location && serviceAddress && serviceAddress.street1 && newBooking?.client_id) {
+      supabase.from('clients')
+        .update({
+          address_line1: serviceAddress.street1 || null,
+          city: serviceAddress.city || null,
+          state: serviceAddress.state || null,
+          zip: serviceAddress.postal_code || null,
+        })
+        .eq('id', newBooking.client_id)
+        .is('address_line1', null)
+        .then(() => {}, () => {});
+    }
 
     // HK May 29 2026: card-on-file persistence fix.
     // First-time booking flow: the Stripe SetupIntent saves the card
