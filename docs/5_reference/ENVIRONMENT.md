@@ -76,3 +76,12 @@ If after searching the codebase + this file + Supabase secrets dashboard, a need
 4. Note the date and the function(s) that read it
 
 This file is the source of truth. Keep it updated.
+
+## Integration and infrastructure status
+
+Last updated: 2026-06-12 by [engineering]. Current state of long-running integrations and infra, so any agent can answer "is it on right now" without digging through the done feed. Update the line when status changes.
+
+- **Deuce gate (main branch protection):** LIVE since 2026-06-12. Ruleset "Deuce: protect main" on the default branch requires a pull request, the "Vercel" status check, and an up-to-date branch, with no bypass for anyone (including the shared bodymapapp account the agents use). Direct pushes to main are blocked. Submit work with `bash scripts/submit-pr.sh "title"`. Merge queue is deferred until the repo moves to a GitHub organization (merge queue is unavailable on personal-account repos). Emergency rollback: disable or delete the ruleset in repo Settings.
+- **Google Calendar OAuth** (scopes: `calendar.events` + `userinfo.email`, which is a sensitive scope, not restricted, so NO CASA security assessment is required):
+  - Track A (works today, no approval): in production and live, unverified, capped at 100 users with a one-time "unverified app" consent warning. Fine for current volume.
+  - Track B (full verification, removes the warning and the 100-user cap): sensitive-scope verification, NOT yet submitted. Prerequisites before submit: verify mybodymap.app ownership in Google Search Console, and a privacy policy live on the domain (page exists at src/pages/Privacy.jsx) covering Google user data and Limited Use. Then set the consent screen, match code scopes exactly, record a demo video, and submit in the Verification Center. Owner: TBD.
