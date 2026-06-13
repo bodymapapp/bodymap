@@ -37,6 +37,14 @@ Published from the Agent Board. Each agent reads its own section and works the t
   - Stripe Connect Standard landing fixed: refreshes the therapist record on success and lands on Settings > Payments, so it shows connected instead of stale-disconnected.
 
 
+## Pricing direction and cancellation strategy (approved in shape 2026-06-12)
+- Pricing will be USAGE-BASED, not a flat $X/month (HK decision 2026-06-12). The flat Bronze/Silver/Gold $19/$49 labels in `src/lib/plan.js` and on the Pricing page are the OLD model and must be reconciled with the usage-based model when platform billing is built. Platform billing (therapist pays MyBodyMap) does not exist yet; founding therapists sit on a tier with no Stripe subscription. Target: turn paid on at ~100 users (currently ~70 percent there).
+- Cancellation/retention strategy approved in shape, to be built AFTER platform billing exists: "cancel" means downgrade to the free floor, NOT delete; keep data, clients, and booking page live; full deletion is a separate rare path. Four-step flow: reason capture (tappable inline options, no dropdown) then a reason-keyed save offer then an honest lose-and-keep interstitial (gating pulled from plan.js) then an inline confirm with soft undo and access to end of the billing period (matches Terms). Win-back email sequence after downgrade via the existing notification system.
+- Usage-based changes the model: the dominant churn risk becomes bill shock and unpredictability, not a flat fee, so the primary defense moves UPSTREAM into in-app spend transparency (live usage meter, estimated bill, threshold alerts, optional spend cap) plus a $0 dormant state that keeps the booking page live. Seasonality is largely self-handled because a slow month already costs less, so a hard "pause" demotes from hero offer to a $0-dormant fallback.
+- Reuse: `src/lib/plan.js` gating, the bell + email notification system, and the membership cancel-subscription pattern (`MembershipCard.jsx`, `confirm-membership-purchase`, which already does Stripe and Square cancel-to-period-end) as the reference. Note: the existing coupon system is client-facing booking discounts, NOT platform-subscription discounts.
+- OPEN QUESTION blocking detailed design: what is the usage meter / value metric? Candidates: per booking or session, per active client, percent of payments processed, SMS or AI units, or a hybrid. The meter choice drives the save offers, the free floor, and the metering build.
+
+
 ## Priority 0 — legal protection and data safeguards
 
 *Carried forward from the June 1 plan during the 2026-06-11 brain cleanup. Statuses below are as of June 1; confirm any that have shipped since. For example, the audit log and the confirmation gate shipped May 24. The June 1 "Terra triage" sub-block (0b) was left in the archive because it was already resolved.*

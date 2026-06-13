@@ -9,6 +9,8 @@ Format:  YYYY-MM-DD  [agent]  one plain sentence.
 
 ---
 
+2026-06-12  [engineering]  Decision logged: MyBodyMap pricing will be USAGE-BASED, not flat $X/mo (HK, 2026-06-12). Cancellation/retention strategy approved in shape (downgrade-to-free not delete, four-step flow, win-back), to be built after platform billing exists. Usage-based shifts the churn defense upstream to spend transparency (live usage, estimated bill, alerts, optional cap) plus a $0 dormant state; a hard pause demotes to a fallback. Open question blocking detailed design: the usage meter/value metric is not yet chosen. See BLOCK_PLAN 'Pricing direction and cancellation strategy.'
+
 2026-06-12  [engineering]  Google OAuth Step B SUBMITTED: HK submitted the sensitive-scope (calendar.events) verification in the Verification Center. Branding verified with the leaf logo kept, questionnaire answered all No (production app for external therapists), and the corrected two-way justification, fixed unlisted demo video, and no-credentials additional info are attached. Now in Google's review queue (expect about 3 to 5 business days; Google emails bodymap01@gmail.com). While pending, do not change the scope or branding and keep the video live. If Google suggests a narrower scope, decline with the two-way reasoning. Pending Google approval, not yet confirmed.
 
 2026-06-12  [engineering]  Google OAuth Step B unblocked: HK fixed the demo video (obscured the personal info that caused YouTube's removal), uploaded a clean unlisted version, and updated the link in Data Access (saved). Only step left is submitting in the Verification Center. The new video must stay live through Google's review, so the PII must be fully obscured to avoid a second removal.
