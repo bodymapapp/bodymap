@@ -3299,6 +3299,21 @@ export function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelle
               )}
             </div>
 
+            {appt.service_address && (appt.service_address.formatted || appt.service_address.street1) && (
+              <div style={{marginTop:10,padding:'10px 12px',background:'#F0F6EE',border:'1px solid #B7D1AB',borderRadius:10}}>
+                <div style={{fontSize:11.5,fontWeight:700,color:'#1F4131',marginBottom:2,display:'flex',alignItems:'center',gap:5}}><span>📍</span> Coming to the client</div>
+                <div style={{fontSize:13.5,color:'#1F4131',lineHeight:1.4}}>{appt.service_address.formatted || [appt.service_address.street1, appt.service_address.city, appt.service_address.state, appt.service_address.zip || appt.service_address.postal_code].filter(Boolean).join(', ')}</div>
+                {typeof appt.service_address.distance_miles === 'number' && (
+                  <div style={{fontSize:11.5,color:'#4B5563',marginTop:2}}>about {appt.service_address.distance_miles} miles away</div>
+                )}
+                <a
+                  href={`https://maps.google.com/?q=${encodeURIComponent(appt.service_address.formatted || [appt.service_address.street1, appt.service_address.city, appt.service_address.state].filter(Boolean).join(', '))}`}
+                  target="_blank" rel="noreferrer"
+                  style={{fontSize:12,fontWeight:700,color:SO.forest,textDecoration:'underline',display:'inline-block',marginTop:6}}
+                >Open in Maps ↗</a>
+              </div>
+            )}
+
             {mode === 'slide' && !appt.preview && (
               <div style={{display:'flex',justifyContent:'flex-end',marginTop:10}}>
                 <a
