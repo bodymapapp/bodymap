@@ -421,7 +421,10 @@ export default function BookingDetailPage({ therapist }) {
             <div style={{ background: '#fff', border: `1px solid ${C.line}`, borderRadius: 16, padding: 16, display: 'flex', flexDirection: 'column', gap: 10 }}>
               <button onClick={() => { if (checkoutFnRef.current) checkoutFnRef.current(); }}
                 style={{ width: '100%', background: 'linear-gradient(135deg, #2A5741 0%, #1F4030 100%)', color: '#fff', border: 'none', borderRadius: 12, padding: '14px 18px', fontSize: 15, fontWeight: 700, cursor: 'pointer', boxShadow: '0 4px 14px rgba(31,64,48,0.28), 0 1px 0 rgba(255,255,255,0.15) inset', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
-                <span style={{ fontSize: 15 }}>💳</span> {appt.paid_cents > 0 ? 'Add payment' : 'Checkout'}
+                {(() => {
+                  const owedC = Math.max(0, (appt.service_price_cents||0) + Math.round((appt.addon_total_price||0)*100) - (appt.discount_cents||0) - (appt.paid_cents||0));
+                  return <><span style={{ fontSize: 15 }}>💳</span> {owedC > 0 ? `Checkout · $${(owedC/100).toFixed(2)}` : 'Add payment'}</>;
+                })()}
               </button>
               {appt.paid_cents > 0 && (
                 <button onClick={() => { if (refundFnRef.current) refundFnRef.current(); }}

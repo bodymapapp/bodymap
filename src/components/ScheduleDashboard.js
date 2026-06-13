@@ -4826,22 +4826,20 @@ export function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelle
                         Done: real button shapes with sage-green outline,
                         equal sizing, side by side. Discoverable peers. */}
                     <div style={{display:'flex',gap:8,marginTop:6,marginLeft:38}}>
-                      {(mode === 'slide' || isMobileW) && (
-                      <button onClick={openCheckout}
-                        style={{
-                          flex:1,
-                          background:'#fff',
-                          color:'#2A5741',
-                          border:'1.5px solid #B7D1AB',
-                          borderRadius:10,
-                          padding:'10px 12px',
-                          fontSize:13,
-                          fontWeight:600,
-                          cursor:'pointer',
-                        }}>
-                        + Add payment
-                      </button>
-                      )}
+                      {(mode === 'slide' || isMobileW) && (() => {
+                        const owedC = Math.max(0, (sessionTotalCents || 0) - (paidTowardCents || 0));
+                        return owedC > 0 ? (
+                          <button onClick={openCheckout}
+                            style={{flex:1,background:'#2A5741',color:'#fff',border:'none',borderRadius:10,padding:'12px',fontSize:14,fontWeight:700,cursor:'pointer'}}>
+                            Checkout · ${(owedC/100).toFixed(2)}
+                          </button>
+                        ) : (
+                          <button onClick={openCheckout}
+                            style={{flex:1,background:'#fff',color:'#2A5741',border:'1.5px solid #B7D1AB',borderRadius:10,padding:'10px 12px',fontSize:13,fontWeight:600,cursor:'pointer'}}>
+                            + Add payment
+                          </button>
+                        );
+                      })()}
                       {(() => {
                         const refundable = paymentRows
                           .filter(p => p.status === 'succeeded')
