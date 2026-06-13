@@ -92,6 +92,17 @@ export default function FounderDashboard() {
   const clearSelected = () => setSelected(new Set());
   const selectAll = (ids) => setSelected(new Set(ids));
 
+  // One-click "Email all customers". A single header button opens a compose
+  // box pre-filled with the latest product-update template, aimed at every
+  // visible therapist, so emailing customers is 2 clicks (open then Send)
+  // instead of scrolling to the batch bar and picking a template. We clear
+  // any saved draft on open so a stale half-edited draft can never resurrect
+  // itself in the box.
+  const [composeAll, setComposeAll] = useState(null);            // { subject, body } | null
+  const [composeSending, setComposeSending] = useState(false);
+  const [composeProgress, setComposeProgress] = useState(null);  // { done, total } | null
+  const COMPOSE_DRAFT_KEY = "founder_outreach_draft_product_update";
+
   // Table 3 clickable-cell queue state. Cell keys are "therapistId:colKey".
   const [queuedCells, setQueuedCells] = useState(() => new Set());
 
@@ -516,6 +527,67 @@ export default function FounderDashboard() {
     }
   };
 
+  // Open the compose-to-all box, pre-filled with the latest product-update
+  // template, name placeholder intact for per-recipient substitution.
+  function openComposeAll() {
+    const targets = filtered;
+    if (!targets || targets.length === 0) {
+      window.alert("No customers to email with the current filter.");
+      return;
+    }
+    // Clear any stale saved draft so the current template shows, not old text.
+    try { localStorage.removeItem(COMPOSE_DRAFT_KEY); } catch (_e) {}
+    const sample = targets[0];
+    const action = buildActionFor("product_update", sample);
+    if (!action) {
+      window.alert("Could not load the email template.");
+      return;
+    }
+    const sampleName = firstName(sample);
+    const genericSubject = action.subject.replace(new RegExp("\\b" + sampleName + "\\b", "g"), "{name}");
+    const genericBody = action.body.replace(new RegExp("\\b" + sampleName + "\\b", "g"), "{name}");
+    setComposeAll({ subject: genericSubject, body: genericBody });
+  }
+
+  // Send the composed email to every visible therapist. {name} is substituted
+  // per recipient. One confirm guards the irreversible blast.
+  async function runComposeAll({ subject, body }) {
+    const targets = filtered || [];
+    const count = targets.length;
+    if (composeSending || count === 0 || !subject?.trim() || !body?.trim()) return;
+    const ok = window.confirm(
+      `Send this email to ${count} customer${count === 1 ? "" : "s"}?\n\nThis fires immediately. Emails cannot be unsent.`
+    );
+    if (!ok) return;
+    setComposeSending(true);
+    setComposeProgress({ done: 0, total: count });
+    let sent = 0;
+    let failed = 0;
+    for (const t of targets) {
+      try {
+        const recipientName = firstName(t);
+        const { data: res, error } = await supabase.functions.invoke("founder-outreach", {
+          body: {
+            therapist_id: t.id,
+            action_type: "product_update",
+            custom_subject: subject.replace(/\{name\}/g, recipientName),
+            custom_body: body.replace(/\{name\}/g, recipientName),
+          },
+        });
+        if (error || !res?.ok) failed++; else sent++;
+      } catch (_e) {
+        failed++;
+      }
+      setComposeProgress({ done: sent + failed, total: count });
+    }
+    setComposeSending(false);
+    setComposeAll(null);
+    setComposeProgress(null);
+    try { localStorage.removeItem(COMPOSE_DRAFT_KEY); } catch (_e) {}
+    window.alert(`Done. ${sent} sent${failed ? `, ${failed} failed` : ""}.`);
+    try { await fetchAll(); } catch (_e) {}
+  }
+
   return (
     <div style={{ minHeight: "100vh", background: C.cream, padding: "24px 16px 48px", fontFamily: "system-ui" }}>
       <div style={{ maxWidth: 1280, margin: "0 auto" }}>
@@ -534,6 +606,13 @@ export default function FounderDashboard() {
             </p>
           </div>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "flex-start" }}>
+            <button
+              onClick={openComposeAll}
+              title="Compose one email and send it to every customer"
+              style={{ padding: "8px 16px", borderRadius: 8, border: "none", background: C.forest, color: "#fff", cursor: "pointer", fontSize: 13, fontWeight: 700, fontFamily: "system-ui" }}
+            >
+              ✉️ Email all customers
+            </button>
             <a
               href="/admin/emails"
               style={{ padding: "8px 16px", borderRadius: 8, border: `1.5px solid ${C.light}`, background: "#fff", cursor: "pointer", fontSize: 13, color: C.dark, fontWeight: 600, textDecoration: "none", fontFamily: "system-ui" }}
@@ -550,6 +629,31 @@ export default function FounderDashboard() {
             </button>
           </div>
         </div>
+
+        {/* One-click compose-to-all modal. Reuses SendModal; sends to every
+            visible therapist via runComposeAll. */}
+        {composeAll && (
+          <SendModal
+            t={filtered[0]}
+            action={{
+              key: "product_update",
+              label: `Email all customers (${filtered.length})`,
+              button: `Send to ${filtered.length}`,
+              subject: composeAll.subject,
+              body: composeAll.body,
+            }}
+            sending={composeSending}
+            errorMsg=""
+            onClose={() => { if (!composeSending) setComposeAll(null); }}
+            onSend={({ subject, body }) => runComposeAll({ subject, body })}
+          />
+        )}
+
+        {composeSending && composeProgress && (
+          <div style={{ position: "fixed", bottom: 20, left: "50%", transform: "translateX(-50%)", zIndex: 1100, background: C.forest, color: "#fff", padding: "10px 18px", borderRadius: 999, fontSize: 13, fontWeight: 700, fontFamily: "system-ui", boxShadow: "0 6px 20px rgba(0,0,0,0.2)" }}>
+            Sending {composeProgress.done}/{composeProgress.total}…
+          </div>
+        )}
 
         {/* Thin stats strip, same info as before, 90% less vertical space */}
         <div style={{
@@ -2369,6 +2473,23 @@ function SendModal({ t, action, sending, errorMsg, onClose, onSend }) {
             title="Insert link to a video (Loom/YouTube/Vimeo). Renders as a Watch button."
           >
             ▶ Insert video link
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setSubject(action.subject || "");
+              setBody(action.body || "");
+              try { localStorage.removeItem(DRAFT_KEY); } catch (_e) {}
+            }}
+            title="Reset the subject and body to the template and discard the saved draft"
+            style={{
+              background: '#fff', border: `1.5px solid ${C.light}`,
+              color: C.gray, padding: '6px 12px',
+              borderRadius: 8, fontSize: 12, fontWeight: 600,
+              cursor: 'pointer', marginLeft: savedAt ? 0 : 'auto',
+            }}
+          >
+            ↺ Start fresh
           </button>
           {savedAt && (
             <span style={{ fontSize: 10, color: C.gray, marginLeft: 'auto', fontStyle: 'italic' }}>
