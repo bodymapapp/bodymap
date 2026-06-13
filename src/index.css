@@ -735,7 +735,7 @@ section[id] {
 
 /* Page header */
 .bm-features-v2-head {
-  padding: 110px 22px 24px;  /* 110px top to clear the fixed Nav (~74px) + breathing room */
+  padding: 8px 22px 28px;  /* sits below the hero now, so no nav clearance needed */
   text-align: center;
   border-bottom: 1px solid var(--bm-cream-deep);
 }
@@ -796,7 +796,7 @@ section[id] {
 }
 @media (min-width: 768px) {
   .bm-features-v2-head {
-    padding: 140px 32px 44px;  /* 140px top for desktop, breathing room */
+    padding: 24px 32px 44px;  /* below the hero on desktop */
   }
   .bm-features-v2-title { font-size: 52px; }
   .bm-features-v2-stat-num { font-size: 42px; }
@@ -815,7 +815,6 @@ section[id] {
   max-width: 1120px;
   margin: 0 auto;
   align-items: center;
-  border-bottom: 1px solid var(--bm-cream-deep);
 }
 .bm-features-v2-hero-copy { text-align: center; }
 .bm-features-v2-hero-title {
