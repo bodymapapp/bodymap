@@ -14,7 +14,6 @@ import Footer from "../components/Footer";
 import HelpWidget from "../components/HelpWidget";
 import FeatureRibbon from "../components/FeatureRibbon";
 import FeatureModal from "../components/FeatureModal";
-import BodyMapDemo from "../components/demos/BodyMapDemo";
 import {
   RIBBONS,
   TOTAL_FEATURES,
@@ -68,45 +67,22 @@ export default function FeaturesV2() {
     <div className="bm-features-v2">
       <Nav />
 
-      <section className="bm-features-v2-hero">
-        <div className="bm-features-v2-hero-copy">
-          <div className="bm-features-v2-eyebrow">The visual body map</div>
-          <h1 className="bm-features-v2-hero-title">
-            Your client taps where it hurts. <em>You read the pattern.</em>
-          </h1>
-          <p className="bm-features-v2-hero-sub">
-            Front and back, the spots to focus, the spots to avoid, the medical
-            flags, all before they are on the table. Session after session it
-            builds into a map of their body that only you can read.
-          </p>
-          <div className="bm-features-v2-hero-actions">
-            <a href="/signup" className="bm-features-v2-cta">Start free →</a>
-            <div className="bm-features-v2-stats">
-              <span>
-                <span className="bm-features-v2-stat-num">{TOTAL_FEATURES}</span>
-                <span className="bm-features-v2-stat-label">features</span>
-              </span>
-              <span className="bm-features-v2-stat-divider">·</span>
-              <span>
-                <span className="bm-features-v2-stat-num">{TOTAL_CATEGORIES}</span>
-                <span className="bm-features-v2-stat-label">categories</span>
-              </span>
-            </div>
-          </div>
-        </div>
-        <div className="bm-features-v2-hero-demo">
-          <BodyMapDemo />
-          <div className="bm-features-v2-hero-demo-cap">
-            Try it: tap a muscle, switch front to back.
-          </div>
-        </div>
-      </section>
-
       <header className="bm-features-v2-head">
         <div className="bm-features-v2-eyebrow">Everything in one place</div>
-        <h2 className="bm-features-v2-title">
+        <h1 className="bm-features-v2-title">
           Keep every client <em>coming back.</em>
-        </h2>
+        </h1>
+        <div className="bm-features-v2-stats">
+          <span>
+            <span className="bm-features-v2-stat-num">{TOTAL_FEATURES}</span>
+            <span className="bm-features-v2-stat-label">features</span>
+          </span>
+          <span className="bm-features-v2-stat-divider">·</span>
+          <span>
+            <span className="bm-features-v2-stat-num">{TOTAL_CATEGORIES}</span>
+            <span className="bm-features-v2-stat-label">categories</span>
+          </span>
+        </div>
         <p className="bm-features-v2-sub">
           One quiet platform built for therapists who would rather spend the
           hour on the table than at the desk.

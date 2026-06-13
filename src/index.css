@@ -735,7 +735,7 @@ section[id] {
 
 /* Page header */
 .bm-features-v2-head {
-  padding: 8px 22px 28px;  /* sits below the hero now, so no nav clearance needed */
+  padding: 110px 22px 24px;  /* 110px top to clear the fixed Nav (~74px) + breathing room */
   text-align: center;
   border-bottom: 1px solid var(--bm-cream-deep);
 }
@@ -796,71 +796,12 @@ section[id] {
 }
 @media (min-width: 768px) {
   .bm-features-v2-head {
-    padding: 24px 32px 44px;  /* below the hero on desktop */
+    padding: 140px 32px 44px;  /* 140px top for desktop, breathing room */
   }
   .bm-features-v2-title { font-size: 52px; }
   .bm-features-v2-stat-num { font-size: 42px; }
   .bm-features-v2-stats { gap: 28px; font-size: 15px; }
   .bm-features-v2-sub { font-size: 16px; max-width: 560px; }
-}
-
-/* Body map hero: the visual intake is the thesis of the whole page, so the
-   live, tappable map leads and the words support it. Stacks on a phone
-   (copy, then map), sits side by side on a wider screen. */
-.bm-features-v2-hero {
-  padding: 104px 22px 40px;
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 30px;
-  max-width: 1120px;
-  margin: 0 auto;
-  align-items: center;
-}
-.bm-features-v2-hero-copy { text-align: center; }
-.bm-features-v2-hero-title {
-  font-family: var(--bm-serif);
-  font-weight: 400;
-  font-size: 34px;
-  line-height: 1.07;
-  letter-spacing: -0.015em;
-  color: var(--bm-forest);
-  margin: 12px 0 16px;
-}
-.bm-features-v2-hero-title em { font-style: italic; color: var(--bm-sage); }
-.bm-features-v2-hero-sub {
-  font-size: 15px;
-  color: var(--bm-ink-soft);
-  line-height: 1.6;
-  max-width: 460px;
-  margin: 0 auto 22px;
-}
-.bm-features-v2-hero-actions {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 16px;
-}
-.bm-features-v2-hero-demo {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-}
-.bm-features-v2-hero-demo-cap {
-  font-size: 12px;
-  color: var(--bm-ink-soft);
-  font-style: italic;
-  margin-top: 14px;
-}
-@media (min-width: 860px) {
-  .bm-features-v2-hero {
-    grid-template-columns: 1.05fr 0.95fr;
-    gap: 56px;
-    padding: 140px 32px 56px;
-  }
-  .bm-features-v2-hero-copy { text-align: left; }
-  .bm-features-v2-hero-title { font-size: 50px; margin-top: 0; }
-  .bm-features-v2-hero-sub { font-size: 17px; max-width: 520px; margin-left: 0; margin-right: 0; }
-  .bm-features-v2-hero-actions { flex-direction: row; align-items: center; gap: 24px; }
 }
 
 /* Body wrapper */
