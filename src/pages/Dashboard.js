@@ -298,6 +298,24 @@ function ServicesAndAvailability({ therapist }) {
   const [saving, setSaving] = React.useState(false);
   const [saved, setSaved] = React.useState(null);
 
+  // Mobile travel area (HK Jun 12 2026): base point + max miles the
+  // therapist will drive. Used by the booking page to check whether a
+  // come-to-you address is in range.
+  const [travelRadius, setTravelRadius] = React.useState(therapist?.travel_radius_miles ?? 0);
+  const [travelBase, setTravelBase] = React.useState({
+    lat: therapist?.travel_base_lat ?? null,
+    lng: therapist?.travel_base_lng ?? null,
+    label: therapist?.travel_base_label || '',
+  });
+  React.useEffect(() => {
+    setTravelRadius(therapist?.travel_radius_miles ?? 0);
+    setTravelBase({
+      lat: therapist?.travel_base_lat ?? null,
+      lng: therapist?.travel_base_lng ?? null,
+      label: therapist?.travel_base_label || '',
+    });
+  }, [therapist?.travel_radius_miles, therapist?.travel_base_lat, therapist?.travel_base_lng, therapist?.travel_base_label]);
+
   // Re-sync local state whenever therapist reloads (e.g. page refresh)
   React.useEffect(() => {
     setDepositEnabled(therapist?.deposit_enabled || false);
@@ -2348,6 +2366,75 @@ function ServicesAndAvailability({ therapist }) {
           </div>
         )}
       </DisclosureRow>
+
+      {/* Travel area (HK Jun 12 2026). Only shows when at least one
+          service is performed at the client's location. Base point +
+          max miles drives the booking-page serviceability check. */}
+      {services.some(s => s.performed_at_client_location) && (() => {
+        const primaryStudio = locations.find(l => l.is_primary) || locations[0] || null;
+        const studioText = primaryStudio
+          ? [primaryStudio.street1, primaryStudio.city, primaryStudio.state].filter(Boolean).join(', ')
+          : '';
+        const baseHasCoords = typeof travelBase.lat === 'number' && typeof travelBase.lng === 'number';
+        return (
+          <DisclosureRow
+            icon="🚗"
+            taxonomyId="2.1.7"
+            title="Travel area"
+            summary={travelBase.label && travelRadius > 0 ? `${travelRadius} miles from ${travelBase.label}` : 'Set where you travel for come-to-you sessions'}
+            open={openSubRow === 'travel'}
+            onToggle={() => setOpenSubRow(openSubRow === 'travel' ? null : 'travel')}
+          >
+            <p style={{ fontSize:'12px', color:C2.gray, margin:'0 0 12px', lineHeight:1.5 }}>
+              For services you perform at the client's place. Set the spot you start from and how far you will drive. When a client books a come-to-you service, the booking page checks their address against this.
+            </p>
+            <div style={{ marginBottom: 14 }}>
+              <div style={{ fontSize:12, fontWeight:600, color:C2.darkGray, marginBottom:6 }}>Where you start from</div>
+              {travelBase.label
+                ? <div style={{ fontSize:13, color:C2.darkGray, marginBottom:8 }}>Current base: <strong>{travelBase.label}</strong></div>
+                : <div style={{ fontSize:12, color:C2.gray, marginBottom:8, fontStyle:'italic' }}>Not set yet. Defaults to your main studio: pick it from the suggestions to confirm.</div>}
+              <AddressAutocompleteInput
+                street1={travelBase.label || studioText}
+                city="" state="" postal_code=""
+                onSelect={async (parsed) => {
+                  if (!parsed) return;
+                  const label = parsed.formatted || [parsed.street1, parsed.city, parsed.state].filter(Boolean).join(', ');
+                  const hasCoords = typeof parsed.lat === 'number' && typeof parsed.lng === 'number';
+                  const base = { lat: hasCoords ? parsed.lat : null, lng: hasCoords ? parsed.lng : null, label };
+                  setTravelBase(base);
+                  await supabase.from('therapists').update({ travel_base_lat: base.lat, travel_base_lng: base.lng, travel_base_label: base.label }).eq('id', therapist.id);
+                  try { await refreshTherapist?.(); } catch (_) {}
+                }}
+              />
+              {travelBase.label && !baseHasCoords && (
+                <div style={{ fontSize:12, color:'#B45309', marginTop:6 }}>
+                  Pick your base from the dropdown suggestions so the distance check can work.
+                </div>
+              )}
+            </div>
+            <div style={{ display:'flex', alignItems:'center', gap:10, flexWrap:'wrap' }}>
+              <span style={{ fontSize:13, color:C2.gray }}>I will drive up to</span>
+              <InlineSaveNumberInput
+                value={travelRadius}
+                defaultValue={15}
+                onChange={setTravelRadius}
+                onSave={async v => {
+                  await supabase.from('therapists').update({ travel_radius_miles: v || null }).eq('id', therapist.id);
+                  try { await refreshTherapist?.(); } catch (_) {}
+                }}
+                suffix="miles"
+                min={1}
+                max={200}
+                placeholder="15"
+                width={80}
+              />
+            </div>
+            <div style={{ fontSize:12, color:C2.gray, lineHeight:1.5, marginTop:10 }}>
+              If a client is outside this, they can still send a request and you will see how far away they are, so the choice stays yours.
+            </div>
+          </DisclosureRow>
+        );
+      })()}
 
       {/* Booking window: lead time, max advance, hands-on cap,
           week start. Disclosure row pattern (HK May 10 2026).

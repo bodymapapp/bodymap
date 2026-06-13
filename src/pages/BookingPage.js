@@ -6,6 +6,7 @@ import { isTestMode, getStripePublishableKey } from '../lib/paymentMode';
 import { findOrCreateClient } from '../lib/findOrCreateClient';
 import CloseButton from '../components/CloseButton';
 import AddressAutocompleteInput from '../components/AddressAutocompleteInput';
+import { milesBetween } from '../lib/googlePlaces';
 import ResultScreen from '../components/ResultScreen';
 import { PolicyDisplay } from '../components/BookingPolicies';
 import PublicCheckout from '../components/PublicCheckout';
@@ -714,6 +715,11 @@ export default function BookingPage() {
   // F1 (HK Jun 12 2026): captured when the chosen service is performed at the
   // client's location. { street1, city, state, postal_code, country, formatted }
   const [serviceAddress,setServiceAddress]=useState(null);
+  // F1 mobile (HK Jun 12 2026): for a come-to-you service the address IS the
+  // location, captured before the time picker. addrConfirmed gates that step.
+  const [addrConfirmed,setAddrConfirmed]=useState(false);
+  // Re-ask for the address whenever the chosen service changes.
+  useEffect(()=>{ setAddrConfirmed(false); },[svc?.id]);
   const [partnerErrors,setPartnerErrors]=useState({});
   const [errors,setErrors]=useState({});
   const [submitError,setSubmitError]=useState(null);
@@ -3376,9 +3382,51 @@ export default function BookingPage() {
         )}
 
         {/* STEP 2 */}
-        {step===2&&(
+        {/* F1 mobile (HK Jun 12 2026): for a come-to-you service the address is
+            the location, captured here before the time picker, with a soft
+            serviceability check against the therapist's travel area. */}
+        {step===2 && svc?.performed_at_client_location && !addrConfirmed && (
           <div>
             <button onClick={()=>setStep(1)} style={{background:'none',border:'none',color:C.gray,fontSize:13,cursor:'pointer',padding:'0 0 12px',display:'flex',alignItems:'center',gap:4}}>‹ Back</button>
+            <h2 style={{fontFamily:'Georgia,serif',fontSize:22,fontWeight:700,color:C.dark,margin:'0 0 4px'}}>Where should I come?</h2>
+            <p style={{fontSize:13,color:C.gray,margin:'0 0 20px'}}>{svc.name} · I come to you</p>
+            <div style={{background:C.white,borderRadius:16,padding:20,marginBottom:14}}>
+              <div style={{fontSize:13,fontWeight:600,color:C.gray,marginBottom:6}}>Your address</div>
+              <AddressAutocompleteInput
+                street1={serviceAddress?.street1 || ''}
+                city={serviceAddress?.city || ''}
+                state={serviceAddress?.state || ''}
+                postal_code={serviceAddress?.postal_code || ''}
+                onSelect={(parsed)=>{
+                  if(!parsed){return;}
+                  let distance=null;
+                  const bLat=therapist?.travel_base_lat, bLng=therapist?.travel_base_lng;
+                  if(typeof parsed.lat==='number'&&typeof parsed.lng==='number'&&typeof bLat==='number'&&typeof bLng==='number'){
+                    const d=milesBetween(bLat,bLng,parsed.lat,parsed.lng);
+                    if(typeof d==='number') distance=Math.round(d*10)/10;
+                  }
+                  setServiceAddress({...parsed, distance_miles:distance});
+                }}
+                onChange={(v)=>{setServiceAddress(a=>({...(a||{}),street1:v}));}}
+                placeholder="Street address where I should come"
+              />
+              {(() => {
+                const radius=therapist?.travel_radius_miles;
+                const dist=serviceAddress?.distance_miles;
+                if(!(typeof radius==='number'&&radius>0&&typeof dist==='number')) return null;
+                return dist<=radius
+                  ? <div style={{marginTop:10,fontSize:13,color:'#2A5741',background:'#F0F6EE',border:'1px solid #B7D1AB',borderRadius:10,padding:'10px 12px'}}>You are within my travel area, about {dist} miles away.</div>
+                  : <div style={{marginTop:10,fontSize:13,color:'#92400E',background:'#FEF3C7',border:'1px solid #FCD34D',borderRadius:10,padding:'10px 12px',lineHeight:1.5}}>I usually travel up to {radius} miles{therapist?.travel_base_label?` from ${therapist.travel_base_label}`:''}, and you look about {dist} miles away. You can still send the request and I will let you know if I can make it work.</div>;
+              })()}
+            </div>
+            {serviceAddress && serviceAddress.street1 && serviceAddress.street1.trim() && (
+              <button onClick={()=>setAddrConfirmed(true)} style={{width:'100%',background:C.forest,color:C.white,border:'none',borderRadius:14,padding:'15px',fontSize:15,fontWeight:700,cursor:'pointer'}}>Continue →</button>
+            )}
+          </div>
+        )}
+        {step===2 && !(svc?.performed_at_client_location && !addrConfirmed) && (
+          <div>
+            <button onClick={()=>{ if(svc?.performed_at_client_location){ setAddrConfirmed(false); } else { setStep(1); } }} style={{background:'none',border:'none',color:C.gray,fontSize:13,cursor:'pointer',padding:'0 0 12px',display:'flex',alignItems:'center',gap:4}}>‹ Back</button>
             <h2 style={{fontFamily:'Georgia,serif',fontSize:22,fontWeight:700,color:C.dark,margin:'0 0 4px'}}>Pick your time</h2>
             <p style={{fontSize:13,color:C.gray,margin:'0 0 20px'}}>{svc.name} · {svc.duration + selectedAddonIds.reduce((s,id)=>s+(availableAddons.find(a=>a.id===id)?.extra_minutes||0),0)} min · ${(Number(svc.price)+selectedAddonIds.reduce((s,id)=>s+Number(availableAddons.find(a=>a.id===id)?.price||0),0)).toFixed(0)}</p>
 
@@ -3565,18 +3613,13 @@ export default function BookingPage() {
                 </div>
               ))}
               {svc?.performed_at_client_location && (
-                <div>
-                  <div style={{fontSize:13,fontWeight:600,color:C.gray,marginBottom:6}}>Where should the session take place?</div>
-                  <AddressAutocompleteInput
-                    street1={serviceAddress?.street1 || ''}
-                    city={serviceAddress?.city || ''}
-                    state={serviceAddress?.state || ''}
-                    postal_code={serviceAddress?.postal_code || ''}
-                    onSelect={(parts)=>{setServiceAddress(parts);setErrors(er=>({...er,service_address:''}));}}
-                    onChange={(v)=>{setServiceAddress(a=>({...(a||{}),street1:v}));setErrors(er=>({...er,service_address:''}));}}
-                    placeholder="Street address where I should come"
-                  />
-                  {errors.service_address&&<div style={{fontSize:11,color:C.danger,marginTop:4}}>{errors.service_address}</div>}
+                <div style={{background:'#F0F6EE',border:'1px solid #B7D1AB',borderRadius:10,padding:'12px 14px',display:'flex',alignItems:'flex-start',gap:10}}>
+                  <span style={{fontSize:16}}>📍</span>
+                  <div style={{flex:1,minWidth:0}}>
+                    <div style={{fontSize:12,fontWeight:700,color:'#1F4131',marginBottom:2}}>I will come to you at</div>
+                    <div style={{fontSize:13,color:'#1F4131'}}>{serviceAddress?.formatted || [serviceAddress?.street1,serviceAddress?.city,serviceAddress?.state].filter(Boolean).join(', ') || 'Address on file'}</div>
+                  </div>
+                  <button type="button" onClick={()=>{ setAddrConfirmed(false); setStep(2); }} style={{background:'transparent',border:'1px solid #B7D1AB',color:'#1F4131',fontSize:12,fontWeight:700,padding:'5px 11px',borderRadius:8,cursor:'pointer',flexShrink:0}}>Change</button>
                 </div>
               )}
               {/* SMS consent (TCPA + Twilio 10DLC compliance).
