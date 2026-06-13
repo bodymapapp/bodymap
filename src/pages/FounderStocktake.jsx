@@ -17,14 +17,10 @@
 
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
+import { ADMIN_EMAILS } from "../lib/founderAllowlist";
 
 // Same conservative test-account heuristic as FounderDashboard, kept
 // in sync by hand. Catches obvious test shapes and the founder inbox.
-const ADMIN_EMAILS = new Set([
-  'bodymap01@gmail.com',
-  'bodymapdemo@gmail.com',
-  'harshk.mba@gmail.com',
-]);
 function isDummyEmail(email) {
   const e = (email || '').toLowerCase().trim();
   if (!e) return true;

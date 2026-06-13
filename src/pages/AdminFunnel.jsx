@@ -6,12 +6,8 @@ import React from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
+import { ADMIN_EMAILS } from "../lib/founderAllowlist";
 
-const ADMIN_EMAILS = new Set([
-  'bodymap01@gmail.com',
-  'bodymapdemo@gmail.com',
-  'harshk.mba@gmail.com',
-]);
 
 const C = { forest: '#2A5741', sage: '#6B9E80', cream: '#FFF9F3', dark: '#1F2937', gray: '#6B7280', light: '#E8E4DC' };
 

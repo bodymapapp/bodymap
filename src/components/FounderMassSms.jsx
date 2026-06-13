@@ -25,6 +25,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "../lib/supabase";
 import { formatUSPhone } from "../lib/formatters/phone";
+import { ADMIN_EMAILS } from "../lib/founderAllowlist";
 
 const C = {
   forest: "#2A5741",
@@ -42,11 +43,6 @@ const C = {
 const STORAGE_KEY = "founder_mass_sms_sent_ids";
 const TWILIO_KEY = "founder_twilio_creds_v1";
 
-const ADMIN_EMAILS = new Set([
-  "bodymap01@gmail.com",
-  "bodymapdemo@gmail.com",
-  "harshk.mba@gmail.com",
-]);
 
 const DEFAULT_MESSAGE = `Hi {name}, MyBodyMap founder here. Major updates: mybodymap.app`;
 

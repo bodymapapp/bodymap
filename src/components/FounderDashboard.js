@@ -14,12 +14,8 @@ import { useAuth } from "../contexts/AuthContext";
 import FounderMassSms from "./FounderMassSms";
 import AiCostCard from "./AiCostCard";
 import { formatUSPhone } from "../lib/formatters/phone";
+import { ADMIN_EMAILS } from "../lib/founderAllowlist";
 
-const ADMIN_EMAILS = new Set([
-  "bodymap01@gmail.com",
-  "bodymapdemo@gmail.com",
-  "harshk.mba@gmail.com",
-]);
 
 const C = {
   forest: "#2A5741",
