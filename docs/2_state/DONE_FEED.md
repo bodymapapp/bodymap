@@ -9,6 +9,7 @@ Format:  YYYY-MM-DD  [agent]  one plain sentence.
 
 ---
 
+2026-06-12  [engineering]  Recorded Google Auth Platform status in ENVIRONMENT.md: the Cloud project "BodyMap" (owner bodymap01@gmail.com) is already app-verified and branding-verified by Google, and the Verification Center reports no sensitive scopes declared even though the calendar-connect code requests calendar.events. Logged the mismatch and the steps to fully verify the calendar scope if the unverified warning is actually showing.
 2026-06-12  [engineering]  Deuce gate is live: scripts/submit-pr.sh helper on main, plus a main-branch ruleset requiring a pull request, the Vercel check, and an up-to-date branch, with no bypass for anyone, so direct pushes to main are now blocked. Merge queue deferred (it needs an organization-owned repo; ours is on a personal account). Verified: direct push rejected, clean PR auto-merges when green, broken-build PR refused.
 2026-06-12  [engineering]  Agent Board mobile redesign: lane grid replaces scrolling tabs (all lanes visible), bigger lane header, collapsible legend, tier stripe on cards. Founder Hub now has an always-visible Back to app button to /dashboard, fixing the no-way-out trap. Desktop unchanged. Shipped but unverified by HK.
 2026-06-12  [engineering]  Agent Board now mobile-friendly: one lane at a time with a tab row, bigger card and check tap targets, stacked legend and publish bar. Desktop unchanged. Shipped but unverified by HK.
