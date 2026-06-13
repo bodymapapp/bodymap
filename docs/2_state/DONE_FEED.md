@@ -9,6 +9,8 @@ Format:  YYYY-MM-DD  [agent]  one plain sentence.
 
 ---
 
+2026-06-12  [marketing]  Cleaned test accounts out of production: deleted 25 zero-footprint test therapists (cascade removed 22 bookings, 37 clients, 3 sessions, 1 test payment) and purged their 24 one-time test auth logins, keeping the 4 demo/dev accounts (bodymapdemo, bodymapdemopractice, hk5, demo@mybodymap.app) and HK's harshk.mba admin login; identity backup saved, real therapist count unchanged at 71, total rows 100 to 75.
+
 2026-06-12  [engineering]  Confirmed the Google "unverified app" warning shows on Google Calendar connect (Joy therapist account), so the calendar.events sensitive scope needs to be declared and the app submitted for verification. Light path because brand and app verification are already done. Updated the Google note in ENVIRONMENT.md from open-check to confirmed.
 2026-06-12  [engineering]  Recorded Google Auth Platform status in ENVIRONMENT.md: the Cloud project "BodyMap" (owner bodymap01@gmail.com) is already app-verified and branding-verified by Google, and the Verification Center reports no sensitive scopes declared even though the calendar-connect code requests calendar.events. Logged the mismatch and the steps to fully verify the calendar scope if the unverified warning is actually showing.
 2026-06-12  [engineering]  Deuce gate is live: scripts/submit-pr.sh helper on main, plus a main-branch ruleset requiring a pull request, the Vercel check, and an up-to-date branch, with no bypass for anyone, so direct pushes to main are now blocked. Merge queue deferred (it needs an organization-owned repo; ours is on a personal account). Verified: direct push rejected, clean PR auto-merges when green, broken-build PR refused.
