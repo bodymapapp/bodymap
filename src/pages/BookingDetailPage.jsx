@@ -478,6 +478,7 @@ export default function BookingDetailPage({ therapist }) {
           therapist={therapist}
           client={checkoutContext.client}
           defaultAmountCents={checkoutContext.defaultAmountCents}
+          breakdown={checkoutContext.breakdown}
           onClose={() => setCheckoutContext(null)}
           onPaid={(paidCents) => {
             const amount = typeof paidCents === 'number' ? ` $${(paidCents / 100).toFixed(2)}` : '';
