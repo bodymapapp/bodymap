@@ -4817,6 +4817,10 @@ export function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelle
                         if (m === 'zelle') return 'Zelle';
                         if (m === 'cashapp') return 'Cash App';
                         if (m === 'check') return 'Check';
+                        // For 'other' payments we store a human label in the
+                        // detail (e.g. "Square Tap to Pay · txn123"). Show the
+                        // label part, not a generic "Other".
+                        if (p.payment_method_detail) return p.payment_method_detail.split(' · ')[0];
                         return 'Other';
                       }).join(' · ')}
                     </div>
