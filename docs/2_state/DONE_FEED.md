@@ -9,6 +9,8 @@ Format:  YYYY-MM-DD  [agent]  one plain sentence.
 
 ---
 
+2026-06-12  [engineering]  Google OAuth Step B unblocked: HK fixed the demo video (obscured the personal info that caused YouTube's removal), uploaded a clean unlisted version, and updated the link in Data Access (saved). Only step left is submitting in the Verification Center. The new video must stay live through Google's review, so the PII must be fully obscured to avoid a second removal.
+
 2026-06-12  [engineering]  Google OAuth Step B blocked again: YouTube removed the demo video citing the harassment/PII policy (medical records, email, phone), most likely because real client intake/booking data was visible in the recording. The link saved in Data Access is now dead. Next: re-record using only dummy test data (fake therapist and client, no real PII or medical notes), re-upload unlisted, update the link in Data Access, then submit. Do not submit with the dead link. App, domain, scope, privacy, and justification are all still fine; only the video needs a clean redo.
 
 2026-06-12  [engineering]  Google OAuth Step B: demo video recorded (Loom) and uploaded to YouTube as unlisted by HK, so all prerequisites are done (domain verified, authorized domain added, calendar.events declared, privacy disclosure live, two-way justification ready). Remaining action is HK pasting the justification plus the video link into Data Access and submitting in the Verification Center. The unlisted video URL is not stored here since the repo is public.
