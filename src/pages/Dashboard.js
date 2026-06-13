@@ -1559,6 +1559,14 @@ function ServicesAndAvailability({ therapist }) {
                   <button onClick={() => toggleService(svc)} style={{ background:svc.active?'#DCFCE7':'#F3F4F6', color:svc.active?'#16A34A':C2.gray, border:'none', borderRadius:20, padding:'3px 10px', fontSize:'11px', fontWeight:600, cursor:'pointer', flexShrink:0 }}>
                     {svc.active ? 'On' : 'Off'}
                   </button>
+                  {/* F1 (HK Jun 12 2026): mark a service as performed at the
+                      client's location. When on, the booking page asks the
+                      client for the address and it shows on the request. */}
+                  <button onClick={() => updateService(svc.id, { performed_at_client_location: !svc.performed_at_client_location })}
+                    title="Performed at the client's location. The booking page will ask the client for an address."
+                    style={{ background:svc.performed_at_client_location?'#EAF2EC':'#F3F4F6', color:svc.performed_at_client_location?'#2A5741':C2.gray, border:'none', borderRadius:20, padding:'3px 10px', fontSize:'11px', fontWeight:600, cursor:'pointer', flexShrink:0 }}>
+                    {svc.performed_at_client_location ? 'At client location' : 'Mobile off'}
+                  </button>
                   {/* Private/Public toggle. Only meaningful when active=true;
                       hidden when service is off so the row stays clean.
                       Private hides this service from the public booking
