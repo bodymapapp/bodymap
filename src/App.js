@@ -67,6 +67,7 @@ import Playbooks from './pages/Playbooks';
 import NotificationCompliance from './pages/founder/NotificationCompliance';
 import FounderMobilePreview from './pages/FounderMobilePreview';
 import FounderStocktake from './pages/FounderStocktake';
+import SquarePosReturn from './pages/SquarePosReturn';
 
 posthog.init('phc_qmIcERdaYLksKAU1Sa4wYht7ngmk5wP5JKyCHrWiw1H', { api_host: 'https://us.i.posthog.com' });
 
@@ -139,6 +140,7 @@ function App() {
               slide-over on /dashboard/schedule remains the primary
               surface; this route is the deep-work alternative. */}
           <Route path="/dashboard/schedule/booking/:bookingId" element={<ProtectedRoute><Dashboard view="booking-detail" /></ProtectedRoute>} />
+          <Route path="/square-pos-return" element={<SquarePosReturn />} />
           <Route path="/dashboard/billing" element={<ProtectedRoute><Dashboard view="billing" /></ProtectedRoute>} />
           <Route path="/dashboard/ai" element={<ProtectedRoute><Dashboard view="ai" /></ProtectedRoute>} />
           <Route path="/dashboard/clients/:clientId" element={<ProtectedRoute><Dashboard view="sessions" /></ProtectedRoute>} />
