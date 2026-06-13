@@ -2275,10 +2275,22 @@ export function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelle
     .filter(p => p.status === 'pending')
     .reduce((sum, p) => sum + (p.amount_cents || 0) + (p.tip_cents || 0), 0);
 
-  // Default amount for the checkout modal: service price if known, else 0.
-  // We pull this from the appt row's service.price field, threaded via the
-  // booking page. If unavailable, leave it blank for the therapist to type.
-  const defaultAmountCents = appt?.service_price_cents || 0;
+  // F2 (HK Jun 12 2026): default the checkout amount to the REMAINING BALANCE
+  // for this session, not full price. Total = base service price + add-ons
+  // (stored in dollars on the booking, so x100) minus coupon discount. Paid =
+  // the sum of succeeded session_payments toward the balance; tips are excluded
+  // because a tip sits on top of the service and does not pay it down. A paid
+  // deposit lands in session_payments (backfilled for legacy rows), so it is
+  // already inside paidTowardCents and must never be subtracted a second time.
+  const addonCents = Math.round((appt?.addon_total_price || 0) * 100);
+  const discountCents = appt?.discount_cents || 0;
+  const sessionTotalCents = Math.max(0, (appt?.service_price_cents || 0) + addonCents - discountCents);
+  const paidTowardCents = paymentRows
+    .filter(p => p.status === 'succeeded')
+    .reduce((sum, p) => sum + (p.amount_cents || 0), 0);
+  const depositCents = appt?.deposit_paid ? (appt?.deposit_amount || 0) : 0;
+  const balanceDueCents = Math.max(0, sessionTotalCents - paidTowardCents);
+  const defaultAmountCents = balanceDueCents;
 
   // Phase 1 (HK May 31 2026): open checkout at the root level. We capture
   // a snapshot of the data needed at this exact moment so the modal flow
@@ -2289,6 +2301,14 @@ export function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelle
       appt: displayAppt,
       client: clientRow,
       defaultAmountCents,
+      breakdown: {
+        serviceCents: appt?.service_price_cents || 0,
+        addonCents,
+        discountCents,
+        totalCents: sessionTotalCents,
+        paidCents: paidTowardCents,
+        depositCents,
+      },
     });
   };
 
@@ -9055,6 +9075,7 @@ export default function ScheduleDashboard({ therapist }) {
           location_id: b.location_id || null,
           addon_ids: b.addon_ids || [],
           addon_total_price: b.addon_total_price || 0,
+          discount_cents: b.discount_cents || 0,
           addon_extra_minutes: b.addon_extra_minutes || 0,
           booking_date: b.booking_date,
           // HK May 31 2026: package_purchase_id MUST be on the appt
@@ -9794,6 +9815,7 @@ export default function ScheduleDashboard({ therapist }) {
           therapist={therapist}
           client={checkoutContext.client}
           defaultAmountCents={checkoutContext.defaultAmountCents}
+          breakdown={checkoutContext.breakdown}
           onClose={() => setCheckoutContext(null)}
           onPaid={(paidCents) => {
             const amount = typeof paidCents === 'number' ? ` $${(paidCents / 100).toFixed(2)}` : '';

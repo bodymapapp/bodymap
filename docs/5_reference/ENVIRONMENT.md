@@ -76,3 +76,16 @@ If after searching the codebase + this file + Supabase secrets dashboard, a need
 4. Note the date and the function(s) that read it
 
 This file is the source of truth. Keep it updated.
+
+## Integration and infrastructure status
+
+Last updated: 2026-06-12 by [engineering]. Current state of long-running integrations and infra, so any agent can answer "is it on right now" without digging through the done feed. Update the line when status changes.
+
+- **Deuce gate (main branch protection):** LIVE since 2026-06-12. Ruleset "Deuce: protect main" on the default branch requires a pull request, the "Vercel" status check, and an up-to-date branch, with no bypass for anyone (including the shared bodymapapp account the agents use). Direct pushes to main are blocked. Submit work with `bash scripts/submit-pr.sh "title"`. Merge queue is deferred until the repo moves to a GitHub organization (merge queue is unavailable on personal-account repos). Emergency rollback: disable or delete the ruleset in repo Settings.
+- **Google Calendar OAuth / Google Auth Platform.** The Cloud project is named "BodyMap" and is owned by **bodymap01@gmail.com** (the founder login and the account that owns the OAuth project and Search Console). Confirmed from the OAuth Overview and Verification Center on 2026-06-12:
+  - App verification: VERIFIED by Google. Branding: VERIFIED and shown to users. So brand and app verification are already done.
+  - Verification Center reports verification is NOT required because the project, as declared, is not requesting any sensitive or restricted scopes.
+  - No authorized domains are set on the project. No Cloud billing account is linked (minor warning, not blocking).
+  - Known mismatch to resolve: the `google-calendar-connect` edge function requests `calendar.events` (a sensitive scope) at runtime, but that scope is NOT declared in the project's Data Access, which is why Google reports no sensitive scopes. Likely net effect is the Track A state: therapists may see a one-time "unverified app" screen when connecting their calendar, with a 100-user cap on that scope.
+  - To remove that warning and cap (only if it is actually appearing): declare `calendar.events` under Data Access, add `mybodymap.app` as an authorized domain (needs Search Console domain verification under bodymap01@gmail.com), then submit in the Verification Center with a scope justification and a demo video. Brand and app verification are already done, so that review is lighter.
+  - CONFIRMED 2026-06-12: the "Google hasn't verified this app" warning IS showing to therapists on calendar connect (seen on the Joy therapist account). So the light Step B is required to remove the warning and the cap. Order: verify mybodymap.app in Search Console under bodymap01@gmail.com, add it as an authorized domain, declare calendar.events in Data Access, then submit in the Verification Center with a justification and demo video. Owner: TBD.
