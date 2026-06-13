@@ -1404,6 +1404,18 @@ by hand.
 
 ---
 
+## 40. Every setting is numbered and searchable. When a setting or a notable sub-control is added to the Settings page, it gets a taxonomy number and search aliases mapping the words a user would type to that number. Settings search is alias-driven: a control that is not registered is invisible to search, no matter how it is labeled on screen.
+
+**Why.** The Settings search repeatedly disappointed because new controls shipped without being registered, so plain terms like "location" or "mobile" matched nothing even though the setting existed. Numbering plus aliases makes every setting findable by the words a real person reaches for, not only by its exact on-screen label.
+
+**Rule.** Adding a setting is not done until it has a taxonomy number and its aliases are in SEARCH_ALIASES (Dashboard.js), keyed to that number. Map synonyms and the layperson phrasing, not just the formal name. Example: the per-service "performed at client's location" toggle (in Services, 2.1) is reachable via location, mobile, address, on-site, travel, house call, outcall.
+
+**Watch.** The section list exists in two places (the inline matchesSearch calls and the groupMatches array). Aliases key on the taxonomy number, so they cover both, but any summary-text edit must be made in both or the section header and its rows will disagree. Consolidating to one source of truth is queued.
+
+**Cost.** Set 2026-06-12 after a search for "location" returned nothing and a just-shipped toggle could not be found.
+
+---
+
 ## Risk register (current open items, as of Jun 1 2026)
 
 Items here are known live risks. Each entry: severity, what could go wrong, what's queued to mitigate.
