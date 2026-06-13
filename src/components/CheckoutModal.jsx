@@ -35,6 +35,7 @@ import { findOrCreateClient } from '../lib/findOrCreateClient';
 // list ever diverges from the live constraint again.
 import { OFFLINE_PAYMENT_METHODS_FOR_PICKER as OFFLINE_METHODS_FROM_ENUM } from '../lib/enums';
 import SquareCardForm from './payments/SquareCardForm';
+import { buildSquarePosDeepLink, isMobileDevice, stashSquarePosPending } from '../lib/squarePos';
 import CloseButton from './CloseButton';
 import ResultScreen from './ResultScreen';
 
@@ -499,6 +500,51 @@ export default function CheckoutModal({
       member_subscription_renewal_id: null,
       package_purchase_id: null,
     };
+  }
+
+  // Square Tap to Pay (card present). Hands off to the therapist's Square
+  // Point of Sale app so they can tap the client's card on the phone, then
+  // confirms the charge server-side on return (square-pos-reconcile) before
+  // anything is recorded as paid. Only offered for a booking/session (we
+  // record against booking_id), on a phone, with Square connected.
+  const squareTapEligible =
+    !!therapist?.square_access_token && !isSubscription && !isPackage && !!appt?.id && isMobileDevice();
+
+  async function handleSquareTapToPay() {
+    try {
+      const supabaseUrl = process.env.REACT_APP_SUPABASE_URL;
+      const anonKey = process.env.REACT_APP_SUPABASE_ANON_KEY;
+      const { data: { session } } = await supabase.auth.getSession();
+      const userToken = session?.access_token || anonKey;
+      const cfgRes = await fetch(`${supabaseUrl}/functions/v1/square-pos-config`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${userToken}`, 'apikey': anonKey },
+      });
+      const cfg = await cfgRes.json().catch(() => null);
+      if (!cfg?.ok || !cfg.applicationId || !cfg.locationId) {
+        setErrorMsg('Square in-person Tap to Pay is not fully set up yet. You can use another payment method for now.');
+        return;
+      }
+      const nonce = Math.random().toString(36).slice(2) + Date.now().toString(36);
+      const note = `Session with ${therapist.business_name || therapist.full_name || 'your therapist'}`;
+      stashSquarePosPending({
+        booking_id: appt.id,
+        client_id: client?.id || null,
+        amount_cents: amountCents,
+        nonce,
+      });
+      const link = buildSquarePosDeepLink({
+        applicationId: cfg.applicationId,
+        locationId: cfg.locationId,
+        amountCents,
+        callbackUrl: `${window.location.origin}/square-pos-return`,
+        note,
+        state: nonce,
+      });
+      window.location.href = link;
+    } catch (e) {
+      setErrorMsg(e?.message || 'Could not open Square Tap to Pay.');
+    }
   }
 
   // For package charges, create the package_purchases row. Returns
@@ -1662,6 +1708,8 @@ export default function CheckoutModal({
                   validAmount={validAmount}
                   stripeConnected={!!therapist?.stripe_account_id}
                   squareConnected={!!therapist?.square_access_token}
+                  squareTapEligible={squareTapEligible}
+                  onSquareTapToPay={handleSquareTapToPay}
                   onClose={onClose}
                 />
               )}
@@ -2087,7 +2135,7 @@ function Field({ label, value, setValue, prefix, inputRef }) {
   );
 }
 
-function MethodPicker({ cardOnFile, onCardOnFile, onCardNew, onSendLink, onMarkPaid, redeemablePackage, onRedeemPackage, redeeming, isSubscription, isPackage, validAmount, stripeConnected, squareConnected, onClose }) {
+function MethodPicker({ cardOnFile, onCardOnFile, onCardNew, onSendLink, onMarkPaid, redeemablePackage, onRedeemPackage, redeeming, isSubscription, isPackage, validAmount, stripeConnected, squareConnected, squareTapEligible, onSquareTapToPay, onClose }) {
   // Either processor unlocks the card-based methods. HK May 22 2026:
   // we support Stripe AND Square as equally first-class processors;
   // the therapist picks whichever they already use, or connects both
@@ -2138,6 +2186,21 @@ function MethodPicker({ cardOnFile, onCardOnFile, onCardNew, onSendLink, onMarkP
           acknowledges both processors as equally valid. */}
       {hasProcessor ? (
         <>
+          {/* Square Tap to Pay (card present): the in-person moment at the
+              end of a session. Opens the therapist's Square app to tap the
+              client's card, then the charge is confirmed on return. Shown
+              first because for most sessions this is the expected action.
+              Only appears on a phone with Square connected. */}
+          {squareTapEligible && (
+            <MethodButton
+              onClick={onSquareTapToPay}
+              disabled={!validAmount}
+              icon="💳"
+              title="Tap to Pay with Square"
+              subtitle="Open Square to tap the client's card in person"
+              primary={!redeemablePackage && !cardOnFile}
+            />
+          )}
           {cardOnFile && (
             <MethodButton
               onClick={onCardOnFile}
