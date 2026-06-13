@@ -2656,13 +2656,15 @@ export default function BookingPage() {
       <div style={{background:C.white,borderRadius:24,maxWidth:440,width:'100%',boxShadow:'0 8px 48px rgba(0,0,0,0.1)'}}>
         <ResultScreen
           variant="celebrate"
-          headline="You're booked!"
+          headline={requiresApproval ? "Request sent!" : "You're booked!"}
           rows={[
             {label:'Service', value: svc.name},
             {label:'When', value: `${fmtShort(date)} · ${slot.display}`},
             {label:'With', value: therapist.business_name||therapist.full_name},
           ]}
-          footer={`Confirmation sent to ${form.email}`}
+          footer={requiresApproval
+            ? `${therapist.full_name?.split(' ')[0]||'Your therapist'} will review and confirm. We will email ${form.email}.`
+            : `Confirmation sent to ${form.email}`}
         >
           {giftCert && (
             <div style={{background:'#F0FDF4',border:'1.5px solid #86EFAC',borderRadius:12,padding:'12px 16px',marginBottom:14,textAlign:'center'}}>
@@ -2680,6 +2682,10 @@ export default function BookingPage() {
               Fill My Intake Form →
             </a>
           </div>
+          <a href={`/${therapist.custom_url}`}
+            style={{display:'block',marginTop:14,color:C.gray,fontSize:14,fontWeight:600,textDecoration:'none',textAlign:'center',padding:'10px'}}>
+            Done, back to {therapist.business_name||therapist.full_name||'home'}
+          </a>
         </ResultScreen>
       </div>
     </div>
@@ -3278,8 +3284,11 @@ export default function BookingPage() {
                 flag, so therapists with no mobile service see no change. */}
             {locations.length >= 2 && !selectedLocation && services.some(s => s.performed_at_client_location) && (
               <div style={{ marginBottom: 18 }}>
-                <div style={{ fontSize: 13, color: C.gray, fontWeight: 600, marginBottom: 10 }}>
-                  Or have me come to you
+                <div style={{ fontSize: 13, color: C.gray, fontWeight: 600, marginBottom: 4 }}>
+                  Prefer a mobile visit?
+                </div>
+                <div style={{ fontSize: 12, color: C.gray, marginBottom: 10 }}>
+                  I travel to you and bring the session to your home, office, or hotel.
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                   {services.filter(s => s.performed_at_client_location).map(s => (
@@ -3465,10 +3474,34 @@ export default function BookingPage() {
                   }
                   setServiceAddress({...parsed, distance_miles:distance});
                 }}
-                onChange={(v)=>{setServiceAddress(a=>({...(a||{}),street1:v}));}}
-                placeholder="Street address where I should come"
+                onChange={(v)=>{setServiceAddress(a=>({...(a||{}),street1:v,lat:null,lng:null,distance_miles:null}));}}
+                placeholder="Home, office, or hotel name, or street address"
               />
-              <LocationMapPreview lat={serviceAddress?.lat} lng={serviceAddress?.lng} baseLat={therapist?.travel_base_lat} baseLng={therapist?.travel_base_lng} radiusMiles={therapist?.travel_radius_miles} />
+              <div style={{fontSize:12,color:C.gray,marginTop:6}}>Start typing and pick from the list. A hotel or building name works too.</div>
+              {(typeof serviceAddress?.lat==='number' && typeof serviceAddress?.lng==='number') ? (
+                <LocationMapPreview lat={serviceAddress.lat} lng={serviceAddress.lng} baseLat={therapist?.travel_base_lat} baseLng={therapist?.travel_base_lng} radiusMiles={therapist?.travel_radius_miles} />
+              ) : (serviceAddress && serviceAddress.street1 && serviceAddress.street1.trim() ? (
+                <button type="button" onClick={()=>{
+                  try {
+                    const g=window.google;
+                    if(!g?.maps?.Geocoder){ return; }
+                    new g.maps.Geocoder().geocode({address:serviceAddress.street1},(results,status)=>{
+                      if(status==='OK'&&results&&results[0]){
+                        const r=results[0];
+                        const loc=r.geometry&&r.geometry.location;
+                        const lat=loc?(typeof loc.lat==='function'?loc.lat():loc.lat):null;
+                        const lng=loc?(typeof loc.lng==='function'?loc.lng():loc.lng):null;
+                        let distance=null;
+                        const bLat=therapist?.travel_base_lat,bLng=therapist?.travel_base_lng;
+                        if(typeof lat==='number'&&typeof lng==='number'&&typeof bLat==='number'&&typeof bLng==='number'){
+                          const d=milesBetween(bLat,bLng,lat,lng); if(typeof d==='number') distance=Math.round(d*10)/10;
+                        }
+                        setServiceAddress(a=>({...(a||{}),formatted:r.formatted_address||(a&&a.street1)||'',lat,lng,distance_miles:distance}));
+                      }
+                    });
+                  }catch(_e){}
+                }} style={{marginTop:12,width:'100%',background:'#fff',border:`1.5px solid ${C.forest}`,color:C.forest,borderRadius:12,padding:'12px',fontSize:14,fontWeight:700,cursor:'pointer'}}>Show this on the map</button>
+              ) : null)}
               {(() => {
                 const radius=therapist?.travel_radius_miles;
                 const dist=serviceAddress?.distance_miles;
@@ -3479,7 +3512,7 @@ export default function BookingPage() {
               })()}
             </div>
             {serviceAddress && serviceAddress.street1 && serviceAddress.street1.trim() && (
-              <button onClick={()=>setAddrConfirmed(true)} style={{width:'100%',background:C.forest,color:C.white,border:'none',borderRadius:14,padding:'15px',fontSize:15,fontWeight:700,cursor:'pointer'}}>Continue →</button>
+              <button onClick={()=>setAddrConfirmed(true)} style={{width:'100%',background:C.forest,color:C.white,border:'none',borderRadius:14,padding:'15px',fontSize:15,fontWeight:700,cursor:'pointer'}}>Continue to pick a time →</button>
             )}
           </div>
         )}
@@ -3935,7 +3968,12 @@ export default function BookingPage() {
               // clients book directly. When approval is on, deposits are
               // skipped at request time, the therapist sends a payment link
               // after approving.
-              const needsApproval = !!therapist.require_approval && !isRepeat;
+              // HK Jun 13 2026: a come-to-you (mobile) booking ALWAYS goes for
+              // approval first, even if the therapist does not otherwise require
+              // it, because someone is traveling to a private location. Studio
+              // bookings keep the normal rule, so a therapist who offers both is
+              // unaffected for their in-studio services.
+              const needsApproval = (!!therapist.require_approval && !isRepeat) || !!svc?.performed_at_client_location;
               setRequiresApproval(needsApproval);
 
               const needsDeposit = !needsApproval && therapist.deposit_enabled && !isRepeat && !giftCert;

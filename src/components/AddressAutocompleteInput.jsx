@@ -75,8 +75,9 @@ export default function AddressAutocompleteInput({
       if (!google || !google.maps || !google.maps.places) return;
       const allowed = countries && countries.length ? countries : ['us', 'ca'];
       ac = new google.maps.places.Autocomplete(inputRef.current, {
-        types: ['address'],
-        fields: ['address_components', 'formatted_address', 'geometry'],
+        // No type restriction so a client can pick a home address OR a named
+        // place like a hotel or office building (HK Jun 13 2026).
+        fields: ['address_components', 'formatted_address', 'geometry', 'name'],
         componentRestrictions: { country: allowed },
       });
 
