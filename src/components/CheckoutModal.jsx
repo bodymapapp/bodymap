@@ -106,6 +106,23 @@ export default function CheckoutModal({
   const needsClientPicker = !!appt && !clientProp?.id;
   const [step, setStep] = useState(needsClientPicker ? 'select_client' : 'method'); // 'select_client' | 'method' | 'card_on_file' | 'card_new' | 'send_link' | 'offline' | 'success'
   const [amount, setAmount] = useState(((defaultAmountCents || 0) / 100).toFixed(2));
+  // F3 (HK Jun 12 2026): the breakdown is live, so adding an add-on at checkout
+  // updates it in place. Seeded from the prop, re-synced if the modal reopens.
+  const [liveBreakdown, setLiveBreakdown] = useState(breakdown);
+  useEffect(() => { setLiveBreakdown(breakdown); }, [breakdown]);
+  // When an add-on is added or removed at checkout, recompute the total and
+  // balance off the new add-on amount and bump the amount field to the balance.
+  const applyAddonCents = (newAddonCents) => {
+    setLiveBreakdown((prev) => {
+      if (!prev) return prev;
+      const service = prev.serviceCents || 0;
+      const discount = prev.discountCents || 0;
+      const total = Math.max(0, service + (newAddonCents || 0) - discount);
+      const balance = Math.max(0, total - (prev.paidCents || 0));
+      setAmount((balance / 100).toFixed(2));
+      return { ...prev, addonCents: newAddonCents || 0, totalCents: total };
+    });
+  };
   const [tip, setTip] = useState('');
   const [processing, setProcessing] = useState(false);
   const [errorMsg, setErrorMsg] = useState(null);
@@ -1580,8 +1597,11 @@ export default function CheckoutModal({
                   charge before we have a client to charge against. */}
               {step !== 'select_client' && (
                 <>
-                  {breakdown && <BalanceBreakdown breakdown={breakdown} />}
+                  {liveBreakdown && <BalanceBreakdown breakdown={liveBreakdown} />}
                   <AmountRow amount={amount} setAmount={setAmount} tip={tip} setTip={setTip} totalCents={totalCents} therapist={therapist} />
+                  {liveBreakdown && appt?.id && (
+                    <AddOnPicker appt={appt} therapist={therapist} onApplied={applyAddonCents} />
+                  )}
                 </>
               )}
 
@@ -1771,6 +1791,97 @@ function BalanceBreakdown({ breakdown }) {
       )}
       <div style={{ height: 1, background: C.border, margin: '9px 0' }} />
       <div style={rowWrap}><span style={{ ...lbl, color: C.ink, fontWeight: 700 }}>Balance due</span><span style={{ ...val, fontSize: 16, color: '#2A5741', fontWeight: 800 }}>{fmt(balance)}</span></div>
+    </div>
+  );
+}
+
+// F3 (HK Jun 12 2026): add an add-on during checkout, the after-the-fact case
+// where a client decides on an add-on mid-session. Pulls the therapist's add-on
+// catalog (service_addons), filtered to those that apply to this service.
+// Toggling one writes it back onto the booking, so it is recorded in history,
+// the receipt, and the session record, and bumps the balance via onApplied.
+// End time is intentionally left alone, the session is already underway, so we
+// do not reschedule.
+function AddOnPicker({ appt, therapist, onApplied }) {
+  const [catalog, setCatalog] = useState([]);
+  const [selectedIds, setSelectedIds] = useState((appt && appt.addon_ids) || []);
+  const [saving, setSaving] = useState(false);
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      try {
+        const { data } = await supabase
+          .from('service_addons')
+          .select('id, name, price, extra_minutes, applicable_service_ids')
+          .eq('therapist_id', therapist.id)
+          .eq('active', true)
+          .order('display_order');
+        if (alive) setCatalog(data || []);
+      } catch (e) { if (alive) setCatalog([]); }
+    })();
+    return () => { alive = false; };
+  }, [therapist && therapist.id]);
+
+  const applicable = (catalog || []).filter((a) => {
+    const apply = a.applicable_service_ids;
+    if (!apply || (Array.isArray(apply) && apply.length === 0)) return true;
+    if (Array.isArray(apply)) return apply.includes(appt && appt.service_id);
+    return true;
+  });
+  if (applicable.length === 0) return null;
+
+  const toggle = async (a) => {
+    if (saving) return;
+    const isOn = selectedIds.includes(a.id);
+    const next = isOn ? selectedIds.filter((id) => id !== a.id) : [...selectedIds, a.id];
+    const prevSelected = selectedIds;
+    setSelectedIds(next);
+    setSaving(true);
+    const chosen = (catalog || []).filter((x) => next.includes(x.id));
+    const addonDollars = chosen.reduce((s, x) => s + Number(x.price || 0), 0);
+    const extraMin = chosen.reduce((s, x) => s + Number(x.extra_minutes || 0), 0);
+    try {
+      const { error } = await supabase
+        .from('bookings')
+        .update({ addon_ids: next, addon_total_price: addonDollars, addon_extra_minutes: extraMin })
+        .eq('id', appt.id);
+      if (error) throw error;
+      onApplied(Math.round(addonDollars * 100));
+    } catch (e) {
+      setSelectedIds(prevSelected); // revert quietly on failure, never an error page
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const fmt = (d) => `$${Number(d || 0).toFixed(2)}`;
+  return (
+    <div style={{ marginTop: 14, marginBottom: 4 }}>
+      <div style={{ fontSize: 11, fontWeight: 700, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>Add an add-on</div>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+        {applicable.map((a) => {
+          const on = selectedIds.includes(a.id);
+          return (
+            <button
+              key={a.id}
+              onClick={() => toggle(a)}
+              style={{
+                display: 'inline-flex', alignItems: 'center', gap: 8,
+                background: on ? '#EAF2EC' : '#fff',
+                border: `1.5px solid ${on ? '#2A5741' : C.border}`,
+                borderRadius: 10, padding: '9px 13px',
+                fontSize: 13.5, fontWeight: 600,
+                color: on ? '#2A5741' : C.ink,
+                cursor: 'pointer', fontFamily: 'inherit',
+              }}
+            >
+              <span style={{ fontSize: 15, lineHeight: 1, fontWeight: 800 }}>{on ? '\u2713' : '+'}</span>
+              <span>{a.name}</span>
+              <span style={{ color: on ? '#2A5741' : '#6B7280', fontWeight: 700 }}>{fmt(a.price)}</span>
+            </button>
+          );
+        })}
+      </div>
     </div>
   );
 }
