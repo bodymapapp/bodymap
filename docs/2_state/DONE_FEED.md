@@ -9,6 +9,8 @@ Format:  YYYY-MM-DD  [agent]  one plain sentence.
 
 ---
 
+2026-06-12  [engineering]  Google OAuth Step B SUBMITTED: HK submitted the sensitive-scope (calendar.events) verification in the Verification Center. Branding verified with the leaf logo kept, questionnaire answered all No (production app for external therapists), and the corrected two-way justification, fixed unlisted demo video, and no-credentials additional info are attached. Now in Google's review queue (expect about 3 to 5 business days; Google emails bodymap01@gmail.com). While pending, do not change the scope or branding and keep the video live. If Google suggests a narrower scope, decline with the two-way reasoning. Pending Google approval, not yet confirmed.
+
 2026-06-12  [engineering]  Google OAuth Step B unblocked: HK fixed the demo video (obscured the personal info that caused YouTube's removal), uploaded a clean unlisted version, and updated the link in Data Access (saved). Only step left is submitting in the Verification Center. The new video must stay live through Google's review, so the PII must be fully obscured to avoid a second removal.
 
 2026-06-12  [engineering]  Google OAuth Step B blocked again: YouTube removed the demo video citing the harassment/PII policy (medical records, email, phone), most likely because real client intake/booking data was visible in the recording. The link saved in Data Access is now dead. Next: re-record using only dummy test data (fake therapist and client, no real PII or medical notes), re-upload unlisted, update the link in Data Access, then submit. Do not submit with the dead link. App, domain, scope, privacy, and justification are all still fine; only the video needs a clean redo.
