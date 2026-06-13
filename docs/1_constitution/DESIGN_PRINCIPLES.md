@@ -1404,6 +1404,11 @@ by hand.
 
 ---
 
+## 40. Pricing and any choice must be graspable by the 70yo persona in about 5 seconds. One sentence, one or two numbers, no math, no tables.
+
+Our primary user is a ~70-year-old, non-technical solo massage therapist. If she cannot understand what something costs, or what a choice means, in about 5 seconds, it is wrong no matter how elegant the underlying model. For pricing specifically: state it as a single plain sentence with at most one or two numbers. Never a band table she has to locate herself in, never a percentage she has to compute, never per-unit math she has to run. Usage-based pricing must read as "free up to N, then $X each" plus a live "where you stand this month" counter, not a formula. A safety mechanism like a spend cap is a reassurance we state for her, not a third number she tracks. Applies to all product, design, and copy, not just pricing. HK flagged this on 2026-06-12 after a pricing-options reply ignored the persona and offered tiered bands and a percent-of-payments model the persona could not parse at a glance.
+
+
 ## Risk register (current open items, as of Jun 1 2026)
 
 Items here are known live risks. Each entry: severity, what could go wrong, what's queued to mitigate.
