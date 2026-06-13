@@ -102,6 +102,17 @@ export function parsePlaceAddress(place) {
 
   if (!street1 && !parts.city) return null;
 
+  // Pull coordinates from geometry when present (we request the
+  // geometry field). Used for mobile travel-area distance checks.
+  let lat = null, lng = null;
+  try {
+    const loc = place.geometry && place.geometry.location;
+    if (loc) {
+      lat = typeof loc.lat === 'function' ? loc.lat() : loc.lat;
+      lng = typeof loc.lng === 'function' ? loc.lng() : loc.lng;
+    }
+  } catch (_e) { /* coords optional */ }
+
   return {
     street1: street1 || '',
     city: parts.city || '',
@@ -109,6 +120,8 @@ export function parsePlaceAddress(place) {
     postal_code: parts.postal_code || '',
     country: parts.country || 'US',
     formatted: place.formatted_address || '',
+    lat: (typeof lat === 'number' && !isNaN(lat)) ? lat : null,
+    lng: (typeof lng === 'number' && !isNaN(lng)) ? lng : null,
   };
 }
 
@@ -158,4 +171,17 @@ export function useGooglePlaces() {
   }, [placesReady]);
 
   return { placesReady, placesError };
+}
+
+// Great-circle distance in miles between two lat/lng points. Returns null
+// if either coordinate is missing. Used for mobile travel-area checks.
+export function milesBetween(lat1, lng1, lat2, lng2) {
+  if ([lat1, lng1, lat2, lng2].some((n) => typeof n !== 'number' || isNaN(n))) return null;
+  const toRad = (d) => (d * Math.PI) / 180;
+  const R = 3958.8; // earth radius, miles
+  const dLat = toRad(lat2 - lat1);
+  const dLng = toRad(lng2 - lng1);
+  const a = Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }

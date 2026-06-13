@@ -9526,6 +9526,15 @@ export default function ScheduleDashboard({ therapist }) {
                       {req.service_address && (req.service_address.formatted || req.service_address.street1) && (
                         <div style={{fontSize:12,color:'#2A5741',fontWeight:600,marginTop:4}}>📍 {req.service_address.formatted || [req.service_address.street1, req.service_address.city, req.service_address.state, req.service_address.postal_code].filter(Boolean).join(', ')}</div>
                       )}
+                      {req.service_address && typeof req.service_address.distance_miles === 'number' && (() => {
+                        const r = therapist?.travel_radius_miles;
+                        const outside = typeof r === 'number' && r > 0 && req.service_address.distance_miles > r;
+                        return (
+                          <div style={{fontSize:11,color: outside ? '#B45309' : '#6B7280',marginTop:2}}>
+                            about {req.service_address.distance_miles} miles away{outside ? ' · outside your travel area' : ''}
+                          </div>
+                        );
+                      })()}
                     </div>
                   </div>
                   {!isDeclining ? (
