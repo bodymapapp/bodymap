@@ -2,7 +2,7 @@
 //
 // Founder-only command board for the MyBodyMap agent lanes.
 //
-// Layout: five columns. Engineering 1, Engineering 2, Customer Support,
+// Layout: one column per lane. Engineering 1 through 5, Customer Support,
 // Marketing, and a shared column with Strategy on top and Chief of Staff
 // below. Each lane splits into three time sections: Now, Next week, Next
 // month. Cards in a lane are numbered top to bottom across all three
@@ -30,6 +30,9 @@ const C = { forest: "#2A5741", sage: "#6B9E80", cream: "#F5F0E8", ink: "#1F2937"
 const LANES = {
   engineering: { label: "Engineering 1", color: "#2A5741" },
   engineering_2: { label: "Engineering 2", color: "#3A6E54" },
+  engineering_3: { label: "Engineering 3", color: "#1F4733" },
+  engineering_4: { label: "Engineering 4", color: "#48805F" },
+  engineering_5: { label: "Engineering 5", color: "#173A29" },
   customer_support: { label: "Customer Support", color: "#2F6F8F" },
   marketing: { label: "Marketing", color: "#C2682E" },
   strategy: { label: "Strategy", color: "#6D5BA6" },
@@ -38,6 +41,9 @@ const LANES = {
 const COLUMNS = [
   ["engineering"],
   ["engineering_2"],
+  ["engineering_3"],
+  ["engineering_4"],
+  ["engineering_5"],
   ["customer_support"],
   ["marketing"],
   ["strategy", "chief_of_staff"],

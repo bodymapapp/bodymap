@@ -31,6 +31,9 @@ const END = "<!-- ASSIGNMENTS:END -->";
 const AGENTS: [string, string][] = [
   ["engineering", "Engineering 1"],
   ["engineering_2", "Engineering 2"],
+  ["engineering_3", "Engineering 3"],
+  ["engineering_4", "Engineering 4"],
+  ["engineering_5", "Engineering 5"],
   ["customer_support", "Customer Support"],
   ["marketing", "Marketing"],
   ["strategy", "Strategy"],
